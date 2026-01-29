@@ -1,0 +1,3 @@
+[submodule "test_projects/jetson-agx-thor-baseboard"]
+	path = test_projects/jetson-agx-thor-baseboard
+	url = https://github.com/antmicro/jetson-agx-thor-baseboard

@@ -1,0 +1,65 @@
+variables:
+  DEBIAN_FRONTEND: "noninteractive"
+  GIT_DEPTH: 1
+  GIT_SUBMODULE_STRATEGY: none
+
+stages:
+  - code-check
+  - test
+
+.code-check-base:
+  image: "astral/uv:python3.13-trixie-slim"
+  stage: code-check
+  before_script:
+    - uv venv
+    - uv sync --extra dev
+
+mypy:
+  extends: .code-check-base
+  script:
+    - uv run mypy ./src
+
+ty:
+  extends: .code-check-base
+  script:
+    - uv run ty check
+
+format:
+  extends: .code-check-base
+  script:
+    - uv run ruff format --check
+
+lint:
+  extends: .code-check-base
+  script:
+    - uv run ruff check
+
+.test-base:
+  image: "astral/uv:python3.13-trixie-slim"
+  stage: test
+  dependencies: []
+  before_get_sources:
+    - apt -qqy update > /dev/null
+    - apt -qqy --no-install-recommends install git > /dev/null
+  before_script:
+    - uv venv
+    - uv sync
+    - git submodule update --init --depth 1 test_projects/${TEST_PROJECT} || true
+  script:
+    - uv run askiff -i test_projects/${TEST_PROJECT}
+    - if [[ -n $(git diff --shortstat --submodule=diff) ]]; then git diff --submodule=diff --color=always; exit 1; fi
+
+test-kicad9:
+  extends: .test-base
+  variables:
+    TEST_PROJECT: "kicad9"
+
+test-kicad10:
+  extends: .test-base
+  variables:
+    TEST_PROJECT: "kicad10"
+
+test-thor:
+  extends: .test-base
+  variables:
+    TEST_PROJECT: "jetson-agx-thor-baseboard"
