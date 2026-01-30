@@ -4,6 +4,9 @@ import re
 from pathlib import Path
 from typing import ClassVar, Union
 
+SCH_COLUMN_WIDTH = 71
+PCB_COLUMN_WIDTH = 72
+
 
 class Qstr(str):
     """Class for strings that should be quoted after serialization"""
@@ -79,7 +82,8 @@ class Sexpr(list[Union["Sexpr", str]]):
                     out = Sexpr()
                     out.extend(m[1:].split())
             elif mp == ")":
-                assert stack, "Incorrect nesting of brackets"
+                if not stack:
+                    raise AssertionError("Incorrect nesting of brackets")
                 tmpout, out = out, stack.pop()
                 out.append(tmpout)
             elif mp == "|":
@@ -90,7 +94,8 @@ class Sexpr(list[Union["Sexpr", str]]):
             else:
                 # ident or numeric
                 out.append(m)
-        assert not stack, "Incorrect nesting of brackets"
+        if stack:
+            raise AssertionError("Incorrect nesting of brackets")
         return out[0]  # type: ignore
 
     @staticmethod
@@ -154,5 +159,5 @@ class Sexpr(list[Union["Sexpr", str]]):
         return ret
 
     def to_file(self, path: Path) -> None:
-        column_width = 71 if "sch" in path.suffix else 72
+        column_width = SCH_COLUMN_WIDTH if "sch" in path.suffix else PCB_COLUMN_WIDTH
         path.write_text(self.to_str(column_width=column_width) + "\n")
