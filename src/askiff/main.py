@@ -3,7 +3,7 @@ import logging
 import timeit
 from pathlib import Path
 
-from .askiff_pro import AskiffPro
+from .pro import AskiffPro
 
 
 def main() -> None:
