@@ -5,6 +5,12 @@ from pathlib import Path
 from typing import ClassVar, Union
 
 
+class Qstr(str):
+    """Class for strings that should be quoted after serialization"""
+
+    pass
+
+
 class Sexpr(list[Union["Sexpr", str]]):
     __re_pattern: ClassVar = r"""
         # This `()` creates matching group it will match one of contained sub groups
@@ -78,8 +84,11 @@ class Sexpr(list[Union["Sexpr", str]]):
                 out.append(tmpout)
             elif mp == "|":
                 out.extend(m.split())
+            elif mp == '"':
+                # string (strip of `"` and remove escaped `\"`)
+                out.append(Qstr(m[1:-1].replace(r"\"", r'"')))
             else:
-                # string, ident or numeric (strings are not stripped of `"` and `\"`)
+                # ident or numeric
                 out.append(m)
         assert not stack, "Incorrect nesting of brackets"
         return out[0]  # type: ignore
@@ -115,7 +124,17 @@ class Sexpr(list[Union["Sexpr", str]]):
             max_len = column_width - indent_loc
             available_len = max_len - 1 - len(se0)
             for s in se1:
-                if isinstance(s, str):
+                if isinstance(s, Qstr):
+                    s = '"' + s.replace(r'"', r"\"") + '"'
+                    str_len = len(s)
+                    if available_len >= 0:
+                        ret += " " + s
+                        available_len -= str_len + 1
+                    else:
+                        ret += "\n" + indent_loc * "\t" + s
+                        available_len = max_len - str_len
+                        inline = False
+                elif isinstance(s, str):
                     str_len = len(s)
                     if available_len >= 0:
                         ret += " " + s
