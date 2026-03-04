@@ -41,6 +41,10 @@ uv sync --extra dev
   * `sexpr.py` - handles parsing file to AST (nested list of lists and strings) and writing AST to file
   * `pro.py` - entry point for library usage
     * exposes `AskiffPro` that handles loading and saving of all files in project
+  * `auto_serde.py` - offers constructs for automated (de)serialization od structs:
+    * `AutoSerde` - base class that offers default, field based (de)serialize function
+    * `F` - construct that allows to pass additional data for AutoSerde, usage is similar to dataclasses.field
+  * `kicad_structs/` - store definitions of classes matching objects from KiCad files
 
 ## Licensing
 
