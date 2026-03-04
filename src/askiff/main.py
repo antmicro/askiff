@@ -82,7 +82,7 @@ def main() -> None:
 
     print(
         "Total processing time : ",
-        timeit.timeit(lambda: AskiffPro(args.input).load(force=True).save(force=True), number=1),
+        timeit.timeit(lambda: AskiffPro(args.input).load(force=True).save(), number=1),
     )
 
 

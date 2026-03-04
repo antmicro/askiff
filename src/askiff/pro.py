@@ -1,56 +1,98 @@
 from __future__ import annotations
 
 import logging
-import time
 from pathlib import Path
-from typing import Self
+from threading import RLock
+from typing import Any, Generic, Self, TypeVar
 
+from .auto_serde import AutoSerdeFile
 from .const import TRACE, TRACE_DIS
-from .kistruct.board import Board
+
+# from .kistruct.board import Board
 from .kistruct.footprint import Footprint, LibTableFp
 from .sexpr import Sexpr
 
 logging.addLevelName(TRACE_DIS, "TRACE_DIS")
 logging.addLevelName(TRACE, "TRACE")
-time_logger = logging.getLogger("time_log")
 
 
-class Timer:
-    def __init__(self, message: str = "Execution time") -> None:
-        self.message = message
+T = TypeVar("T", bound=AutoSerdeFile)
 
-    def __enter__(self) -> Timer:
-        self.start = time.perf_counter()
-        return self
 
-    def __exit__(self, *args) -> None:  # type: ignore # noqa: ANN002
-        elapsed = time.perf_counter() - self.start
-        time_logger.info(f"{self.message}: {elapsed:.3f} seconds")
+class _LazyFile(Generic[T]):
+    """Thread-safe transparent file lazy loader"""
+
+    def __init__(self, inner_cls: type[T], value: Path, force_load: bool = False) -> None:
+        self._inner_cls = inner_cls
+        if not value.exists():
+            raise FileNotFoundError(value)
+        self.__path = value
+        self._value = value
+        self._lock = RLock()
+        if force_load:
+            self._load()
+
+    def _load(self) -> T:
+        # Fast path (already loaded)
+        if isinstance(self._value, self._inner_cls):
+            return self._value
+
+        # Slow path (needs loading)
+        with self._lock:
+            # Double-check as before locking, file might get loaded
+            if isinstance(self._value, Path):
+                loaded = self._inner_cls.from_file(self._value)
+                self._value = loaded
+            return self._value  # type: ignore
+
+    # Transparent attribute access
+    def __getattr__(self, name: str) -> Any:  # noqa: ANN401
+        return getattr(self._load(), name)
+
+    def __repr__(self) -> str:
+        if isinstance(self._value, Path):
+            return f"<LazyFile unloaded path={self._value}>"
+        return repr(self._value)
+
+    def save(self, path: Path | None, initial_root_path: Path) -> None:
+        if not self.is_loaded():
+            return
+
+        if path and self.__path.is_relative_to(initial_root_path):
+            file = self.__path.relative_to(initial_root_path)
+            self.to_file(path=path / file)
+        else:
+            self.to_file()
+
+    def is_loaded(self) -> bool:
+        return not isinstance(self._value, Path)
 
 
 class AskiffLibFp:
     path: Path
-    objects: list[Footprint]
+    __initial_path: Path
+    objects: list[_LazyFile[Footprint]]
 
     def __init__(self, path: Path) -> None:
         self.path = path
+        self.__initial_path = path
 
     def load(self, force: bool = False) -> Self:
         self.objects = []
-        for p in self.path.glob("*.kicad_mod"):
-            self.objects.append(Footprint.from_file(p))
+        for path in self.path.glob("*.kicad_mod"):
+            self.objects.append(_LazyFile(Footprint, path, force))
         return self
 
-    def save(self, path: Path | None = None, force: bool = False) -> None:
+    def save(self, path: Path | None = None) -> None:
         for o in self.objects:
-            o.to_file()
+            o.save(path, self.__initial_path)
 
 
 class AskiffPro:
     path: Path
+    __initial_path: Path
     # pro: dict[Path, Sexpr] # Note: kicad_pro seems to be json
-    # pcb: dict[Path, Sexpr]
-    pcb: list[Board]
+    # pcb: list[_LazyFile[Board]]
     sch: dict[Path, Sexpr]  # TODO: replace with target kicad structure
     fp: dict[str, AskiffLibFp]
     fp_lib_table: LibTableFp
@@ -58,6 +100,7 @@ class AskiffPro:
 
     def __init__(self, path: Path) -> None:
         self.path = path
+        self.__initial_path = path
         self.variables = {"KIPRJMOD": str(path)}
 
     def resolve_var(self, string: str) -> str:
@@ -68,32 +111,28 @@ class AskiffPro:
     def load(self, force: bool = False) -> Self:
         # self.pro={p: Sexpr.from_file(p) for p in self.path.glob("*.kicad_pro")}
 
-        self.pcb = []
-        for path in self.path.glob("*.kicad_pcb"):
-            with Timer(f"Load `{path}`"):
-                self.pcb.append(Board.from_file(path))
-        # self.pcb = {}
+        # self.pcb = []
         # for path in self.path.glob("*.kicad_pcb"):
-        #     with Timer(f"Load `{path}`"):
-        #         self.pcb[path] = Sexpr.from_file(path)
-        # self.sch = {p: Sexpr.from_file(p) for p in self.path.glob("*.kicad_sch")}
+        #     self.pcb.append(_LazyFile(Board, path, force))
+
         fp_lib_table_path = self.path / "fp-lib-table"
         self.fp_lib_table = LibTableFp.from_file(fp_lib_table_path) if fp_lib_table_path.exists() else LibTableFp()
         self.fp = {lib.name: AskiffLibFp(Path(self.resolve_var(lib.uri))).load(force) for lib in self.fp_lib_table.lib}
 
         return self
 
-    def save(self, path: Path | None = None, force: bool = False) -> None:
+    def save(self, path: Path | None = None) -> None:
         # for p, sexpr in self.pro.items():
         #     sexpr.to_file(p)
-        # for path, pcb in self.pcb.items():
-        #     with Timer(f"Save `{path}`"):
-        #         pcb.to_file(path)
-        for pcb in self.pcb:
-            with Timer(f"Save `{pcb._fs_path}`"):
-                pcb.to_file()
+
+        # for pcb in self.pcb:
+        #     pcb.save(path, self.__initial_path)
         # for p, sexpr in self.sch.items():
         #     sexpr.to_file(p)
         for lib in self.fp.values():
-            lib.save(force=force)
+            if path and lib._AskiffLibFp__initial_path.is_relative_to(self.__initial_path):  # type: ignore # ty:ignore[unresolved-attribute]
+                file = lib._AskiffLibFp__initial_path.relative_to(self.__initial_path)  # type: ignore  # ty:ignore[unresolved-attribute]
+                lib.save(path / file)
+            else:
+                lib.save()
         pass
