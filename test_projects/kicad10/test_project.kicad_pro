@@ -496,6 +496,7 @@
       "duplicate_sheet_names": "error",
       "endpoint_off_grid": "warning",
       "extra_units": "error",
+      "field_name_whitespace": "warning",
       "footprint_filter": "ignore",
       "footprint_link_issues": "warning",
       "four_way_junction": "ignore",
@@ -816,7 +817,8 @@
         "uuid": "59f522e0-0cf7-48a6-bc09-47b340553d24"
       }
     ],
-    "used_designators": ""
+    "used_designators": "",
+    "variants": []
   },
   "sheets": [
     [

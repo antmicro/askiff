@@ -34,47 +34,47 @@
 			)
 			(property "Footprint" ""
 				(at 5.08 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "Datasheet" "~"
 				(at 5.08 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "Description" "test point"
 				(at 0 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "ki_keywords" "test point tp"
 				(at 0 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "ki_fp_filters" "Pin* Test*"
 				(at 0 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(symbol "TestPoint_0_1"
@@ -140,47 +140,47 @@
 			)
 			(property "Footprint" ""
 				(at -1.778 0 90)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "Datasheet" "~"
 				(at 0 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "Description" "Resistor"
 				(at 0 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "ki_keywords" "R res resistor"
 				(at 0 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "ki_fp_filters" "R_*"
 				(at 0 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(symbol "R_0_1"
@@ -250,11 +250,11 @@
 			(on_board yes)
 			(property "Reference" "#PWR"
 				(at 0 -3.81 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "Value" "+3V3"
@@ -267,38 +267,38 @@
 			)
 			(property "Footprint" ""
 				(at 0 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "Datasheet" ""
 				(at 0 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "Description" "Power symbol creates a global label with name \"+3V3\""
 				(at 0 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "ki_keywords" "global power"
 				(at 0 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(symbol "+3V3_0_1"
@@ -375,11 +375,11 @@
 			(on_board yes)
 			(property "Reference" "#PWR"
 				(at 0 -6.35 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "Value" "GND"
@@ -392,38 +392,38 @@
 			)
 			(property "Footprint" ""
 				(at 0 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "Datasheet" ""
 				(at 0 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
 				(at 0 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(property "ki_keywords" "global power"
 				(at 0 0 0)
-				(hide yes)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
+					(hide yes)
 				)
 			)
 			(symbol "GND_0_1"
@@ -578,34 +578,28 @@
 		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 125.73 80.772 90)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Datasheet" "~"
 			(at 125.73 82.55 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Description" "Resistor"
 			(at 125.73 82.55 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(pin "1"
@@ -656,34 +650,28 @@
 		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 101.6 80.772 90)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Datasheet" "~"
 			(at 101.6 82.55 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Description" "Resistor"
 			(at 101.6 82.55 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(pin "1"
@@ -736,34 +724,28 @@
 		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 114.808 77.47 90)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Datasheet" "~"
 			(at 113.03 77.47 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Description" "Resistor"
 			(at 113.03 77.47 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(pin "1"
@@ -816,34 +798,28 @@
 		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
 			(at 133.35 87.63 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Datasheet" "~"
 			(at 133.35 87.63 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Description" "test point"
 			(at 133.35 82.55 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(pin "1"
@@ -875,12 +851,10 @@
 		(property "Reference" "#PWR055"
 			(at 113.03 100.33 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Value" "GND"
@@ -894,34 +868,28 @@
 		(property "Footprint" ""
 			(at 113.03 93.98 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
 			(at 113.03 93.98 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
 			(at 113.03 93.98 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(pin "1"
@@ -971,34 +939,28 @@
 		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 114.808 88.9 90)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Datasheet" "~"
 			(at 113.03 88.9 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Description" "Resistor"
 			(at 113.03 88.9 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(pin "1"
@@ -1049,34 +1011,28 @@
 		(property "Footprint" "TestPoint:TestPoint_Pad_D1.0mm"
 			(at 93.98 77.47 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Datasheet" "~"
 			(at 93.98 77.47 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Description" "test point"
 			(at 93.98 82.55 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(pin "1"
@@ -1108,12 +1064,10 @@
 		(property "Reference" "#PWR054"
 			(at 113.03 74.93 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Value" "+3V3"
@@ -1127,34 +1081,28 @@
 		(property "Footprint" ""
 			(at 113.03 71.12 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Datasheet" ""
 			(at 113.03 71.12 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"+3V3\""
 			(at 113.03 71.12 0)
 			(effects
-				(hide yes)
-			)
-			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(hide yes)
 			)
 		)
 		(pin "1"

@@ -10,6 +10,9 @@ stages:
 .code-check-base:
   image: "astral/uv:python3.13-trixie-slim"
   stage: code-check
+  except:
+    refs:
+      - merge_requests
   before_script:
     - uv venv
     - uv sync --extra dev
@@ -38,6 +41,9 @@ lint:
   image: "astral/uv:python3.13-trixie-slim"
   stage: test
   dependencies: []
+  except:
+    refs:
+      - merge_requests
   before_get_sources:
     - apt -qqy update > /dev/null
     - apt -qqy --no-install-recommends install git > /dev/null

@@ -1,7 +1,7 @@
 (kicad_sch
-	(version 20251028)
+	(version 20260101)
 	(generator "eeschema")
-	(generator_version "9.99")
+	(generator_version "10.0")
 	(uuid "59f522e0-0cf7-48a6-bc09-47b340553d24")
 	(paper "A3")
 	(title_block
@@ -22,6 +22,7 @@
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
+			(in_pos_files yes)
 			(duplicate_pin_numbers_are_jumpers no)
 			(property "Reference" "D"
 				(at 0 3.81 0)
@@ -168,6 +169,7 @@
 			(exclude_from_sim no)
 			(in_bom no)
 			(on_board no)
+			(in_pos_files yes)
 			(duplicate_pin_numbers_are_jumpers no)
 			(property "Reference" "#SYM"
 				(at 0 12.7 0)
@@ -327,6 +329,7 @@
 			(exclude_from_sim yes)
 			(in_bom no)
 			(on_board yes)
+			(in_pos_files yes)
 			(duplicate_pin_numbers_are_jumpers no)
 			(property "Reference" "H"
 				(at 0 6.35 0)
@@ -450,6 +453,7 @@
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
+			(in_pos_files yes)
 			(duplicate_pin_numbers_are_jumpers no)
 			(property "Reference" "#PWR"
 				(at 0 -6.35 0)
@@ -1545,6 +1549,7 @@
 		(exclude_from_sim yes)
 		(in_bom no)
 		(on_board yes)
+		(in_pos_files yes)
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "31982da0-3149-48c4-aa22-9654cac3a733")
@@ -1623,6 +1628,7 @@
 		(exclude_from_sim yes)
 		(in_bom no)
 		(on_board yes)
+		(in_pos_files yes)
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "af06a4f2-8e0c-4363-95f0-e2e51728c761")
@@ -1701,6 +1707,7 @@
 		(exclude_from_sim yes)
 		(in_bom no)
 		(on_board yes)
+		(in_pos_files yes)
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "b0df3365-42ec-473d-b3b8-faf702aeb386")
@@ -1779,6 +1786,7 @@
 		(exclude_from_sim yes)
 		(in_bom no)
 		(on_board no)
+		(in_pos_files yes)
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "c3a1c6b4-a1ac-4abf-a9b7-64c30f148f03")
@@ -1854,6 +1862,7 @@
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
+		(in_pos_files yes)
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "d7bf467d-f38d-4aac-b090-d1e3ef38fd38")
