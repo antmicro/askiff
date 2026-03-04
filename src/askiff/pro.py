@@ -6,8 +6,7 @@ from pathlib import Path
 from typing import Self
 
 from .const import TRACE, TRACE_DIS
-
-# from .kistruct.board import Board
+from .kistruct.board import Board
 from .kistruct.footprint import Footprint, LibTableFp
 from .sexpr import Sexpr
 
@@ -50,8 +49,8 @@ class AskiffLibFp:
 class AskiffPro:
     path: Path
     # pro: dict[Path, Sexpr] # Note: kicad_pro seems to be json
-    pcb: dict[Path, Sexpr]
-    # pcb: list[Board]
+    # pcb: dict[Path, Sexpr]
+    pcb: list[Board]
     sch: dict[Path, Sexpr]  # TODO: replace with target kicad structure
     fp: dict[str, AskiffLibFp]
     fp_lib_table: LibTableFp
@@ -69,14 +68,14 @@ class AskiffPro:
     def load(self, force: bool = False) -> Self:
         # self.pro={p: Sexpr.from_file(p) for p in self.path.glob("*.kicad_pro")}
 
-        # self.pcb = []
-        # for path in self.path.glob("*.kicad_pcb"):
-        #     with Timer(f"Load `{path}`"):
-        #         self.pcb.append(Board.from_file(path))
-        self.pcb = {}
+        self.pcb = []
         for path in self.path.glob("*.kicad_pcb"):
             with Timer(f"Load `{path}`"):
-                self.pcb[path] = Sexpr.from_file(path)
+                self.pcb.append(Board.from_file(path))
+        # self.pcb = {}
+        # for path in self.path.glob("*.kicad_pcb"):
+        #     with Timer(f"Load `{path}`"):
+        #         self.pcb[path] = Sexpr.from_file(path)
         # self.sch = {p: Sexpr.from_file(p) for p in self.path.glob("*.kicad_sch")}
         fp_lib_table_path = self.path / "fp-lib-table"
         self.fp_lib_table = LibTableFp.from_file(fp_lib_table_path) if fp_lib_table_path.exists() else LibTableFp()
@@ -87,12 +86,12 @@ class AskiffPro:
     def save(self, path: Path | None = None, force: bool = False) -> None:
         # for p, sexpr in self.pro.items():
         #     sexpr.to_file(p)
-        for path, pcb in self.pcb.items():
-            with Timer(f"Save `{path}`"):
-                pcb.to_file(path)
-        # for pcb in self.pcb:
-        #     with Timer(f"Save `{pcb._fs_path}`"):
-        #         pcb.to_file()
+        # for path, pcb in self.pcb.items():
+        #     with Timer(f"Save `{path}`"):
+        #         pcb.to_file(path)
+        for pcb in self.pcb:
+            with Timer(f"Save `{pcb._fs_path}`"):
+                pcb.to_file()
         # for p, sexpr in self.sch.items():
         #     sexpr.to_file(p)
         for lib in self.fp.values():

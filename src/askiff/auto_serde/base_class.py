@@ -2,311 +2,18 @@ from __future__ import annotations
 
 import dataclasses
 import logging
-from collections.abc import Callable, Generator, Iterable
-from copy import deepcopy
+from collections.abc import Iterable
 from dataclasses import dataclass
-from enum import Enum, auto
-from pathlib import Path
+from enum import Enum
 from pprint import pprint
-from types import NoneType, UnionType
-from typing import (
-    Any,
-    ClassVar,
-    Final,
-    Generic,
-    Literal,
-    Self,
-    TypedDict,
-    TypeVar,
-    Unpack,
-    cast,
-    dataclass_transform,
-    get_args,
-    get_origin,
-    get_type_hints,
-)
+from typing import Any, Self, Unpack, cast, dataclass_transform
 
-from .const import TRACE, TRACE_DIS, Version
-from .sexpr import GeneralizedSexpr, Qstr, Sexpr
+from askiff.const import TRACE, TRACE_DIS
+from askiff.sexpr import GeneralizedSexpr, Qstr, Sexpr
+
+from .helpers import DeserMode, DeserModWExtra, F, GeneratorParams, SerdeOpt, SerMode, preprocess_cls_fields
 
 log = logging.getLogger()
-
-
-class SerdeOpt(TypedDict, total=False):
-    precision: int
-    """(float only) Max number of digits after point"""
-    keep_trailing: bool
-    """(float only) Keep trailing zeros"""
-    flatten: bool
-    """List is unpacked on current level: `(name (k v))(name (k v))` instead `(name (k v) (k v))`"""
-    positional: bool
-    """Field is serialized without id: `serialized` instead `(id serialized)`"""
-    name: str
-    """Override id used in file, by default id == field_name"""
-    bare: bool
-    """Item shall not be surrounded by parenthesis: `field_name (k v)` instead `(field_name (k v))`
-    Caution: If field is not of primitive type, its deserializer shall consume only sexpr that it actually needs
-    """
-    flag: bool
-    """(bool only) Bool is true if corresponding keyword is present: `(field_name)` instead `(field_name yes)`"""
-    skip: bool
-    """AutoSerde will ignore this field"""
-    invert: bool
-    """(bool only) Python filed will have inverted logic compared to kicad file"""
-    nested: bool
-    """Data is additionally nested `(field_name (inner_cls data data))` instead `(field_name data data)`"""
-    unquoted: bool
-    """(str only) If true string value will not be surrounded by double quotes """
-    true_val: str
-    """(bool only) Identifier to use as True value (instead of `yes`)"""
-    false_val: str
-    """(bool only) Identifier to use as False value (instead of `no`)"""
-    inline: bool
-    """From the point of ser/deser fields of annotated field are copy pasted in main struct"""
-    inline_basetype: type
-    """(internal) Dict that allows down casting of `inline` type based on its first field"""
-    serialize: Callable
-    """Function that should be used to serialize field"""
-
-
-# A sentinel object to detect if a parameter is supplied or not.  Use
-# a class to give it a better repr.
-class _AUTO_DEFAULT:  # noqa: N801
-    pass
-
-
-AUTO_DEFAULT = _AUTO_DEFAULT()
-
-
-class F(Any):
-    def __new__(cls, *args: Any, **kwargs: Unpack[SerdeOpt]) -> F:  # noqa: ANN401
-        return super().__new__(cls)
-
-    def __init__(self, default: Any = AUTO_DEFAULT, **kwargs: Unpack[SerdeOpt]) -> None:  # noqa: ANN401
-        self.default = default
-        self.options = kwargs
-
-    @staticmethod
-    def unlocked(default: Any = AUTO_DEFAULT, **kwargs: Unpack[SerdeOpt]) -> F:  # noqa: ANN401
-        return F(name="unlocked", invert=True, **kwargs)  # type:ignore
-
-
-class AutoSerdeEnum(Enum):
-    """Class for definition of enums, comparing to `enum.Enum` class it allows storing arbitrary values
-    (to allow new options that KiCad may add in future)
-    Inherit also from sexpr.Qstr to serialize as quoted string
-    """
-
-    @classmethod
-    def _missing_(cls, value):  # type: ignore  # noqa: ANN001, ANN206
-        # Handle unknown enum fields that may be added in future KiCad versions
-        # dynamically create a pseudo-member
-        log.warning(f"{cls.__name__}: Unknown option: {value}")
-        obj = str.__new__(cls, value)
-        obj._name_ = None
-        obj._value_ = value
-        return obj
-
-
-T = TypeVar("T")
-
-
-class AutoSerdeAgg(Generic[T], list[T]):
-    """Wrapper around list, used to aggregate few types in one list
-
-    Generic can be either:
-    * Union of classes with `_askiff_key: ClassVar[str]`
-    * Class with `__askiff_childs: ClassVar[dict[str, type]]`
-
-    It handles unrecognized variants transparently
-    (they are skipped during iteration but serialized back during serialization)
-    """
-
-    @classmethod
-    def __askiff_aggregator(cls, inner: type) -> dict[str, type]:
-        inner_origin, inner_args = get_origin(inner), get_args(inner)
-        if inner_origin is UnionType:
-            ret = {}
-            for typ in inner_args:
-                askiff_key = getattr(typ, "_askiff_key", None)
-                if askiff_key is None:
-                    raise Exception(
-                        f"{cls.__name__}: Aggregated type is {inner}, but {typ.__name__} has no `_askiff_key"
-                    )
-                ret[askiff_key] = typ
-            return ret
-
-        askiff_childs = getattr(inner, f"_{inner.__name__}__askiff_childs", None)
-        if askiff_childs is None:
-            raise Exception(f"{cls.__name__}: Aggregated type is {inner}, but it has no `__askiff_childs")
-        return {k: v for (k, v) in askiff_childs.items() if issubclass(v, inner)}
-
-    def __iter__(self) -> Generator:
-        sexpr = Sexpr
-        for item in super().__iter__():
-            if not isinstance(item, sexpr):
-                yield item
-
-
-@dataclass
-class _GeneratorParams:
-    """Helper class used by (de)serialize generator in AutoSerde"""
-
-    typ: type
-    type_origin: Any
-    type_args: tuple[Any, ...]
-    is_optional: bool
-    is_list: bool
-    list_of_lists: bool | None
-    is_enum: bool
-    fmeta: SerdeOpt
-    positional: bool
-    flatten: bool
-    bare: bool
-    flag: bool
-    invert: bool
-    skip: bool
-    nested: bool
-    agg: None | Callable
-    inline_basetype: type | None
-    alias: set[str]
-    fname: str
-    vtrue: str
-    vfalse: str
-
-    @staticmethod
-    def is_type_list(typ: type) -> bool:
-        type_origin = get_origin(typ)
-        return (
-            # standard list/set
-            type_origin is list
-            or type_origin is set
-            # class inherited from list but with generics
-            or (isinstance(type_origin, type) and issubclass(type_origin, (list, set)))
-            # class inherited from list
-            or (isinstance(typ, type) and issubclass(typ, (list, set)))
-        )
-
-    def unwrap_list_type(self) -> None:
-        if self.is_list:
-            self.typ = get_args(self.typ)[0]
-            if get_origin(self.typ) is UnionType:
-                self.typ = get_args(self.typ)[0]
-
-        self.list_of_lists = False
-        if _GeneratorParams.is_type_list(self.typ):
-            # case of nested list
-            self.typ = get_args(self.typ)[0]
-            self.list_of_lists = True
-
-    @staticmethod
-    def extract(cls_name: str, typ: type, field: str, field_meta: dict[str, SerdeOpt]) -> _GeneratorParams:
-        """Extract some variables useful for field processing"""
-        type_origin, type_args = get_origin(typ), get_args(typ)
-        is_optional = type_origin is UnionType and NoneType in type_args
-        if is_optional:
-            typ = next(t for t in type_args if t is not NoneType)
-            type_origin, type_args = get_origin(typ), get_args(typ)
-
-        is_list = _GeneratorParams.is_type_list(typ)
-        is_enum = isinstance(typ, type) and issubclass(typ, Enum)
-        fmeta = field_meta.get(field, {})
-
-        positional, flatten, bare, flag, skip, invert, nested = [
-            bool(fmeta.get(x, False)) for x in ["positional", "flatten", "bare", "flag", "skip", "invert", "nested"]
-        ]
-
-        if positional and flatten:
-            raise Exception(f"`{cls_name}.{field}`: `flatten` & `positional` are mutually exclusive")
-        fname = fmeta.get("name", field).split(".")[-1]
-
-        agg = getattr(typ, f"_{typ.__name__}__askiff_aggregator", None)
-        inline_basetype = fmeta.get("inline_basetype", None)
-
-        alias: set[str] = getattr(typ, f"_{typ.__name__}__askiff_alias", set())
-        alias.add(fname)
-
-        vtrue, vfalse = fmeta.get("true_val", "yes"), fmeta.get("false_val", "no")
-        if invert:
-            vtrue, vfalse = vfalse, vtrue
-
-        return _GeneratorParams(
-            typ,
-            type_origin,
-            type_args,
-            is_optional,
-            is_list,
-            None,
-            is_enum,
-            fmeta,
-            positional,
-            flatten,
-            bare,
-            flag,
-            invert,
-            skip,
-            nested,
-            agg,
-            inline_basetype,
-            alias,
-            fname,
-            vtrue,
-            vfalse,
-        )
-
-
-def _normalize_type(typ: type) -> tuple:
-    type_origin, type_args = get_origin(typ), get_args(typ)
-    if type_origin is Literal:
-        typ = type(type_args[0])
-        type_origin, type_args = get_origin(typ), get_args(typ)
-    if type_origin is Final:
-        typ = type_args[0]
-        type_origin, type_args = get_origin(typ), get_args(typ)
-    if type_origin is not None and [arg for arg in type_args if get_origin(arg) is Literal]:
-        type_args = tuple(type(get_args(arg)[0]) if get_origin(arg) is Literal else arg for arg in type_args)
-        typ = type_origin[*type_args]
-    return typ, type_origin, type_args
-
-
-class SerMode(int, Enum):
-    SERIALIZE = auto()
-    SERIALIZE_OVERRIDE = auto()
-    SERIALIZE_NESTED = auto()
-    BOOL = auto()
-    BOOL_FLAG = auto()
-    BOOL_FLAG_BARE = auto()
-    INT = auto()
-    FLOAT = auto()
-    FLOAT_NO_TRIM = auto()
-    STR = auto()
-    QSTR = auto()
-    ENUM = auto()
-    QENUM = auto()
-    LIST = auto()
-    LIST_FLAT = auto()
-    UNSUPPORTED = auto()
-
-
-class DeserMode(int, Enum):
-    DESERIALIZE = auto()
-    DESERIALIZE_DOWNCAST = auto()
-    DESERIALIZE_NESTED = auto()
-    BOOL = auto()
-    INT = auto()
-    FLOAT = auto()
-    STR = auto()
-    ENUM = auto()
-    ENUM_NESTED = auto()
-    LIST = auto()
-    LIST_AGG = auto()
-    LIST_FLAT = auto()
-    UNSUPPORTED = auto()
-    INLINED = auto()
-
-
-DeserModWExtra = tuple[str, DeserMode, Any]
-"""(Object field name, deserialization mode, deserialization mode extra args)"""
 
 
 @dataclass_transform(field_specifiers=(F, dataclasses.field))
@@ -335,7 +42,6 @@ class AutoSerde:
 
     __extra: Sexpr | None = None
     __extra_positional: Sexpr | None = None
-    __askiff_dict: dict
     __ser_field_positional: dict[str, tuple[SerMode, Any]]
     __ser_field: dict[str, tuple[str, tuple[SerMode, Any]]]
     __deser_field_positional: list[DeserModWExtra]
@@ -356,7 +62,7 @@ class AutoSerde:
 
         for field in ser_order:
             typ = type_hints[field]
-            fparam = _GeneratorParams.extract(cls.__name__, typ, field, field_meta)
+            fparam = GeneratorParams.extract(cls.__name__, typ, field, field_meta)
             typ = fparam.typ
             fmode: tuple[DeserMode, Any]
             if fparam.agg:
@@ -615,7 +321,7 @@ class AutoSerde:
         cls.__ser_field, cls.__ser_field_positional = {}, {}
         for field in ser_order:
             typ = type_hints[field]
-            fparam = _GeneratorParams.extract(cls.__name__, typ, field, field_meta)
+            fparam = GeneratorParams.extract(cls.__name__, typ, field, field_meta)
             fmode: tuple[SerMode, Any]
             explicit_name = fparam.fmeta.get("name", None)
 
@@ -900,8 +606,7 @@ class AutoSerde:
         return ret
 
     def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:
-        type_hints = get_type_hints(cls)
-        field_meta, ser_order = cls.__preprocess_fields(type_hints)
+        type_hints, field_meta, ser_order = preprocess_cls_fields(cls)
 
         for glob_name, glob_val in kwargs.items():
             for meta in field_meta.values():
@@ -925,126 +630,3 @@ class AutoSerde:
 
                 print(f"\n\n## Disassembled `__init__` function for {cls}:")
                 dis(cls.__init__)
-
-    @classmethod
-    def __preprocess_fields(cls, type_hints: dict[str, type]) -> tuple[dict[str, SerdeOpt], list[str]]:
-        """Process typing and defaults of class, configure for dataclass and extract metadata,
-        create `_AutoSerde__askiff_dict` for class
-        returns (field metadata, field names in serialization order)
-        """
-        field_meta = {}
-        cls.__askiff_dict = {}
-        parent_dict = {}
-        askiff_order = None
-
-        for parent in reversed(cls.__mro__[1:]):  # first elem is class itself, ignore it
-            if hasattr(parent, "_AutoSerde__askiff_dict"):
-                # bellows handles case where A->B->C and field is defined in A, but not in B
-                filtered_dict = {k: v for k, v in parent.__askiff_dict.items() if not isinstance(v, dataclasses.Field)}  # type: ignore
-                askiff_order = getattr(parent, f"_{parent.__name__}__askiff_order", askiff_order)
-                parent_dict.update(filtered_dict)
-
-        ser_order = []
-        askiff_order = getattr(cls, f"_{cls.__name__}__askiff_order", askiff_order)
-
-        for name, value in (parent_dict | cls.__dict__).items():
-            if name.startswith("_") and name[1:] in type_hints:
-                ser_order.append(name[1:])
-            elif not name.startswith("_") and name in type_hints and ("_" + name) not in cls.__dict__:
-                ser_order.append(name)
-
-            if name.startswith("_") or name not in type_hints:
-                continue
-
-            typ, type_origin, type_args = _normalize_type(type_hints[name])
-            type_hints[name] = typ
-
-            cls.__askiff_dict[name] = value
-
-            if name in type_hints and name not in cls.__annotations__:
-                cls.__annotations__[name] = type_hints[name]
-            if isinstance(value, F):
-                inline, skip = value.options.get("inline"), value.options.get("skip")
-                if inline or skip:
-                    ser_order.pop()  # skipped or inlined field will not be serialized directly
-
-                if inline:
-                    inline_type_hints = get_type_hints(typ)
-                    inline_dict = deepcopy(typ._AutoSerde__askiff_dict)
-                    inner_childs = getattr(typ, f"_{typ.__name__}__askiff_childs", {})
-                    inner_dc_field = getattr(typ, f"_{typ.__name__}__askiff_down_cast_field", {})
-                    for ic in inner_childs.values():
-                        inline_dict |= getattr(ic, "_AutoSerde__askiff_dict", {})
-                        inline_type_hints |= get_type_hints(ic)
-                    for inline_field, inline_val in inline_dict.items():  # type:ignore
-                        full_id = name + "." + inline_field
-                        inline_typ, _, _ = _normalize_type(inline_type_hints[inline_field])
-                        type_hints[full_id] = inline_typ
-                        field_meta[full_id] = inline_val.options if isinstance(inline_val, F) else {}
-                        if inline_field == inner_dc_field:
-                            filt_opt = deepcopy(value.options)
-                            filt_opt.pop("inline")
-                            filt_opt.pop("skip", None)
-                            field_meta[full_id] |= filt_opt
-                            field_meta[full_id]["inline_basetype"] = typ
-                        ser_order.append(full_id)
-                    value.options["skip"] = True
-
-                if value.options:
-                    field_meta[name] = value.options
-                if value.default is None:
-                    continue
-
-                if value.default == []:
-                    value.default = list
-                if value.default == {}:
-                    value.default = dict
-                if value.default == AUTO_DEFAULT:
-                    # Use class constructor (with no args) as default If Optional field, default to None
-                    value.default = None if type_origin is UnionType and NoneType in type_args else typ
-                if callable(value.default):
-                    setattr(cls, name, dataclasses.field(default_factory=value.default))
-                else:
-                    setattr(cls, name, dataclasses.field(default=value.default))
-            if name not in field_meta:
-                field_meta[name] = {}
-        ser_ord = [field for field in askiff_order or ser_order if field in type_hints]
-        return field_meta, ser_ord
-
-
-class AutoSerdeFile(AutoSerde):
-    """`AutoSerde` wrapper that targets top (file) level structures"""
-
-    _askiff_key: ClassVar[str]
-    _fs_path: Path | None = None
-    __version_map: ClassVar[dict[str, str]] = {
-        "kicad_pcb": "pcb",
-        "kicad_sch": "sch",
-        "symbol": "sym",
-        "footprint": "fp",
-        "sym_lib_table": "lib_table",
-        "fp_lib_table": "lib_table",
-    }
-
-    @classmethod
-    def from_file(cls, path: Path) -> Self:
-        sexp = Sexpr.from_file(path)
-        askiff_key = cls._askiff_key
-        if askiff_key != sexp[0]:
-            raise Exception(f"{cls.__name__}: File {path} is not valid ")
-        ver_key = cls.__version_map[askiff_key]
-        raw_ver = [int(x[1]) for x in sexp[:5] if isinstance(x, list) and x[0] == "version" and isinstance(x[1], str)]
-        ver = raw_ver[0] if raw_ver else 0
-
-        vmin, vmax = getattr(Version.MIN, ver_key), getattr(Version.MAX, ver_key)
-        if vmin <= ver <= vmax:
-            ret = cls.deserialize(Sexpr(sexp[1:]))
-            ret._fs_path = path
-            return ret
-        raise Exception(f"{cls.__name__}: File {path} has unsupported version (Expects: {vmin}-{vmax}, File: {ver})")
-
-    def to_file(self, path: Path | None = None) -> None:
-        path = path if path else self._fs_path
-        if path is None:
-            raise Exception(f"Saving {type(self).__name__} to file requires specifying file system path!")
-        Sexpr.to_file(Sexpr((self._askiff_key, *self.serialize())), path)
