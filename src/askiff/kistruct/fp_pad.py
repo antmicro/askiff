@@ -205,7 +205,7 @@ class DrillPostMatchingCountersink(DrillPostMatching):
 
 
 class AfterDrill(AutoSerde):
-    size: float = 0.1
+    size: float = F()
     layers: list[LayerCooper] = F()
 
 

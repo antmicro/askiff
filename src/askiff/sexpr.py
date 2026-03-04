@@ -145,7 +145,7 @@ def to_str(sexpr: GeneralizedSexpr, indent: int = 0, column_width: int = SCH_COL
         return ret + "\n" + indent * "\t" + ")"
 
     if not isinstance(se0, str):
-        raise Exception(f"First element of S-Expr node is expected to be a string! {se0} of {sexpr}")
+        raise TypeError(f"First element of S-Expr node is expected to be a string! {se0} of {sexpr}")
 
     # there is one case in kicad files (jumper_pad_groups) where first item is quoted
     ser_first = ('"' + se0.replace(r'"', r"\"") + '"') if isinstance(se0, Qstr) else se0

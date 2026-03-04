@@ -12,6 +12,8 @@ from askiff.sexpr import GeneralizedSexpr, Qstr
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore
 
+DEFAULT_DATA_CHUNK_LENGTH = 76
+
 
 class Position(AutoSerde):
     _askiff_key: ClassVar[str] = "xy"
@@ -33,20 +35,15 @@ class Position(AutoSerde):
 
     @classmethod
     def deserialize(cls, sexp: GeneralizedSexpr) -> Position:
-        elems = len(sexp)
-        if elems == 2:
-            x, y = sexp
-            return Position(float(x), float(y))
-        if elems == 3:
-            x, y, angle = sexp
-            return Position(float(x), float(y), float(angle))
-
         x, y, *extra = sexp
-        if isinstance(extra[0], str):
-            angle = extra[0]
-            extra = extra[1:]
-            ret = Position(float(x), float(y), float(angle))
-        ret._AutoSerde__extra = extra  # ty:ignore[unresolved-attribute]
+        ret = Position(float(x), float(y))
+        if extra:
+            try:
+                ret.angle = float(extra[0])
+                extra = extra[1:]
+            except ValueError:
+                pass
+            ret._AutoSerde__extra = extra  # ty:ignore[unresolved-attribute]
         return ret
 
 
@@ -224,7 +221,9 @@ class DataBlock(bytearray):
 
     def serialize(self) -> GeneralizedSexpr:
         b64 = base64.b64encode(self).decode("ascii")
-        chunks = textwrap.wrap(b64, 76)
+        chunks = textwrap.wrap(b64, DEFAULT_DATA_CHUNK_LENGTH)
+        if not chunks:
+            return ["||"]
         chunks[0] = "|" + chunks[0]
         chunks[-1] = chunks[-1] + "|"
         return chunks
@@ -240,7 +239,7 @@ class DataBlockQuoted(bytearray):
 
     def serialize(self) -> GeneralizedSexpr:
         b64 = base64.b64encode(self).decode("ascii")
-        chunks = textwrap.wrap(b64, 76)
+        chunks = textwrap.wrap(b64, DEFAULT_DATA_CHUNK_LENGTH)
         return [Qstr(chunk) for chunk in chunks]
 
 

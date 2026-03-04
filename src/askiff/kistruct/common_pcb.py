@@ -64,13 +64,13 @@ class Layer(Qstr, AutoSerdeEnum, metaclass=__LayerMeta):
     def user(number: int) -> Layer:
         if 1 <= number <= KICAD_MAX_LAYER_USER:
             return Layer(f"User.{number}")
-        raise Exception(f"User.{number} is not supported, number should be between 1 & {KICAD_MAX_LAYER_USER}")
+        raise ValueError(f"User.{number} is not supported, number should be between 1 & {KICAD_MAX_LAYER_USER}")
 
     @staticmethod
     def incu(number: int) -> Layer:
         if 1 <= number <= KICAD_MAX_LAYER_CU:
             return Layer(f"In{number}.Cu")
-        raise Exception(f"In{number}.Cu is not supported, number should be between 1 & {KICAD_MAX_LAYER_CU}")
+        raise ValueError(f"In{number}.Cu is not supported, number should be between 1 & {KICAD_MAX_LAYER_CU}")
 
     def order_id(self) -> int:
         return _layer_order_dict.get(self, 1000)
