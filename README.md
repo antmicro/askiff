@@ -45,7 +45,3 @@ uv sync --extra dev
   * `kicad9/` - synthetic project that aims to include all KiCad features up to version 9
   * `kicad10/` - synthetic project that aims to include all KiCad features up to version 10
   * `jetson-agx-thor-baseboard` - large project, mostly useful for performance testing
-
-## Licensing
-
-TODO

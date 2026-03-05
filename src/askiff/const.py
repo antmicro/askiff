@@ -21,6 +21,7 @@ class Version:
         - fp/pcb : https://gitlab.com/kicad/code/kicad/-/blob/9c6f99e0dd7760bf13b601b2e265991e8b5e6c2a/pcbnew/pcb_io/kicad_sexpr/pcb_io_kicad_sexpr.h#L202
         - sym/sch: https://gitlab.com/kicad/code/kicad/-/blob/9c6f99e0dd7760bf13b601b2e265991e8b5e6c2a/eeschema/sch_file_versions.h#L137
         """
+
         sch: int
         pcb: int
         sym: int
