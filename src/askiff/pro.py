@@ -7,10 +7,9 @@ from typing import Any, Generic, Self, TypeVar
 
 from .auto_serde import AutoSerdeFile
 from .const import TRACE, TRACE_DIS
-
-# from .kistruct.board import Board
-from .kistruct.footprint import Footprint, LibTableFp
-from .sexpr import Sexpr
+from .kistruct.board import Board
+from .kistruct.footprint import FootprintStandalone, LibTableFp
+from .kistruct.schematic import Schematic
 
 logging.addLevelName(TRACE_DIS, "TRACE_DIS")
 logging.addLevelName(TRACE, "TRACE")
@@ -22,13 +21,18 @@ T = TypeVar("T", bound=AutoSerdeFile)
 class _LazyFile(Generic[T]):
     """Thread-safe transparent file lazy loader"""
 
+    __path: Path
+    _value: Path | T
+    _lock: RLock
+    _inner_cls: type[T]
+
     def __init__(self, inner_cls: type[T], value: Path, force_load: bool = False) -> None:
-        self._inner_cls = inner_cls
+        object.__setattr__(self, "_inner_cls", inner_cls)
         if not value.exists():
             raise FileNotFoundError(value)
-        self.__path = value
-        self._value = value
-        self._lock = RLock()
+        object.__setattr__(self, "__LazyFile__path", value)
+        object.__setattr__(self, "_value", value)
+        object.__setattr__(self, "_lock", RLock())
         if force_load:
             self._load()
 
@@ -42,12 +46,15 @@ class _LazyFile(Generic[T]):
             # Double-check as before locking, file might get loaded
             if isinstance(self._value, Path):
                 loaded = self._inner_cls.from_file(self._value)
-                self._value = loaded
-            return self._value  # type: ignore
+                object.__setattr__(self, "_value", loaded)
+            return self._value  # type: ignore  # ty:ignore[invalid-return-type]
 
     # Transparent attribute access
     def __getattr__(self, name: str) -> Any:  # noqa: ANN401
         return getattr(self._load(), name)
+
+    def __setattr__(self, name: str, val: Any) -> None:  # noqa: ANN401
+        setattr(self._load(), name, val)
 
     def __repr__(self) -> str:
         if isinstance(self._value, Path):
@@ -71,7 +78,7 @@ class _LazyFile(Generic[T]):
 class AskiffLibFp:
     path: Path
     __initial_path: Path
-    objects: list[_LazyFile[Footprint]]
+    objects: list[_LazyFile[FootprintStandalone]]
 
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -80,7 +87,7 @@ class AskiffLibFp:
     def load(self, force: bool = False) -> Self:
         self.objects = []
         for path in self.path.glob("*.kicad_mod"):
-            self.objects.append(_LazyFile(Footprint, path, force))
+            self.objects.append(_LazyFile(FootprintStandalone, path, force))
         return self
 
     def save(self, path: Path | None = None) -> None:
@@ -92,8 +99,8 @@ class AskiffPro:
     path: Path
     __initial_path: Path
     # pro: dict[Path, Sexpr] # Note: kicad_pro seems to be json
-    # pcb: list[_LazyFile[Board]]
-    sch: dict[Path, Sexpr]  # TODO: replace with target kicad structure
+    pcb: list[_LazyFile[Board]]
+    sch: list[_LazyFile[Schematic]]
     fp: dict[str, AskiffLibFp]
     fp_lib_table: LibTableFp
     variables: dict[str, str]
@@ -111,9 +118,13 @@ class AskiffPro:
     def load(self, force: bool = False) -> Self:
         # self.pro={p: Sexpr.from_file(p) for p in self.path.glob("*.kicad_pro")}
 
-        # self.pcb = []
-        # for path in self.path.glob("*.kicad_pcb"):
-        #     self.pcb.append(_LazyFile(Board, path, force))
+        self.sch = []
+        for path in self.path.glob("*.kicad_sch"):
+            self.sch.append(_LazyFile(Schematic, path, force))
+
+        self.pcb = []
+        for path in self.path.glob("*.kicad_pcb"):
+            self.pcb.append(_LazyFile(Board, path, force))
 
         fp_lib_table_path = self.path / "fp-lib-table"
         self.fp_lib_table = LibTableFp.from_file(fp_lib_table_path) if fp_lib_table_path.exists() else LibTableFp()
@@ -125,10 +136,12 @@ class AskiffPro:
         # for p, sexpr in self.pro.items():
         #     sexpr.to_file(p)
 
-        # for pcb in self.pcb:
-        #     pcb.save(path, self.__initial_path)
-        # for p, sexpr in self.sch.items():
-        #     sexpr.to_file(p)
+        for pcb in self.pcb:
+            pcb.save(path, self.__initial_path)
+
+        for sch in self.sch:
+            sch.save(path, self.__initial_path)
+
         for lib in self.fp.values():
             if path and lib._AskiffLibFp__initial_path.is_relative_to(self.__initial_path):  # type: ignore # ty:ignore[unresolved-attribute]
                 file = lib._AskiffLibFp__initial_path.relative_to(self.__initial_path)  # type: ignore  # ty:ignore[unresolved-attribute]

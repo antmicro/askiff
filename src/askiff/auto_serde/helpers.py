@@ -46,6 +46,12 @@ class SerdeOpt(TypedDict, total=False):
     """(internal) Dict that allows down casting of `inline` type based on its first field"""
     serialize: Callable
     """Function that should be used to serialize field"""
+    after: str
+    """In KiCad file annotated field is after field with specified name
+    This affects also following fields, unless they specify their own `after`
+    `field_a = F(after="field_b")` will serialize in order 
+    `[.., field_b, field_a, *fields-after-field_a, *fields-after-field_b]`
+    """
 
 
 # A sentinel object to detect if a parameter is supplied or not.  Use
@@ -252,14 +258,21 @@ def preprocess_cls_fields(cls: type) -> tuple[dict[str, type], dict[str, SerdeOp
             askiff_order = getattr(parent, f"_{parent.__name__}__askiff_order", askiff_order)
             parent_dict.update(filtered_dict)
 
-    ser_order = []
+    ser_order: list[str] = []
+    ser_order_idx = 0
     askiff_order = getattr(cls, f"_{cls.__name__}__askiff_order", askiff_order)
 
     for name, value in (parent_dict | cls.__dict__).items():
         if name.startswith("_") and name[1:] in type_hints:
-            ser_order.append(name[1:])
+            ser_order.insert(ser_order_idx, name[1:])
+            ser_order_idx += 1
         elif not name.startswith("_") and name in type_hints and ("_" + name) not in cls.__dict__:
-            ser_order.append(name)
+            if isinstance(value, F):
+                after = value.options.get("after", None)
+                if after and after in ser_order:
+                    ser_order_idx = ser_order.index(after) + 1
+            ser_order.insert(ser_order_idx, name)
+            ser_order_idx += 1
 
         if name.startswith("_") or name not in type_hints:
             continue
@@ -274,7 +287,8 @@ def preprocess_cls_fields(cls: type) -> tuple[dict[str, type], dict[str, SerdeOp
         if isinstance(value, F):
             inline, skip = value.options.get("inline"), value.options.get("skip")
             if inline or skip:
-                ser_order.pop()  # skipped or inlined field will not be serialized directly
+                ser_order_idx -= 1
+                ser_order.pop(ser_order_idx)  # skipped or inlined field will not be serialized directly
 
             if inline:
                 inline_type_hints = get_type_hints(typ)
@@ -295,7 +309,8 @@ def preprocess_cls_fields(cls: type) -> tuple[dict[str, type], dict[str, SerdeOp
                         filt_opt.pop("skip", None)
                         field_meta[full_id] |= filt_opt
                         field_meta[full_id]["inline_basetype"] = typ
-                    ser_order.append(full_id)
+                    ser_order.insert(ser_order_idx, full_id)
+                    ser_order_idx += 1
                 value.options["skip"] = True
 
             if value.options:

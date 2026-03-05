@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
@@ -71,6 +72,13 @@ class Attributes(AutoSerde, flag=True, bare=True):  # type: ignore
     dnp: bool = F()
     allow_soldermask_bridges: bool = F()
 
+    def __bool__(self) -> bool:
+        return (
+            any(getattr(self, f.name) for f in dataclasses.fields(self))
+            or bool(self._AutoSerde__extra)  # ty:ignore[unresolved-attribute]
+            or bool(self._AutoSerde__extra_positional)  # ty:ignore[unresolved-attribute]
+        )
+
 
 class Model3D(AutoSerde):
     path: str = F(positional=True)
@@ -81,34 +89,14 @@ class Model3D(AutoSerde):
     rotate: Coordinate = F(nested=True)
 
 
-class Footprint(AutoSerdeFile):
+class Footprint(AutoSerde):
     _askiff_key: ClassVar[str] = "footprint"
 
     lib_id: LibId = F(positional=True)
     """Defines footprint name and library link"""
 
-    version: int | None = Version.DEFAULT.fp
-    """Defines the file format version (standalone footprints only)"""
-
-    generator: str | None = Version.generator
-    """Defines the program used to write the file (standalone footprints only)"""
-
-    generator_version: str | None = Version.generator_ver
-    """Defines the program version used to write the file (standalone footprints only)"""
-
-    locked: bool | None = None
-    """Flag to indicate the footprint cannot be edited"""
-
-    placed: bool | None = None
-
     side: BoardSide = F(BoardSide.FRONT, name="layer")
     """Describes on which board side footprint lies"""
-
-    uuid: Uuid | None = None
-    """(board footprints only)"""
-
-    position: Position | None = F(name="at")
-    """Defines the X and Y coordinates and rotation of the footprint (board footprints only)"""
 
     description: str | None = F(name="descr")
     """Allows to add additional text description to the footprint"""
@@ -116,25 +104,8 @@ class Footprint(AutoSerdeFile):
     tags: str | None = None
     """Defines search tags"""
 
-    autoplace_cost90: int | None = None
-    """Defines the vertical cost of when using the automatic footprint placement tool. 
-    Valid values: integers 1-10 (board footprints only)"""
-
-    autoplace_cost180: int | None = None
-    """Defines the horizontal cost of when using the automatic footprint placement tool. 
-    Valid values: integers 1-10 (board footprints only)"""
-
     properties: PropertyList[FpProperty] = F(name="property", flatten=True)
     """Properties of the footprint, such as reference, value, datasheet, ..."""
-
-    path: str | None = None
-    """Hierarchical path (sheet uuid's) of the schematic symbol linked to the footprint (board footprints only)"""
-
-    sheetname: str | None = None
-    """Indicates in which schematic sheet was linked symbol added (board footprints only)"""
-
-    sheetfile: str | None = None
-    """Indicates in which schematic file was linked symbol added (board footprints only)"""
 
     solder_mask_margin: float | None = None
     """Solder mask expansion for all pads in the footprint. 
@@ -213,11 +184,51 @@ class Footprint(AutoSerdeFile):
     models: list[Model3D] = F(flatten=True, name="model")
     """List of 3D models associated with the footprint"""
 
-    component_classes: list[ComponentClass] = F()
-    """Component classes assigned to associated symbol (board footprints only)"""
-
     embedded_files: list[EmbeddedFile] = F()
     """Stores data of embedded files, eg. fonts, 3d-models"""
+
+
+class FootprintBoard(Footprint):
+    locked: bool | None = F(after="lib_id")
+    """Flag to indicate the footprint cannot be edited"""
+
+    placed: bool | None = None
+
+    uuid: Uuid | None = F(after="side")
+
+    position: Position | None = F(name="at")
+    """Defines the X and Y coordinates and rotation of the footprint"""
+
+    autoplace_cost90: int | None = F(after="tags")
+    """Defines the vertical cost of when using the automatic footprint placement tool. 
+    Valid values: integers 1-10"""
+
+    autoplace_cost180: int | None = None
+    """Defines the horizontal cost of when using the automatic footprint placement tool. 
+    Valid values: integers 1-10"""
+
+    component_classes: list[ComponentClass] = F(after="properties")
+    """Component classes assigned to associated symbol"""
+
+    path: str | None = None
+    """Hierarchical path (sheet uuid's) of the schematic symbol linked to the footprint"""
+
+    sheetname: str | None = None
+    """Indicates in which schematic sheet was linked symbol added"""
+
+    sheetfile: str | None = None
+    """Indicates in which schematic file was linked symbol added"""
+
+
+class FootprintStandalone(Footprint, AutoSerdeFile):
+    version: int | None = F(Version.DEFAULT.fp, after="lib_id")
+    """Defines the file format version"""
+
+    generator: str | None = Version.generator
+    """Defines the program used to write the file"""
+
+    generator_version: str | None = Version.generator_ver
+    """Defines the program version used to write the file"""
 
 
 class LibTableFp(LibTable, AutoSerdeFile):
