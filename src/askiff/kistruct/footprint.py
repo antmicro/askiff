@@ -34,11 +34,6 @@ class Coordinate(AutoSerde):
 class FpProperty(Property):
     """Stores footprint metadata such as Reference, Value, Datasheet, .."""
 
-    _askiff_key: ClassVar[str] = "property"
-
-    position: Position = F(name="at")
-    """Property text position"""
-
     locked: bool | None = F.unlocked()
     """Defines if the property can be edited"""
 

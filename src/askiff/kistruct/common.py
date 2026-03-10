@@ -148,12 +148,16 @@ class Stroke(AutoSerde):
 
 class Property(AutoSerde):
     """Stores object metadata such as Reference, Value, Datasheet, .."""
+    _askiff_key: ClassVar[str] = "property"
 
     name: str = F(positional=True)
     """Name of the property"""
 
     value: str = F(positional=True)
     """Value of the property"""
+
+    position: Position = F(name="at")
+    """Property text position"""
 
     hide: bool | None = None
     """[Deprecated] Defines if the text is hidden"""
