@@ -285,8 +285,17 @@ class Paper(AutoSerde, positional=True):  # type:ignore
     size: PaperSize = F(PaperSize.A3)
 
 
+class TitleBlockComment(AutoSerde, positional=True):  # type:ignore
+    number: int = 1
+    content: str = ""
+
+
 class TitleBlock(AutoSerde):
-    pass
+    title: str | None = None
+    date: str | None = None
+    rev: str | None = None
+    company: str | None = None
+    comment: list[TitleBlockComment] = F(flatten=True)
 
 
 class PinType(Qstr, AutoSerdeEnum):

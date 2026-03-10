@@ -25,6 +25,16 @@ class __LayerMeta(EnumMeta):
         return super().__new__(mcls, name, bases, namespace)  # type: ignore  # ty:ignore[invalid-super-argument]
 
 
+class LayerFunction(str, AutoSerdeEnum):
+    SIGNAL = "signal"
+    JUMPER = "jumper"
+    POWER = "power"
+    MIXED = "mixed"
+    AUX = "user"
+    AUX_F = "front"
+    AUX_B = "back"
+
+
 class Layer(Qstr, AutoSerdeEnum, metaclass=__LayerMeta):
     """PCB layer keywords
     To keep type checker happy use .incu(1)/.user(1) for In1.Cu/User.1 (instead CU_IN1/USER1)
@@ -75,8 +85,17 @@ class Layer(Qstr, AutoSerdeEnum, metaclass=__LayerMeta):
     def order_id(self) -> int:
         return _layer_order_dict.get(self, 1000)
 
-    def layer_type(self) -> str:
-        return "signal" if ".Cu" in self.value else "user"
+    def default_function(self) -> LayerFunction:
+        return LayerFunction.SIGNAL if ".Cu" in self.value else LayerFunction.AUX  # type: ignore
+
+    def validate_function(self, function: LayerFunction | None) -> LayerFunction:
+        valid_functions = (
+            [LayerFunction.SIGNAL, LayerFunction.JUMPER, LayerFunction.POWER, LayerFunction.MIXED]
+            if ".Cu" in self.value
+            else [LayerFunction.AUX, LayerFunction.AUX_B, LayerFunction.AUX_F]
+        )
+
+        return function if function in valid_functions else self.default_function()
 
 
 _layer_order_dict: dict[Layer, int] = {
