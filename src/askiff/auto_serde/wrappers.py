@@ -21,7 +21,7 @@ class AutoSerdeEnum(Enum):
     def _missing_(cls, value):  # type: ignore  # noqa: ANN001, ANN206
         # Handle unknown enum fields that may be added in future KiCad versions
         # dynamically create a pseudo-member
-        log.warning(f"{cls.__name__}: Unknown option: {value}")
+        log.warning(f"Unknown option: {value}", extra={"amodule": cls.__name__})
         obj = str.__new__(cls, value)
         obj._name_ = None
         obj._value_ = value

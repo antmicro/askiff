@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import dataclasses
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from copy import deepcopy
 from enum import Enum, auto
 from types import NoneType, UnionType
-from typing import Any, Final, Literal, TypedDict, Unpack, get_args, get_origin, get_type_hints
+from typing import Any, Final, Literal, TypedDict, Union, Unpack, get_args, get_origin, get_type_hints
 
 log = logging.getLogger()
 
@@ -22,6 +22,8 @@ class SerdeOpt(TypedDict, total=False):
     """Field is serialized without id: `serialized` instead `(id serialized)`"""
     name: str
     """Override id used in file, by default id == field_name"""
+    name_case: str
+    """Convert field name using following case rule (supported rules: lower)"""
     bare: bool
     """Item shall not be surrounded by parenthesis: `field_name (k v)` instead `(field_name (k v))`
     Caution: If field is not of primitive type, its deserializer shall consume only sexpr that it actually needs
@@ -30,6 +32,10 @@ class SerdeOpt(TypedDict, total=False):
     """(bool only) Bool is true if corresponding keyword is present: `(field_name)` instead `(field_name yes)`"""
     skip: bool
     """AutoSerde will ignore this field"""
+    skip_deser: bool
+    """AutoSerde will ignore this field during deserialization"""
+    skip_ser: bool
+    """AutoSerde will ignore this field during serialization"""
     invert: bool
     """(bool only) Python filed will have inverted logic compared to kicad file"""
     nested: bool
@@ -46,12 +52,15 @@ class SerdeOpt(TypedDict, total=False):
     """(internal) Dict that allows down casting of `inline` type based on its first field"""
     serialize: Callable
     """Function that should be used to serialize field"""
+    keep_empty: bool
+    """Serialize field even if it has value corresponding to false (eg. empty list)"""
     after: str
     """In KiCad file annotated field is after field with specified name
     This affects also following fields, unless they specify their own `after`
     `field_a = F(after="field_b")` will serialize in order 
     `[.., field_b, field_a, *fields-after-field_a, *fields-after-field_b]`
     """
+    _version_options: dict[int, SerdeOpt]
 
 
 # A sentinel object to detect if a parameter is supplied or not.  Use
@@ -70,10 +79,16 @@ class F(Any):
     def __init__(self, default: Any = AUTO_DEFAULT, **kwargs: Unpack[SerdeOpt]) -> None:  # noqa: ANN401
         self.default = default
         self.options = kwargs
+        self.options.setdefault("_version_options", {})
 
     @staticmethod
     def unlocked(default: Any = AUTO_DEFAULT, **kwargs: Unpack[SerdeOpt]) -> F:  # noqa: ANN401
         return F(name="unlocked", invert=True, **kwargs)  # type:ignore
+
+    def version(self, up_to_version: int, **kwargs: Unpack[SerdeOpt]) -> F:
+        """Different config options up to file `version` (inclusive)"""
+        self.options["_version_options"][up_to_version] = kwargs
+        return self
 
 
 @dataclasses.dataclass
@@ -99,8 +114,8 @@ class GeneratorParams:
     inline_basetype: type | None
     alias: set[str]
     fname: str
-    vtrue: str
-    vfalse: str
+    vtrue: Sequence[str]
+    vfalse: Sequence[str]
 
     @staticmethod
     def is_type_list(typ: type) -> bool:
@@ -128,10 +143,12 @@ class GeneratorParams:
             self.list_of_lists = True
 
     @staticmethod
-    def extract(cls_name: str, typ: type, field: str, field_meta: dict[str, SerdeOpt]) -> GeneratorParams:
+    def extract(
+        cls_name: str, typ: type, field: str, field_meta: dict[str, SerdeOpt], serialization: bool
+    ) -> GeneratorParams:
         """Extract some variables useful for field processing"""
         type_origin, type_args = get_origin(typ), get_args(typ)
-        is_optional = type_origin is UnionType and NoneType in type_args
+        is_optional = (type_origin is UnionType or type_origin is Union) and NoneType in type_args
         if is_optional:
             typ = next(t for t in type_args if t is not NoneType)
             type_origin, type_args = get_origin(typ), get_args(typ)
@@ -143,10 +160,15 @@ class GeneratorParams:
         positional, flatten, bare, flag, skip, invert, nested = [
             bool(fmeta.get(x, False)) for x in ["positional", "flatten", "bare", "flag", "skip", "invert", "nested"]
         ]
+        skip = skip or bool(fmeta.get("skip_ser" if serialization else "skip_deser", False))
 
         if positional and flatten:
             raise Exception(f"`{cls_name}.{field}`: `flatten` & `positional` are mutually exclusive")
-        fname = fmeta.get("name", field).split(".")[-1]
+        name_case = fmeta.get("name_case", None)
+        fname = field
+        if name_case == "lower":
+            fname = fname.lower().replace("_", "")
+        fname = fmeta.get("name", fname).split(".")[-1]
 
         agg = getattr(typ, f"_{typ.__name__}__askiff_aggregator", None)
         inline_basetype = fmeta.get("inline_basetype", None)
@@ -154,7 +176,9 @@ class GeneratorParams:
         alias: set[str] = getattr(typ, f"_{typ.__name__}__askiff_alias", set())
         alias.add(fname)
 
-        vtrue, vfalse = fmeta.get("true_val", "yes"), fmeta.get("false_val", "no")
+        _vtrue, _vfalse = fmeta.get("true_val", "yes"), fmeta.get("false_val", "no")
+        vtrue = (_vtrue,) if "yes" == _vtrue else (_vtrue, "yes")
+        vfalse = (_vfalse,) if "no" == _vfalse else (_vfalse, "no")
         if invert:
             vtrue, vfalse = vfalse, vtrue
 
@@ -261,20 +285,32 @@ def preprocess_cls_fields(cls: type) -> tuple[dict[str, type], dict[str, SerdeOp
     ser_order: list[str] = []
     ser_order_idx = 0
     askiff_order = getattr(cls, f"_{cls.__name__}__askiff_order", askiff_order)
+    overridden_fields = parent_dict.keys() & cls.__dict__.keys()
+    for key in overridden_fields:
+        parent_dict.pop(key)
 
     for name, value in (parent_dict | cls.__dict__).items():
+        skip_field = True
         if name.startswith("_") and name[1:] in type_hints:
             ser_order.insert(ser_order_idx, name[1:])
             ser_order_idx += 1
-        elif not name.startswith("_") and name in type_hints and ("_" + name) not in cls.__dict__:
-            if isinstance(value, F):
-                after = value.options.get("after", None)
-                if after and after in ser_order:
-                    ser_order_idx = ser_order.index(after) + 1
+        elif name.startswith("_") and name in type_hints and isinstance(value, F):
             ser_order.insert(ser_order_idx, name)
             ser_order_idx += 1
+            skip_field = False
+        elif not name.startswith("_") and name in type_hints:
+            skip_field = False
+            if ("_" + name) not in cls.__dict__:
+                if isinstance(value, F):
+                    after = value.options.get("after", None)
+                    if after == "__begin__":
+                        ser_order_idx = 0
+                    elif after and after in ser_order:
+                        ser_order_idx = ser_order.index(after) + 1
+                ser_order.insert(ser_order_idx, name)
+                ser_order_idx += 1
 
-        if name.startswith("_") or name not in type_hints:
+        if skip_field:
             continue
 
         typ, type_origin, type_args = normalize_type(type_hints[name])
@@ -324,7 +360,9 @@ def preprocess_cls_fields(cls: type) -> tuple[dict[str, type], dict[str, SerdeOp
                 value.default = dict
             if value.default == AUTO_DEFAULT:
                 # Use class constructor (with no args) as default If Optional field, default to None
-                value.default = None if type_origin is UnionType and NoneType in type_args else typ
+                value.default = (
+                    None if (type_origin is UnionType or type_origin is Union) and NoneType in type_args else typ
+                )
             if callable(value.default):
                 setattr(cls, name, dataclasses.field(default_factory=value.default))
             else:

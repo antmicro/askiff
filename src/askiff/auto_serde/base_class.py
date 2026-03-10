@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import logging
 from collections.abc import Iterable
+from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from pprint import pprint
@@ -42,8 +43,9 @@ class AutoSerde:
 
     __extra: Sexpr | None = None
     __extra_positional: Sexpr | None = None
-    __ser_field_positional: dict[str, tuple[SerMode, Any]]
-    __ser_field: dict[str, tuple[str, tuple[SerMode, Any]]]
+    __ser_field_positional: dict[str, tuple[SerMode, Any, bool]]
+    __ser_field: dict[str, tuple[str, tuple[SerMode, Any, bool]]]
+    """class_field: (serialized name, (serialization_mode, serialization_mode_args, keep_if_empty))"""
     __deser_field_positional: list[DeserModWExtra]
     __deser_field: dict[str, DeserModWExtra]
     __deser_field_bare_flags: dict[str, DeserModWExtra]
@@ -51,8 +53,8 @@ class AutoSerde:
     @classmethod
     def __init_deserializer(
         cls, ser_order: list[str], type_hints: dict[str, type], field_meta: dict[str, SerdeOpt]
-    ) -> None:
-        cls.__deser_field, cls.__deser_field_positional, cls.__deser_field_bare_flags = {}, [], {}
+    ) -> dict:
+        deser_field, deser_field_positional, deser_field_bare_flags = {}, [], {}
         names_kicad = {v.get("name", k).split(".")[-1] for k, v in field_meta.items()}
 
         def inline_wrap(field: str, mode: DeserMode, extra: Any) -> DeserModWExtra:  # noqa: ANN401
@@ -62,17 +64,19 @@ class AutoSerde:
 
         for field in ser_order:
             typ = type_hints[field]
-            fparam = GeneratorParams.extract(cls.__name__, typ, field, field_meta)
+            fparam = GeneratorParams.extract(cls.__name__, typ, field, field_meta, False)
+            if fparam.skip:
+                continue
             typ = fparam.typ
             fmode: tuple[DeserMode, Any]
             if fparam.agg:
                 if fparam.flatten:
                     for var_name, var_type in fparam.agg(inner=fparam.type_args[0]).items():
                         fmode = DeserMode.DESERIALIZE, var_type
-                        cls.__deser_field[var_name] = inline_wrap(field, DeserMode.LIST_FLAT, fmode)
+                        deser_field[var_name] = inline_wrap(field, DeserMode.LIST_FLAT, (fmode, typ))
                 else:
-                    cls.__deser_field[fparam.fname] = inline_wrap(
-                        field, DeserMode.LIST_AGG, fparam.agg(inner=fparam.type_args[0])
+                    deser_field[fparam.fname] = inline_wrap(
+                        field, DeserMode.LIST_AGG, (fparam.agg(inner=fparam.type_args[0]), typ)
                     )
                 continue
 
@@ -84,6 +88,7 @@ class AutoSerde:
                 else:
                     fmode = DeserMode.DESERIALIZE, typ
             else:
+                org_typ = typ
                 fparam.unwrap_list_type()
                 typ = fparam.typ
 
@@ -97,7 +102,7 @@ class AutoSerde:
                     fmode = mode, typ
                 elif typ is bool:
                     bare_flags = [fparam.fname]
-                    fmode = DeserMode.BOOL, [[], [fparam.vtrue]]
+                    fmode = DeserMode.BOOL, [[], *([x] for x in fparam.vtrue)]
                 elif typ is int:
                     fmode = DeserMode.INT, None
                 elif typ is float:
@@ -110,18 +115,18 @@ class AutoSerde:
                 if fparam.list_of_lists:
                     fmode = DeserMode.LIST, fmode
                 if fparam.is_list:
-                    fmode = DeserMode.LIST_FLAT if fparam.flatten else DeserMode.LIST, fmode
+                    fmode = DeserMode.LIST_FLAT if fparam.flatten else DeserMode.LIST, (fmode, org_typ)
 
             if fparam.bare and fparam.flag:
                 for flag in bare_flags:
-                    cls.__deser_field_bare_flags[flag] = inline_wrap(field, *fmode)
+                    deser_field_bare_flags[flag] = inline_wrap(field, *fmode)
             elif fparam.positional:
-                cls.__deser_field_positional.append(inline_wrap(field, *fmode))
+                deser_field_positional.append(inline_wrap(field, *fmode))
             else:
                 aliases = [alias for alias in fparam.alias if alias not in names_kicad]
                 aliases.append(fparam.fname)
                 for alias in aliases:
-                    cls.__deser_field[alias] = inline_wrap(field, *fmode)
+                    deser_field[alias] = inline_wrap(field, *fmode)
 
         if __debug__:  # __debug__ allows total code removal if PYTHONOPTIMIZE flag is set
             if log.isEnabledFor(TRACE):
@@ -130,6 +135,11 @@ class AutoSerde:
                 pprint(cls.__deser_field_positional)
                 pprint(cls.__deser_field)
                 print()
+        return {
+            "_AutoSerde__deser_field": deser_field,
+            "_AutoSerde__deser_field_bare_flags": deser_field_bare_flags,
+            "_AutoSerde__deser_field_positional": deser_field_positional,
+        }
 
     @classmethod
     def deserialize(cls, sexp: GeneralizedSexpr) -> Self:
@@ -238,10 +248,10 @@ class AutoSerde:
                     setattr(ret, field, mode_extra(nodes[0]))
                 case DeserMode.LIST_FLAT:
                     list_obj = getattr(ret, field, None)
+                    (mode, mode_extra), constructor = mode_extra
                     if list_obj is None:
-                        list_obj = []
+                        list_obj = constructor()
                         setattr(ret, field, list_obj)
-                    mode, mode_extra = mode_extra
                     match mode:
                         case DeserMode.DESERIALIZE:
                             list_obj.append(mode_extra.deserialize(nodes))
@@ -261,17 +271,19 @@ class AutoSerde:
                             raise Exception(f"Unreachable {field} {mode}")
                 case DeserMode.LIST_AGG:
                     list_obj = getattr(ret, field, None)
+                    agg_map, constructor = mode_extra
                     if list_obj is None:
+                        list_obj = constructor()
                         list_obj = []
                         setattr(ret, field, list_obj)
-                    list_obj.extend(mode_extra.get(n, Sexpr).deserialize(ns) for n, *ns in nodes)
+                    list_obj.extend(agg_map.get(n, Sexpr).deserialize(ns) for n, *ns in nodes)
 
                 case DeserMode.LIST:
                     list_obj = getattr(ret, field, None)
+                    (mode, mode_extra), constructor = mode_extra
                     if list_obj is None:
-                        list_obj = []
+                        list_obj = constructor()
                         setattr(ret, field, list_obj)
-                    mode, mode_extra = mode_extra
                     match mode:
                         case DeserMode.DESERIALIZE:
                             list_obj.extend(mode_extra.deserialize(n[1:]) for n in nodes)
@@ -317,13 +329,16 @@ class AutoSerde:
     @classmethod
     def __init_serializer(
         cls, ser_order: list[str], type_hints: dict[str, type], field_meta: dict[str, SerdeOpt]
-    ) -> None:
-        cls.__ser_field, cls.__ser_field_positional = {}, {}
+    ) -> dict:
+        ser_field, ser_field_positional = {}, {}
         for field in ser_order:
             typ = type_hints[field]
-            fparam = GeneratorParams.extract(cls.__name__, typ, field, field_meta)
+            fparam = GeneratorParams.extract(cls.__name__, typ, field, field_meta, True)
+            if fparam.skip:
+                continue
             fmode: tuple[SerMode, Any]
             explicit_name = fparam.fmeta.get("name", None)
+            keep_empty = False
 
             serialize_override = fparam.fmeta.get("serialize", None)
             if callable(serialize_override):
@@ -336,7 +351,6 @@ class AutoSerde:
             else:
                 fparam.unwrap_list_type()
                 typ = fparam.typ
-
                 if hasattr(typ, "serialize"):
                     fmode = SerMode.SERIALIZE, explicit_name
                 elif issubclass(typ, Enum):
@@ -349,35 +363,43 @@ class AutoSerde:
                 elif typ is bool and fparam.flag:
                     fmode = SerMode.BOOL_FLAG, fparam.invert
                 elif typ is bool:
-                    fmode = SerMode.BOOL, (fparam.vtrue, fparam.vfalse)
+                    fmode = SerMode.BOOL, (fparam.vtrue[0], fparam.vfalse[0])
+                    keep_empty = True
                 elif typ is int:
                     fmode = SerMode.INT, None
+                    keep_empty = True
                 elif typ is float and fparam.fmeta.get("keep_trailing", False):
                     fmode = SerMode.FLOAT_NO_TRIM, fparam.fmeta.get("precision", 6)
+                    keep_empty = True
                 elif typ is float:
                     fmode = SerMode.FLOAT, fparam.fmeta.get("precision", 6)
+                    keep_empty = True
                 elif issubclass(typ, str):
                     no_quote = fparam.fmeta.get("unquoted", False)
                     fmode = (SerMode.STR if no_quote else SerMode.QSTR), None
+                    keep_empty = True
                 else:
                     raise Exception(f"{cls}.__init_serializer: Unsupported type: {field}: {typ}")
 
                 if fparam.list_of_lists:
                     fmode = SerMode.LIST, fmode
+                    keep_empty = False
                 if fparam.is_list:
                     fmode = SerMode.LIST_FLAT if fparam.flatten else SerMode.LIST, fmode
-
+                    keep_empty = False
+            keep_empty = fparam.fmeta.get("keep_empty", keep_empty)
             if fparam.positional:
-                cls.__ser_field_positional[field] = fmode
+                ser_field_positional[field] = (*fmode, keep_empty)
             else:
-                cls.__ser_field[field] = fparam.fname, fmode
+                ser_field[field] = fparam.fname, (*fmode, keep_empty)
         if __debug__:  # __debug__ allows total code removal if PYTHONOPTIMIZE flag is set
             if log.isEnabledFor(TRACE):
                 print("\n#########################################################")
                 print(f"# Serialization map for {cls}:")
-                pprint(cls.__ser_field_positional)
-                pprint(cls.__ser_field)
+                pprint(ser_field_positional)
+                pprint(ser_field)
                 print()
+        return {"_AutoSerde__ser_field": ser_field, "_AutoSerde__ser_field_positional": ser_field_positional}
 
     def serialize(self) -> GeneralizedSexpr:
         # asserts in this function are just to keep mypy happy, __init_serializer ensures correct types
@@ -387,21 +409,16 @@ class AutoSerde:
         _self = askiff_pre_ser() if askiff_pre_ser else self
         append = ret.append
         extend = ret.extend
-        for field, (fmode, mode_extra) in _self.__ser_field_positional.items():
+        for field, (fmode, mode_extra, force_empty) in _self.__ser_field_positional.items():
             field_val = getattr(_self, field, None)
             if not field_val:
-                if field_val in [0.0, 0, "", False]:
-                    # The values should not be skipped
-                    pass
-                elif "." in field:
+                if "." in field:
                     direct_field, _, inner_field = field.partition(".")
                     field_val = getattr(_self, direct_field, None)
                     field_val = field_val and getattr(field_val, inner_field, None)
-                    if field_val is None:
-                        continue
-                else:
+                if field_val is None or (not field_val and not force_empty):
                     continue
-            assert field_val is not None
+
             match fmode:
                 case SerMode.SERIALIZE:
                     append(field_val.serialize())
@@ -458,22 +475,15 @@ class AutoSerde:
 
         extend(_self.__extra_positional or ())
 
-        for field, (fname, (fmode, mode_extra)) in _self.__ser_field.items():
+        for field, (fname, (fmode, mode_extra, force_empty)) in _self.__ser_field.items():
             field_val = getattr(_self, field, None)
             if not field_val:
-                if field_val in [0.0, 0, "", False]:
-                    # The values should not be skipped
-                    pass
-                # field_val is one of None, [], {}
-                elif "." in field:
+                if "." in field:
                     direct_field, _, inner_field = field.partition(".")
                     field_val = getattr(_self, direct_field, None)
                     field_val = field_val and getattr(field_val, inner_field, None)
-                    if field_val is None:
-                        continue
-                else:
+                if field_val is None or (not field_val and not force_empty):
                     continue
-            assert field_val is not None
             match fmode:
                 case SerMode.SERIALIZE:
                     if not mode_extra:  # mode_extra = name attribute from F(..)
@@ -612,10 +622,29 @@ class AutoSerde:
             for meta in field_meta.values():
                 meta.setdefault(glob_name, glob_val)  # type: ignore # ty:ignore[no-matching-overload]
 
-        cls = dataclass(cls)
-        cls.__init_serializer(ser_order, type_hints, field_meta)
+        file_versions = set()  # default version without additional modyfications
+        for fmeta in field_meta.values():
+            file_versions |= set(fmeta.get("_version_options", {}).keys())
 
-        cls.__init_deserializer(ser_order, type_hints, field_meta)
+        cls = dataclass(cls)
+
+        default_opts: dict[str, list | dict] = cls.__init_serializer(ser_order, type_hints, field_meta)
+        default_opts |= cls.__init_deserializer(ser_order, type_hints, field_meta)
+        _askiff_opts_default[cls] = default_opts
+        for dict_name, val in default_opts.items():
+            setattr(cls, dict_name, val)
+
+        if file_versions:
+            _askiff_opts_version_map[cls] = {}
+            for ver in sorted(file_versions):
+                _field_meta = deepcopy(field_meta)
+                for fmeta in _field_meta.values():
+                    field_versions = fmeta.get("_version_options", {})
+                    for opt_ver, opt in field_versions.items():
+                        if opt_ver >= ver:
+                            fmeta.update(opt)
+                _askiff_opts_version_map[cls][ver] = cls.__init_serializer(ser_order, type_hints, _field_meta)
+                _askiff_opts_version_map[cls][ver] |= cls.__init_deserializer(ser_order, type_hints, _field_meta)
 
         if __debug__:  # __debug__ allows total code removal if PYTHONOPTIMIZE flag is set
             if log.isEnabledFor(TRACE_DIS):
@@ -630,3 +659,9 @@ class AutoSerde:
 
                 print(f"\n\n## Disassembled `__init__` function for {cls}:")
                 dis(cls.__init__)
+
+
+_askiff_opts_version_map: dict[type[AutoSerde], dict[int, dict[str, Any]]] = {}
+"""class: {file_version: {option_dict_name: option_dict}}  (file_versions in growing order)"""
+_askiff_opts_default: dict[type[AutoSerde], dict[str, Any]] = {}
+"""class: {option_dict_name: option_dict}"""

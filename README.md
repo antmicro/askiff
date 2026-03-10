@@ -32,8 +32,8 @@ uv sync --extra dev
     * `F` - construct that allows to pass additional data for AutoSerde, usage is similar to dataclasses.field
   * `kistruct/` - store definitions of classes matching objects from KiCad files
   * `main.py` - CLI command for library testing
-    * run via `uv run askiff -i ${TEST_PROJECT}`
-    * loads project files and saves them with no changes
+    * run via `uv run askiff -i ${TEST_PROJECT_DIR}`
+    * loads all project files and saves them with no changes
     * useful for:
       * identification of file parts that are not yet supported
       * checking execution time

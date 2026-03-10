@@ -3,6 +3,8 @@ import logging
 import timeit
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
 
 def config_logs(verbosity: int, time_print: bool) -> None:
     class ColorFormatter(logging.Formatter):
@@ -22,12 +24,13 @@ def config_logs(verbosity: int, time_print: bool) -> None:
             record.levelname = f"{color}{level}{self.RESET}"
             record.amodule = (getattr(record, "amodule", None) or record.module.rpartition(":")[2]).ljust(12)
             record.funcName = record.funcName.ljust(12)
+            record.relpath = Path(record.pathname).resolve().relative_to(PROJECT_ROOT)
             return super().format(record)
 
     handler = logging.StreamHandler()
     handler.setFormatter(
         ColorFormatter(
-            "%(levelname)s | %(amodule)s.%(funcName)s:%(lineno)d  | %(message)s",
+            "%(levelname)s | %(amodule)s.%(funcName)s | %(message)-40s [at %(relpath)s:%(lineno)d ]",
             "%H:%M:%S",
         )
     )

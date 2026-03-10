@@ -116,7 +116,7 @@ class GrShapePadLine(GrShapePad, BaseLine):
 
 class PadShapeCustom(PadShape):
     shape: Final[str] = F("custom", unquoted=True)  # type: ignore
-    primitives: AutoSerdeAgg[GrShapePad] = F()
+    primitives: AutoSerdeAgg[GrShapePad] = F(keep_empty=True)
     options: PadShapeCustomOptions = F()
 
 
