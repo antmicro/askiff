@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING, Any, ClassVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Final, cast
 
 from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
 from askiff.const import Version
@@ -65,6 +65,8 @@ class BoardSide(Qstr, AutoSerdeEnum):
 
 
 class Attributes(AutoSerde, flag=True, bare=True):  # type: ignore
+    smd: bool = F()
+    through_hole: bool = F()
     board_only: bool = F()
     exclude_from_pos_files: bool = F()
     exclude_from_bom: bool = F()
@@ -181,11 +183,16 @@ class Footprint(AutoSerde):
     embedded_fonts: bool = F()
     """Indicates whether there are fonts embedded into this component"""
 
+    embedded_files: list[EmbeddedFile] = F()
+    """Stores data of embedded files, eg. fonts, 3d-models"""
+
     models: list[Model3D] = F(flatten=True, name="model")
     """List of 3D models associated with the footprint"""
 
-    embedded_files: list[EmbeddedFile] = F()
-    """Stores data of embedded files, eg. fonts, 3d-models"""
+
+class FpPropertyKiFpFilters(AutoSerde):
+    ki_fp_filters: Final[str] = F("ki_fp_filters", unquoted=True, positional=True)
+    patterns: str = F(positional=True)
 
 
 class FootprintBoard(Footprint):
@@ -210,6 +217,8 @@ class FootprintBoard(Footprint):
     component_classes: list[ComponentClass] = F(after="properties")
     """Component classes assigned to associated symbol"""
 
+    ki_fp_filters: FpPropertyKiFpFilters | None = F(name="property", skip_deser=True)
+
     path: str | None = None
     """Hierarchical path (sheet uuid's) of the schematic symbol linked to the footprint"""
 
@@ -218,6 +227,11 @@ class FootprintBoard(Footprint):
 
     sheetfile: str | None = None
     """Indicates in which schematic file was linked symbol added"""
+
+    def _askiff_post_deser(self) -> None:
+        ki_fp_filters = self.properties.pop("ki_fp_filters")
+        if ki_fp_filters:
+            self.ki_fp_filters = FpPropertyKiFpFilters(patterns=ki_fp_filters.value)
 
 
 class FootprintStandalone(Footprint, AutoSerdeFile):

@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack, cast
 
 from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, F, SerdeOpt
-from askiff.kistruct.common import PinType, Position, Size, Uuid
-from askiff.kistruct.common_pcb import BasePoly, Layer, LayerCooper, LayerSet, TeardropSettings
+from askiff.kistruct.common import PinTypePCB, Position, Size, Uuid
+from askiff.kistruct.common_pcb import BasePoly, Layer, LayerCooper, LayerSet, Net, TeardropSettings
 from askiff.kistruct.gritems import BaseArc, BaseCircle, BaseLine
 from askiff.sexpr import GeneralizedSexpr
 
@@ -44,6 +44,10 @@ class PadShapeOval(PadShape):
     shape: Final[str] = F("oval", unquoted=True)  # type: ignore
 
 
+class PadShapeCircle(PadShape):
+    shape: Final[str] = F("circle", unquoted=True)  # type: ignore
+
+
 class PadShapeChamfer(AutoSerde, flag=True, bare=True):  # type: ignore
     top_left: bool = F()
     top_right: bool = F()
@@ -53,8 +57,8 @@ class PadShapeChamfer(AutoSerde, flag=True, bare=True):  # type: ignore
 
 class PadShapeRoundrect(PadShape):
     shape: Final[str] = F("roundrect", unquoted=True)  # type: ignore
-    roundrect_rratio: float = F(0.25, precision=10)
-    chamfer_ratio: float | None = F(precision=10)
+    roundrect_rratio: float = F(0.25, precision=12)
+    chamfer_ratio: float | None = F(precision=12)
     chamfer: PadShapeChamfer | None = None
 
 
@@ -129,6 +133,7 @@ class PadStackLayer(AutoSerde):
     _askiff_key: ClassVar[str] = "layer"
     layer: Layer = F(Layer.CU_B, positional=True)
     shape: PadShape = F(inline=True)
+    offset: Position | None = None
     thermal_bridge_angle: float | None = None
     zone_connect: int | None = None
 
@@ -140,6 +145,13 @@ class PadStack(AutoSerde):
 
 class PadProperty(str, AutoSerdeEnum):
     BGA = "pad_prop_bga"
+    HEATSINK = "pad_prop_heatsink"
+    FIDUCIAL_LOC = "pad_prop_fiducial_loc"
+    FIDUCIAL_GLOB = "pad_prop_fiducial_glob"
+    TESTPOINT = "pad_prop_testpoint"
+    MECHANICAL = "pad_prop_mechanical"
+    CASTELLATED = "pad_prop_castellated"
+    PRESSFIT = "pad_prop_pressfit"
 
 
 class PadDrill(AutoSerde):
@@ -186,9 +198,7 @@ class DrillPostMatching(AutoSerde):
     @classmethod
     def deserialize_downcast(cls, sexp: GeneralizedSexpr) -> DrillPostMatching:
         if sexp[0] not in DrillPostMatching.__askiff_childs:
-            ret = cls()
-            ret._AutoSerde__extra = sexp  # ty:ignore[unresolved-attribute]
-            return ret
+            return cls.deserialize(sexp)
         return DrillPostMatching.__askiff_childs[sexp[0]].deserialize(sexp)  # type: ignore
 
 
@@ -207,6 +217,8 @@ class DrillPostMatchingCountersink(DrillPostMatching):
 class AfterDrill(AutoSerde):
     size: float = F()
     layers: list[LayerCooper] = F()
+    """There are 2 elements in list, first is start layer - board side,
+    second stop layer / how deep should drill extend"""
 
 
 class Pad(AutoSerde):
@@ -232,6 +244,9 @@ class Pad(AutoSerde):
         "shape.chamfer",
         "die_length",
         "die_delay",
+        "net",
+        "pinfunction",
+        "pintype",
         "solder_mask_margin",
         "solder_paste_margin",
         "solder_paste_margin_ratio",
@@ -241,13 +256,13 @@ class Pad(AutoSerde):
         "thermal_bridge_angle",
         "thermal_gap",
         "teardrops",
-        "net",
         "shape.options",
         "shape.primitives",
         "uuid",
         "padstack",
     ]
     number: str = F(positional=True)
+    type: str = F(positional=True, unquoted=True)
     shape: PadShape = F(inline=True, positional=True)
     padstack: PadStack | None = None
     position: Position = F(name="at")
@@ -266,26 +281,25 @@ class Pad(AutoSerde):
     thermal_bridge_angle: float | None = None
     thermal_gap: float | None = None
     teardrops: TeardropSettings | None = None
-    net: str | None = None
-    pintype: PinType | None = None
+    net: Net | None = None
+    pinfunction: str | None = None
+    pintype: PinTypePCB | None = None
     uuid: Uuid = F()
 
     @classmethod
     def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:  # type: ignore
         super().__init_subclass__(**kwargs)
-        Pad.__askiff_childs[cls.type] = cls  # ty:ignore[unresolved-attribute]
+        Pad.__askiff_childs[cls.type] = cls
 
     @classmethod
     def deserialize_downcast(cls, sexp: GeneralizedSexpr) -> Pad:
         if sexp[1] not in Pad.__askiff_childs:
-            ret = cls()
-            ret._AutoSerde__extra = sexp  # ty:ignore[unresolved-attribute]
-            return ret
-        return Pad.__askiff_childs[sexp[1]].deserialize(sexp)  # type: ignore# ty:ignore[unresolved-attribute]
+            return cls.deserialize(sexp)
+        return Pad.__askiff_childs[sexp[1]].deserialize(sexp)  # type: ignore
 
 
 class PadTHT(Pad):
-    type: Final[str] = F("thru_hole", positional=True, unquoted=True)
+    type: Final[str] = F("thru_hole", positional=True, unquoted=True)  # type: ignore
     keep_end_layers: bool | None = None
     backdrill: AfterDrill | None = None
     tertiary_drill: AfterDrill | None = None
@@ -294,9 +308,14 @@ class PadTHT(Pad):
 
 
 class PadSMD(Pad):
-    type: Final[str] = F("smd", positional=True, unquoted=True)
+    type: Final[str] = F("smd", positional=True, unquoted=True)  # type: ignore
+    drill: PadDrillNone | None = None
+
+
+class PadEdgeConnector(Pad):
+    type: Final[str] = F("connect", positional=True, unquoted=True)  # type: ignore
     drill: PadDrillNone | None = None
 
 
 class PadNonPlated(Pad):
-    type: Final[str] = F("np_thru_hole", positional=True, unquoted=True)
+    type: Final[str] = F("np_thru_hole", positional=True, unquoted=True)  # type: ignore

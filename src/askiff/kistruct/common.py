@@ -192,6 +192,13 @@ class PropertyList(Generic[T], list[T]):
     def ref(self) -> T:
         return next(p for p in self if p.name == "Reference")
 
+    def get(self, name: str) -> T | None:
+        return next((prop for prop in self if prop.name == name), None)
+
+    def pop(self, name: str) -> T | None:  # type: ignore  # ty:ignore[invalid-method-override]
+        idx = next((idx for idx, prop in enumerate(self) if prop.name == name), None)
+        return list.pop(self, idx) if idx else None
+
 
 class LibEntry(AutoSerde):
     name: str = F()
@@ -293,8 +300,31 @@ class PinType(Qstr, AutoSerdeEnum):
     OPEN_EMITTER = "open_emmiter"
     FREE = "free"
     UNSPECIFIED = "unspecified"
-    UNCONNECTED = "unconnected"
+    NO_CONNECT = "no_connect"
     TRISTATE = "tristate"
+
+
+class PinTypePCB(AutoSerde):
+    base: PinType = F(PinType.UNSPECIFIED)
+    connected: bool = False
+
+    def serialize(self) -> GeneralizedSexpr:
+        return (
+            self.base.value
+            if self.connected or self.base == PinType.NO_CONNECT
+            else Qstr(self.base.value + "+no_connect"),
+        )
+
+    @classmethod
+    def deserialize(cls, sexp: GeneralizedSexpr) -> PinTypePCB:
+        s = sexp[0]
+        if not isinstance(s, str):
+            raise AssertionError("PinType is expected to be a string")
+        connected = True
+        if "no_connect" in s:
+            connected = False
+            s = s.removesuffix("+no_connect")
+        return PinTypePCB(PinType(s), connected)
 
 
 ########################Base Shapes########################

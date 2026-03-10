@@ -204,6 +204,20 @@ class LayerSet(Generic[TL], set[TL]):
         return tuple(("layer", Qstr(x.value)) for x in sorted(ser, key=Layer.order_id))
 
 
+class Net(AutoSerde):
+    number: int | None = F(positional=True)
+    """Net identifier eg. `0` [Deprecated in K10]"""
+
+    name: str | None = F(positional=True)
+    """Net name eg. `"GND"`"""
+
+    @classmethod
+    def deserialize(cls, sexp: GeneralizedSexpr) -> Net:
+        if isinstance(sexp[0], Qstr):
+            return cls(name=sexp[0])
+        return cls(int(sexp[0]), sexp[1] if len(sexp) > 1 else None)
+
+
 ###########################Zone############################
 
 
@@ -225,7 +239,8 @@ class ZoneHatch(AutoSerde, positional=True):  # type: ignore
 
 
 class ZoneTeardrop(AutoSerde):
-    pass
+    _askiff_key: ClassVar[str] = "teardrop"
+    type: str = F(unquoted=True)
 
 
 class ZoneKeepout(AutoSerde):
@@ -290,10 +305,10 @@ class ZoneFill(AutoSerde):
     thermal_bridge_width: float | None = None
     """Spoke width for pad thermal relief connection"""
 
-    smoothing_style: ZoneSmoothing | None = None
+    smoothing_style: ZoneSmoothing | None = F(name="smoothing")
     """Style of corner smoothing"""
 
-    smoothing_radius: float | None = None
+    smoothing_radius: float | None = F(name="radius")
     """Radius of corner smoothing"""
 
     island_removal_mode: ZoneIslandRemoval | None = None
@@ -346,15 +361,15 @@ class ZonePadConnection(AutoSerde):
 
 
 class Zone(AutoSerde):
-    locked: bool | None = None
-    net: int | None = None
+    net: Net | None = None
     net_name: str | None = None
+    locked: bool | None = None
     layers: LayerSet[Layer] = F()
-    uuid: Uuid = F()
+    uuid: Uuid | None = None
     name: str | None = None
     hatch: ZoneHatch = F()
     priority: int | None = None
-    teardrop: ZoneTeardrop | None = F(name="attr")
+    teardrop: ZoneTeardrop | None = F(name="attr", nested=True)
     connect_pads: ZonePadConnection = F()
     clearance: float = F(0.25, skip=True)
     min_thickness: float = 0.25

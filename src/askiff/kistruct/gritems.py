@@ -15,7 +15,7 @@ from askiff.kistruct.common import (
     Stroke,
     Uuid,
 )
-from askiff.kistruct.common_pcb import Layer, LayerSet
+from askiff.kistruct.common_pcb import Layer, LayerSet, Net
 from askiff.sexpr import GeneralizedSexpr
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
@@ -32,8 +32,8 @@ class GrItem(AutoSerde):
         "end",
         "pts",
         "scale",
-        "locked",
         "stroke",
+        "locked",
         "fill",
         "layers",
         "solder_mask_margin",
@@ -82,7 +82,7 @@ class GrShapeFp(_GrShapePCBFp, GrItemFp):
 
 
 class GrShapePCB(_GrShapePCBFp, GrItemPCB):
-    net: str | None = None
+    net: Net | None = None
     locked: bool | None = None
 
 
@@ -451,8 +451,8 @@ class TableCellPCB(TableCell):
 class GrTable(AutoSerde):
     __askiff_order: ClassVar[list[str]] = [
         "column_count",
-        "locked",
         "uuid",
+        "locked",
         "layer",
         "border",
         "separators",
@@ -602,9 +602,7 @@ class Dimension(AutoSerde):
     def deserialize_downcast(cls, sexp: GeneralizedSexpr) -> Dimension:
         first_node = sexp[0]
         if first_node[0] != "type" or first_node[1] not in cls.__childs:
-            ret = Dimension()
-            ret._AutoSerde__extra = sexp  # ty:ignore[unresolved-attribute]
-            return ret
+            return cls.deserialize(sexp)
         return cls.__childs[first_node[1]].deserialize(sexp)  # type: ignore# ty:ignore[unresolved-attribute]
 
 
