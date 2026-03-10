@@ -222,5 +222,5 @@
   (lib (name "Triac_Thyristor")(type "KiCad")(uri "${KICAD9_SYMBOL_DIR}/Triac_Thyristor.kicad_sym")(options "")(descr "TRIAC and thyristor symbols"))
   (lib (name "Valve")(type "KiCad")(uri "${KICAD9_SYMBOL_DIR}/Valve.kicad_sym")(options "")(descr "Valve symbols"))
   (lib (name "Video")(type "KiCad")(uri "${KICAD9_SYMBOL_DIR}/Video.kicad_sym")(options "")(descr "Video symbols"))
-  (lib (name "askiff_test")(type "KiCad")(uri "${KIPRJMOD}/symbols")(options "")(descr ""))
+  (lib (name "askiff_test_symbols")(type "KiCad")(uri "${KIPRJMOD}/askiff_test_symbols.kicad_sym")(options "")(descr ""))
 )
