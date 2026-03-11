@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
 from copy import copy, deepcopy
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack, cast
 
-from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F, SerdeOpt, SerMode
+from askiff.auto_serde import (
+    AutoSerde,
+    AutoSerdeAgg,
+    AutoSerdeDownCasting,
+    AutoSerdeEnum,
+    AutoSerdeFile,
+    F,
+    SerdeOpt,
+    SerMode,
+)
 from askiff.const import Version
 from askiff.kistruct.common import BaseArc, BaseLine, BasePoly, EmbeddedFile, Group, Paper, Position, TitleBlock, Uuid
 from askiff.kistruct.common_pcb import Layer, LayerCopper, LayerFunction, LayerSet, Net, Point, Zone
@@ -21,31 +29,11 @@ if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment
 log = logging.getLogger()
 
 
-class StackupLayer(AutoSerde):
-    __askiff_childs: ClassVar[dict[str, type]] = {}
+class StackupLayer(AutoSerdeDownCasting):
     _askiff_key: Final[str] = "layer"
+    _AutoSerdeDownCasting__downcast_field: ClassVar[str] = "type"
     layer: str = F("", positional=True)
     type: str = F()
-
-    @classmethod
-    def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:  # type: ignore
-        super().__init_subclass__(**kwargs)
-        StackupLayer.__askiff_childs[cls.type] = cls
-
-    @classmethod
-    def deserialize_downcast(cls, sexp: GeneralizedSexpr) -> StackupLayer:
-        deserialized_type = next(
-            (
-                s[1]
-                for s in sexp
-                if isinstance(s, Sequence) and len(s) >= 2 and s[0] == "type" and isinstance(s[1], str)
-            ),
-            None,
-        )
-        if deserialized_type not in StackupLayer.__askiff_childs:
-            print(deserialized_type)
-            return cls.deserialize(sexp)
-        return StackupLayer.__askiff_childs[deserialized_type].deserialize(sexp)  # type: ignore
 
 
 class StackupLayerDielectricSubLayer(AutoSerde):
@@ -329,29 +317,10 @@ class Via(TraceBase):
     teardrops: TeardropSettings | None = None
 
 
-class Generated(AutoSerde):
-    __askiff_childs: ClassVar[dict[str, type]] = {}
+class Generated(AutoSerdeDownCasting):
+    _AutoSerdeDownCasting__downcast_field: ClassVar[str] = "type"
     uuid: Uuid = F()
     type: str = F(unquoted=True)
-
-    @classmethod
-    def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:  # type: ignore
-        super().__init_subclass__(**kwargs)
-        Generated.__askiff_childs[cls.type] = cls  # type: ignore
-
-    @classmethod
-    def deserialize_downcast(cls, sexp: GeneralizedSexpr) -> Generated:
-        deserialized_type = next(
-            (
-                s[1]
-                for s in sexp
-                if isinstance(s, Sequence) and len(s) >= 2 and s[0] == "type" and isinstance(s[1], str)
-            ),
-            None,
-        )
-        if deserialized_type not in Generated.__askiff_childs:
-            return cls.deserialize(sexp)
-        return Generated.__askiff_childs[deserialized_type].deserialize(sexp)  # type: ignore
 
 
 class GeneratedTunningInitialSide(Qstr, AutoSerdeEnum):

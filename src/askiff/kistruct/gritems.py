@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack, cast
 
-from askiff.auto_serde import AutoSerde, AutoSerdeEnum, F, SerdeOpt
+from askiff.auto_serde import AutoSerde, AutoSerdeDownCasting, AutoSerdeEnum, F, SerdeOpt
 from askiff.kistruct.common import (
     BaseArc,
     BaseCircle,
@@ -16,7 +16,6 @@ from askiff.kistruct.common import (
     Uuid,
 )
 from askiff.kistruct.common_pcb import Layer, LayerSet, Net
-from askiff.sexpr import GeneralizedSexpr
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore
@@ -572,8 +571,8 @@ class DimensionOrthogonalOrientation(str, AutoSerdeEnum):
     VERTICAL = "1"
 
 
-class Dimension(AutoSerde):
-    __childs: ClassVar[dict[str, type]] = {}
+class Dimension(AutoSerdeDownCasting):
+    _AutoSerdeDownCasting__downcast_field: ClassVar[str] = "type"
     __askiff_order: ClassVar[list[str]] = [
         "type",
         "locked",
@@ -587,23 +586,12 @@ class Dimension(AutoSerde):
         "style",
         "text",
     ]
+
     locked: bool | None = None
     layer: Layer = Layer.DRAWINGS
     uuid: Uuid = F()
     pts: list[Position] = F()
     style: DimensionStyle = F()
-
-    @classmethod
-    def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:  # type: ignore
-        super().__init_subclass__(**kwargs)
-        Dimension.__childs[cls.type] = cls  # ty:ignore[unresolved-attribute]
-
-    @classmethod
-    def deserialize_downcast(cls, sexp: GeneralizedSexpr) -> Dimension:
-        first_node = sexp[0]
-        if first_node[0] != "type" or first_node[1] not in cls.__childs:
-            return cls.deserialize(sexp)
-        return cls.__childs[first_node[1]].deserialize(sexp)  # type: ignore# ty:ignore[unresolved-attribute]
 
 
 class DimensionCenter(Dimension):

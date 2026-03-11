@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack, cast
 
-from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, F, SerdeOpt
+from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeDownCasting, AutoSerdeEnum, F, SerdeOpt
 from askiff.kistruct.common import PinTypePCB, Position, Size, Uuid
 from askiff.kistruct.common_pcb import BasePoly, BoardSide, Layer, LayerCopper, LayerSet, Net, TeardropSettings
 from askiff.kistruct.gritems import BaseArc, BaseCircle, BaseLine
@@ -185,21 +185,10 @@ class PadDrillNone(PadDrill):
     pass
 
 
-class DrillPostMatching(AutoSerde):
-    __askiff_childs: ClassVar[dict[str, type]] = {}
+class DrillPostMatching(AutoSerdeDownCasting):
+    _AutoSerdeDownCasting__downcast_field: ClassVar[int] = 0
     type: str = F(positional=True, unquoted=True)
     size: float = F()
-
-    @classmethod
-    def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:  # type: ignore
-        super().__init_subclass__(**kwargs)
-        DrillPostMatching.__askiff_childs[cls.type] = cls  # type: ignore
-
-    @classmethod
-    def deserialize_downcast(cls, sexp: GeneralizedSexpr) -> DrillPostMatching:
-        if sexp[0] not in DrillPostMatching.__askiff_childs:
-            return cls.deserialize(sexp)
-        return DrillPostMatching.__askiff_childs[sexp[0]].deserialize(sexp)  # type: ignore
 
 
 class DrillPostMatchingCounterbore(DrillPostMatching):
@@ -226,8 +215,8 @@ class AfterDrill(AutoSerde):
     layers: AfterDrillLayers = F()
 
 
-class Pad(AutoSerde):
-    __askiff_childs: ClassVar[dict[str, type]] = {}
+class Pad(AutoSerdeDownCasting):
+    _AutoSerdeDownCasting__downcast_field: ClassVar[int] = 1
     __askiff_order: ClassVar[list[str]] = [
         "number",
         "type",
@@ -290,17 +279,6 @@ class Pad(AutoSerde):
     pinfunction: str | None = None
     pintype: PinTypePCB | None = None
     uuid: Uuid = F()
-
-    @classmethod
-    def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:  # type: ignore
-        super().__init_subclass__(**kwargs)
-        Pad.__askiff_childs[cls.type] = cls
-
-    @classmethod
-    def deserialize_downcast(cls, sexp: GeneralizedSexpr) -> Pad:
-        if sexp[1] not in Pad.__askiff_childs:
-            return cls.deserialize(sexp)
-        return Pad.__askiff_childs[sexp[1]].deserialize(sexp)  # type: ignore
 
 
 class PadTHT(Pad):

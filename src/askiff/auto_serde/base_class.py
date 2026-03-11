@@ -222,7 +222,7 @@ class AutoSerde:
                                 if ret.__extra_positional is None:
                                     ret.__extra_positional = Sexpr()
                                 ret.__extra_positional.append(node)
-                                # log.warning(f" Unexpected positional node: `{node}`", extra={"amodule": cls.__name__})
+                                log.warning(f" Unexpected positional node: `{node}`", extra={"amodule": cls.__name__})
                 pos_idx += 1
                 continue
 
@@ -328,7 +328,7 @@ class AutoSerde:
                         ret.__extra = Sexpr()
                     ret.__extra.append(node)
                     log.warning(f" Unknown node: `{node_name}`", extra={"amodule": cls.__name__})
-                    # log.debug(node, extra={"amodule": cls.__name__})
+                    log.debug(node, extra={"amodule": cls.__name__})
             if inlined:
                 ret = ret_cp
 

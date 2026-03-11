@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import builtins
 import logging
-from collections.abc import Generator
+from abc import abstractmethod
+from collections.abc import Generator, Hashable, Sequence
 from enum import Enum
 from types import UnionType
-from typing import Generic, TypeVar, get_args, get_origin
+from typing import ClassVar, Generic, Self, TypeVar, Unpack, get_args, get_origin
 
-from askiff.sexpr import Sexpr
+from askiff.sexpr import GeneralizedSexpr, Sexpr
+
+from .base_class import AutoSerde
+from .helpers import SerdeOpt
 
 log = logging.getLogger()
 
@@ -66,3 +71,51 @@ class AutoSerdeAgg(Generic[T], list[T]):
         for item in super().__iter__():
             if not isinstance(item, sexpr):
                 yield item
+
+
+class AutoSerdeDownCasting(AutoSerde):
+    __askiff_childs: ClassVar[dict[str, builtins.type[Self]]]
+
+    @property
+    @abstractmethod
+    def type(self) -> Hashable:
+        pass
+
+    @property
+    @abstractmethod
+    def __downcast_field(self) -> str | int:
+        pass
+
+    @classmethod
+    def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:  # type: ignore
+        print(super(), cls.__name__, cls.__mro__[0])
+        super().__init_subclass__(**kwargs)
+        if not hasattr(cls.__mro__[0], "_AutoSerdeDownCasting__askiff_childs"):
+            cls.__askiff_childs = {}
+            return
+        cls.__askiff_childs = cls.__mro__[0].__askiff_childs  # type: ignore # ty:ignore[unresolved-attribute]
+        cls.__askiff_childs[cls.type] = cls  # type: ignore
+
+    @classmethod
+    def deserialize_downcast(cls, sexp: GeneralizedSexpr) -> Self:
+        dcf = cls.__downcast_field
+        if isinstance(dcf, int):
+            deserialized_type = sexp[dcf]
+        else:
+            deserialized_type = next(
+                (
+                    s[1]
+                    for s in sexp
+                    if isinstance(s, Sequence) and len(s) >= 2 and s[0] == dcf and isinstance(s[1], str)
+                ),
+                None,
+            )
+
+        if deserialized_type not in cls.__askiff_childs:
+            log.warning(
+                f" Downcast failed: `{deserialized_type}` does not match child types ({cls.__askiff_childs.keys()})",
+                extra={"amodule": cls.__name__},
+            )
+            log.debug(sexp, extra={"amodule": cls.__name__})
+            return cls.deserialize(sexp)
+        return cls.__askiff_childs[deserialized_type].deserialize(sexp)  # type: ignore
