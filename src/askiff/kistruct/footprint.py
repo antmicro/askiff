@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING, Any, ClassVar, Final, cast
 
-from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
+from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeFile, F
 from askiff.const import Version
 from askiff.kistruct.common import (
     ComponentClass,
@@ -16,10 +16,9 @@ from askiff.kistruct.common import (
     PropertyList,
     Uuid,
 )
-from askiff.kistruct.common_pcb import Layer, LayerSet, LayerUser, Point, Zone
+from askiff.kistruct.common_pcb import BoardSide, Layer, LayerSet, LayerUser, Point, Zone
 from askiff.kistruct.fp_pad import Pad, ZoneConnect
 from askiff.kistruct.gritems import Barcode, Dimension, GrItemFp, GrTablePCB
-from askiff.sexpr import Qstr
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore
@@ -55,13 +54,6 @@ class FpProperty(Property):
     def _askiff_post_deser(self) -> None:
         # override hide removal of base class
         return
-
-
-class BoardSide(Qstr, AutoSerdeEnum):
-    """Indicates board side"""
-
-    FRONT = "F.Cu"
-    BACK = "B.Cu"
 
 
 class Attributes(AutoSerde, flag=True, bare=True):  # type: ignore

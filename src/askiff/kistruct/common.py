@@ -319,7 +319,7 @@ class PinTypePCB(AutoSerde):
     def deserialize(cls, sexp: GeneralizedSexpr) -> PinTypePCB:
         s = sexp[0]
         if not isinstance(s, str):
-            raise AssertionError("PinType is expected to be a string")
+            raise TypeError("PinType is expected to be a string")
         connected = True
         if "no_connect" in s:
             connected = False

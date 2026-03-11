@@ -55,7 +55,7 @@ class Layer(Qstr, AutoSerdeEnum, metaclass=__LayerMeta):
     ECO2 = "Eco2.User"
 
     INNER = "Inner"
-    """Only used inside padstack; all inner cooper layers"""
+    """Only used inside padstack; all inner copper layers"""
 
     _KNOCKOUT = "knockout"
     """This is not layer, but for text items in PCB/FP, KiCad inserts here info if text is knockout or not"""
@@ -141,7 +141,7 @@ LayerUser = Literal[
     Layer.USER28,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
     Layer.USER29,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
 ]
-LayerCooper = Literal[
+LayerCopper = Literal[
     Layer.CU_F,
     Layer.CU_B,
     Layer.CU_IN1,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
@@ -202,6 +202,13 @@ class LayerSet(Generic[TL], set[TL]):
     def serialize_nested(self) -> GeneralizedSexpr:
         ser: set = self - {Layer._KNOCKOUT}
         return tuple(("layer", Qstr(x.value)) for x in sorted(ser, key=Layer.order_id))
+
+
+class BoardSide(Qstr, AutoSerdeEnum):
+    """Indicates board side"""
+
+    FRONT = "F.Cu"
+    BACK = "B.Cu"
 
 
 class Net(AutoSerde):

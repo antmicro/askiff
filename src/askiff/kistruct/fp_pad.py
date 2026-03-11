@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack, cast
 
 from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, F, SerdeOpt
 from askiff.kistruct.common import PinTypePCB, Position, Size, Uuid
-from askiff.kistruct.common_pcb import BasePoly, Layer, LayerCooper, LayerSet, Net, TeardropSettings
+from askiff.kistruct.common_pcb import BasePoly, BoardSide, Layer, LayerCopper, LayerSet, Net, TeardropSettings
 from askiff.kistruct.gritems import BaseArc, BaseCircle, BaseLine
 from askiff.sexpr import GeneralizedSexpr
 
@@ -214,11 +214,16 @@ class DrillPostMatchingCountersink(DrillPostMatching):
     angle: float = F()
 
 
+class AfterDrillLayers(AutoSerde, positional=True):  # type: ignore
+    board_side: BoardSide = F(BoardSide.FRONT)
+    """Drill start layer - board side"""
+    stop_layer: LayerCopper = F(Layer.CU_F)
+    """stop layer / how deep should drill extend"""
+
+
 class AfterDrill(AutoSerde):
     size: float = F()
-    layers: list[LayerCooper] = F()
-    """There are 2 elements in list, first is start layer - board side,
-    second stop layer / how deep should drill extend"""
+    layers: AfterDrillLayers = F()
 
 
 class Pad(AutoSerde):
