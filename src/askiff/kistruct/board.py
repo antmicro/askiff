@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack, cast
 from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F, SerdeOpt, SerMode
 from askiff.const import Version
 from askiff.kistruct.common import BaseArc, BaseLine, BasePoly, EmbeddedFile, Group, Paper, Position, TitleBlock, Uuid
-from askiff.kistruct.common_pcb import Layer, LayerCooper, LayerFunction, LayerSet, Net, Point, Zone
+from askiff.kistruct.common_pcb import Layer, LayerCopper, LayerFunction, LayerSet, Net, Point, Zone
 from askiff.kistruct.footprint import FootprintBoard
 from askiff.kistruct.fp_pad import AfterDrill, DrillPostMatching, PadStackMode, TeardropSettings
 from askiff.kistruct.gritems import Barcode, Dimension, GrItemPCB, GrTablePCB
@@ -129,8 +129,8 @@ class StackupLayerDielectricPrepreg(StackupLayerDielectric):
     type: Final[str] = "prepreg"  # type: ignore
 
 
-class StackupLayerCooper(StackupLayer):
-    layer: LayerCooper = F(Layer.CU_F, positional=True)
+class StackupLayerCopper(StackupLayer):
+    layer: LayerCopper = F(Layer.CU_F, positional=True)
     type: Final[str] = "copper"  # type: ignore
     thickness: float = 0.035
 
@@ -377,7 +377,7 @@ class GeneratedTunningPattern(Generated, Group):
 
     name: str = "Tuning Pattern"
 
-    layer: LayerCooper = F(Layer.CU_F)
+    layer: LayerCopper = F(Layer.CU_F)
     """Layer the track resides on"""
 
     _locked = F()
@@ -601,7 +601,7 @@ class PCBExportSettings(AutoSerde, name_case="lower"):  # type: ignore
 
 class BoardSetupZoneDefault(AutoSerde):
     _askiff_key: ClassVar[str] = "property"
-    layer: LayerCooper = F(Layer.CU_F)
+    layer: LayerCopper = F(Layer.CU_F)
     hatch_position: Position = F(nested=True)
 
 
