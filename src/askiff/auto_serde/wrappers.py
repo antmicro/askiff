@@ -88,7 +88,6 @@ class AutoSerdeDownCasting(AutoSerde):
 
     @classmethod
     def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:  # type: ignore
-        print(super(), cls.__name__, cls.__mro__[0])
         super().__init_subclass__(**kwargs)
         if not hasattr(cls.__mro__[0], "_AutoSerdeDownCasting__askiff_childs"):
             cls.__askiff_childs = {}
