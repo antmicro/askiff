@@ -91,6 +91,25 @@ class F(Any):
         return self
 
 
+def _is_optional(typ: type) -> bool:
+    type_origin, type_args = get_origin(typ), get_args(typ)
+    return (type_origin is UnionType or type_origin is Union) and NoneType in type_args
+
+
+def normalize_type(typ: type) -> type:
+    type_origin, type_args = get_origin(typ), get_args(typ)
+    if type_origin is Literal:
+        typ = type(type_args[0])
+        type_origin, type_args = get_origin(typ), get_args(typ)
+    if type_origin is Final:
+        typ = type_args[0]
+        type_origin, type_args = get_origin(typ), get_args(typ)
+    if type_origin is not None and [arg for arg in type_args if get_origin(arg) is Literal]:
+        type_args = tuple(type(get_args(arg)[0]) if get_origin(arg) is Literal else arg for arg in type_args)
+        typ = type_origin[*type_args]
+    return typ
+
+
 @dataclasses.dataclass
 class GeneratorParams:
     """Helper class used by (de)serialize generator in AutoSerde"""
@@ -143,44 +162,52 @@ class GeneratorParams:
             self.list_of_lists = True
 
     @staticmethod
+    def _get_vtruefalse(fmeta: SerdeOpt, invert: bool) -> tuple[Sequence[str], Sequence[str]]:
+        _vtrue, _vfalse = fmeta.get("true_val", "yes"), fmeta.get("false_val", "no")
+        vtrue = (_vtrue,) if "yes" == _vtrue else (_vtrue, "yes")
+        vfalse = (_vfalse,) if "no" == _vfalse else (_vfalse, "no")
+        return (vfalse, vtrue) if invert else (vtrue, vfalse)
+
+    @staticmethod
+    def _get_serialization_name(fmeta: SerdeOpt, class_field_name: str) -> str:
+        name_case = fmeta.get("name_case", None)
+        fname = class_field_name
+        if name_case == "lower":
+            fname = fname.lower().replace("_", "")
+        return fmeta.get("name", fname).split(".")[-1]
+
+    @staticmethod
     def extract(
-        cls_name: str, typ: type, field: str, field_meta: dict[str, SerdeOpt], serialization: bool
+        cls_name: str, typ: type, class_field_name: str, field_meta: dict[str, SerdeOpt], serialization: bool
     ) -> GeneratorParams:
         """Extract some variables useful for field processing"""
         type_origin, type_args = get_origin(typ), get_args(typ)
-        is_optional = (type_origin is UnionType or type_origin is Union) and NoneType in type_args
+        is_optional = _is_optional(typ)
         if is_optional:
             typ = next(t for t in type_args if t is not NoneType)
             type_origin, type_args = get_origin(typ), get_args(typ)
 
         is_list = GeneratorParams.is_type_list(typ)
         is_enum = isinstance(typ, type) and issubclass(typ, Enum)
-        fmeta = field_meta.get(field, {})
+        fmeta = field_meta.get(class_field_name, {})
 
         positional, flatten, bare, flag, skip, invert, nested = [
             bool(fmeta.get(x, False)) for x in ["positional", "flatten", "bare", "flag", "skip", "invert", "nested"]
         ]
+        if positional and flatten:
+            raise Exception(f"`{cls_name}.{class_field_name}`: `flatten` & `positional` are mutually exclusive")
+
         skip = skip or bool(fmeta.get("skip_ser" if serialization else "skip_deser", False))
 
-        if positional and flatten:
-            raise Exception(f"`{cls_name}.{field}`: `flatten` & `positional` are mutually exclusive")
-        name_case = fmeta.get("name_case", None)
-        fname = field
-        if name_case == "lower":
-            fname = fname.lower().replace("_", "")
-        fname = fmeta.get("name", fname).split(".")[-1]
-
-        agg = getattr(typ, f"_{typ.__name__}__askiff_aggregator", None)
-        inline_basetype = fmeta.get("inline_basetype", None)
+        fname = GeneratorParams._get_serialization_name(fmeta, class_field_name)
 
         alias: set[str] = getattr(typ, f"_{typ.__name__}__askiff_alias", set())
         alias.add(fname)
 
-        _vtrue, _vfalse = fmeta.get("true_val", "yes"), fmeta.get("false_val", "no")
-        vtrue = (_vtrue,) if "yes" == _vtrue else (_vtrue, "yes")
-        vfalse = (_vfalse,) if "no" == _vfalse else (_vfalse, "no")
-        if invert:
-            vtrue, vfalse = vfalse, vtrue
+        agg = getattr(typ, f"_{typ.__name__}__askiff_aggregator", None)
+        inline_basetype = fmeta.get("inline_basetype", None)
+
+        vtrue, vfalse = GeneratorParams._get_vtruefalse(fmeta, invert)
 
         return GeneratorParams(
             typ,
@@ -205,20 +232,6 @@ class GeneratorParams:
             vtrue,
             vfalse,
         )
-
-
-def normalize_type(typ: type) -> tuple:
-    type_origin, type_args = get_origin(typ), get_args(typ)
-    if type_origin is Literal:
-        typ = type(type_args[0])
-        type_origin, type_args = get_origin(typ), get_args(typ)
-    if type_origin is Final:
-        typ = type_args[0]
-        type_origin, type_args = get_origin(typ), get_args(typ)
-    if type_origin is not None and [arg for arg in type_args if get_origin(arg) is Literal]:
-        type_args = tuple(type(get_args(arg)[0]) if get_origin(arg) is Literal else arg for arg in type_args)
-        typ = type_origin[*type_args]
-    return typ, type_origin, type_args
 
 
 class SerMode(int, Enum):
@@ -260,114 +273,130 @@ class DeserMode(int, Enum):
 DeserModWExtra = tuple[str, DeserMode, Any]
 """(Object field name, deserialization mode, deserialization mode extra args)"""
 
+SerModWExtra = tuple[SerMode, Any, bool]
+"""(serialization_mode, serialization_mode_args, keep_if_empty)"""
+
 _askiff_dict: dict[type, dict[str, Any]] = {}
 
 
-def preprocess_cls_fields(cls: type) -> tuple[dict[str, type], dict[str, SerdeOpt], list[str]]:
-    """Process typing and defaults of class, configure for dataclass and extract metadata,
-    create `_askiff_dict` entry for class
-    returns (type_hints, field metadata, field names in serialization order)
-    """
-    type_hints = get_type_hints(cls)
-    field_meta = {}
-    cls_askiff_dict = _askiff_dict.setdefault(cls, {})
+def _resolve_mro_askiff_dict(cls: type) -> dict[str, Any]:
     parent_dict = {}
-    askiff_order = None
-
     for parent in reversed(cls.__mro__[1:]):  # first elem is class itself, ignore it
         parent_askiff_dict = _askiff_dict.get(parent, None)
         if parent_askiff_dict:
-            # bellows handles case where A->B->C and field is defined in A, but not in B
+            # below handles indirect inheritance (C: subclass(B), B: subclass(A) & field is defined in A, but not in B)
             filtered_dict = {k: v for k, v in parent_askiff_dict.items() if not isinstance(v, dataclasses.Field)}  # type: ignore
-            askiff_order = getattr(parent, f"_{parent.__name__}__askiff_order", askiff_order)
             parent_dict.update(filtered_dict)
 
-    ser_order: list[str] = []
-    ser_order_idx = 0
-    askiff_order = getattr(cls, f"_{cls.__name__}__askiff_order", askiff_order)
+    # If field is redefined in current class, use field position from current class, not parent
     overridden_fields = parent_dict.keys() & cls.__dict__.keys()
     for key in overridden_fields:
         parent_dict.pop(key)
 
-    for name, value in (parent_dict | cls.__dict__).items():
-        skip_field = True
-        if name.startswith("_") and name[1:] in type_hints:
+    return parent_dict
+
+
+def _resolve_mro_askiff_order(cls: type) -> list[str] | None:
+    askiff_order = None
+    for parent in reversed(cls.__mro__[1:]):  # first elem is class itself, ignore it
+        askiff_order = getattr(parent, f"_{parent.__name__}__askiff_order", askiff_order)
+    return getattr(cls, f"_{cls.__name__}__askiff_order", askiff_order)
+
+
+def resolve_serialization_order(cls: type, field_meta: dict[str, SerdeOpt]) -> list[str]:
+    """returns field names in serialization order"""
+    askiff_order = _resolve_mro_askiff_order(cls)
+    if askiff_order:
+        return [field for field in askiff_order if field in field_meta]
+
+    ser_order: list[str] = []
+    ser_order_idx = 0
+
+    for name, options in field_meta.items():
+        if name.startswith("_") and name[1:] in field_meta:
             ser_order.insert(ser_order_idx, name[1:])
             ser_order_idx += 1
-        elif name.startswith("_") and name in type_hints and isinstance(value, F):
+        elif name.startswith("_") and "name" in options:
             ser_order.insert(ser_order_idx, name)
             ser_order_idx += 1
-            skip_field = False
-        elif not name.startswith("_") and name in type_hints:
-            skip_field = False
+        elif not name.startswith("_"):
             if ("_" + name) not in cls.__dict__:
-                if isinstance(value, F):
-                    after = value.options.get("after", None)
-                    if after == "__begin__":
-                        ser_order_idx = 0
-                    elif after and after in ser_order:
-                        ser_order_idx = ser_order.index(after) + 1
+                after = options.get("after", None)
+                if after == "__begin__":
+                    ser_order_idx = 0
+                elif after and after in ser_order:
+                    ser_order_idx = ser_order.index(after) + 1
+                else:
+                    pass
                 ser_order.insert(ser_order_idx, name)
                 ser_order_idx += 1
 
-        if skip_field:
+    return ser_order
+
+
+def preprocess_cls_fields(cls: type) -> tuple[dict[str, type], dict[str, SerdeOpt]]:
+    """Process typing and defaults of class, configure for dataclass and extract metadata,
+    create `_askiff_dict` entry for class
+    returns (type_hints, field metadata)
+    """
+    type_hints = get_type_hints(cls)
+    field_meta = {}
+    cls_askiff_dict = _askiff_dict.setdefault(cls, {})
+
+    parent_dict = _resolve_mro_askiff_dict(cls)
+
+    for name, value in (parent_dict | cls.__dict__).items():
+        if name.startswith("_"):
+            field_meta[name] = value.options if isinstance(value, F) else {}
             continue
 
-        typ, type_origin, type_args = normalize_type(type_hints[name])
-        type_hints[name] = typ
+        if name not in type_hints:
+            continue
 
         cls_askiff_dict[name] = value
 
-        if name in type_hints and name not in cls.__annotations__:
-            cls.__annotations__[name] = type_hints[name]
-        if isinstance(value, F):
-            inline, skip = value.options.get("inline"), value.options.get("skip")
-            if inline or skip:
-                ser_order_idx -= 1
-                ser_order.pop(ser_order_idx)  # skipped or inlined field will not be serialized directly
+        typ = normalize_type(type_hints[name])
+        type_hints[name] = typ
+        cls.__annotations__.setdefault(name, typ)
 
-            if inline:
-                inline_type_hints = get_type_hints(typ)
-                inline_dict = deepcopy(_askiff_dict[typ])
-                inner_childs = getattr(typ, f"_{typ.__name__}__askiff_childs", {})
-                inner_dc_field = getattr(typ, f"_{typ.__name__}__askiff_down_cast_field", {})
-                for ic in inner_childs.values():
-                    inline_dict |= _askiff_dict.get(ic, {})
-                    inline_type_hints |= get_type_hints(ic)
-                for inline_field, inline_val in inline_dict.items():  # type:ignore
-                    full_id = name + "." + inline_field
-                    inline_typ, _, _ = normalize_type(inline_type_hints[inline_field])
-                    type_hints[full_id] = inline_typ
-                    field_meta[full_id] = inline_val.options if isinstance(inline_val, F) else {}
-                    if inline_field == inner_dc_field:
-                        filt_opt = deepcopy(value.options)
-                        filt_opt.pop("inline")
-                        filt_opt.pop("skip", None)
-                        field_meta[full_id] |= filt_opt
-                        field_meta[full_id]["inline_basetype"] = typ
-                    ser_order.insert(ser_order_idx, full_id)
-                    ser_order_idx += 1
-                value.options["skip"] = True
-
-            if value.options:
-                field_meta[name] = value.options
-            if value.default is None:
-                continue
-
-            if value.default == []:
-                value.default = list
-            if value.default == {}:
-                value.default = dict
-            if value.default == AUTO_DEFAULT:
-                # Use class constructor (with no args) as default If Optional field, default to None
-                value.default = (
-                    None if (type_origin is UnionType or type_origin is Union) and NoneType in type_args else typ
-                )
-            if callable(value.default):
-                setattr(cls, name, dataclasses.field(default_factory=value.default))
-            else:
-                setattr(cls, name, dataclasses.field(default=value.default))
-        if name not in field_meta:
+        if not isinstance(value, F):
             field_meta[name] = {}
-    ser_ord = [field for field in askiff_order or ser_order if field in type_hints]
-    return type_hints, field_meta, ser_ord
+            continue
+
+        field_meta[name] = value.options
+
+        if value.options.get("inline", False):
+            value.options["skip"] = True
+            inline_type_hints = get_type_hints(typ)
+            inline_dict = deepcopy(_askiff_dict[typ])
+            inner_childs = getattr(typ, f"_{typ.__name__}__askiff_childs", {})
+            inner_dc_field = getattr(typ, f"_{typ.__name__}__askiff_down_cast_field", {})
+            for ic in inner_childs.values():
+                inline_dict |= _askiff_dict.get(ic, {})
+                inline_type_hints |= get_type_hints(ic)
+            for inline_field, inline_val in inline_dict.items():  # type:ignore
+                full_id = name + "." + inline_field
+                inline_typ = normalize_type(inline_type_hints[inline_field])
+                type_hints[full_id] = inline_typ
+                field_meta[full_id] = inline_val.options if isinstance(inline_val, F) else {}
+                if inline_field == inner_dc_field:
+                    filt_opt = deepcopy(value.options)
+                    filt_opt.pop("inline")
+                    filt_opt.pop("skip", None)
+                    field_meta[full_id] |= filt_opt
+                    field_meta[full_id]["inline_basetype"] = typ
+
+        # normalize field default for dataclass processing
+        if value.default == []:
+            value.default = list
+        if value.default == {}:
+            value.default = dict
+        if value.default == AUTO_DEFAULT:
+            # Use class constructor (with no args) as default If Optional field, default to None
+            value.default = None if _is_optional(typ) else typ
+        if callable(value.default):
+            setattr(cls, name, dataclasses.field(default_factory=value.default))
+        else:
+            setattr(cls, name, dataclasses.field(default=value.default))
+
+    return type_hints, field_meta

@@ -12,7 +12,17 @@ from typing import Any, Self, Unpack, cast, dataclass_transform
 from askiff.const import TRACE, TRACE_DIS
 from askiff.sexpr import GeneralizedSexpr, Qstr, Sexpr
 
-from .helpers import DeserMode, DeserModWExtra, F, GeneratorParams, SerdeOpt, SerMode, preprocess_cls_fields
+from .helpers import (
+    DeserMode,
+    DeserModWExtra,
+    F,
+    GeneratorParams,
+    SerdeOpt,
+    SerMode,
+    SerModWExtra,
+    preprocess_cls_fields,
+    resolve_serialization_order,
+)
 
 log = logging.getLogger()
 
@@ -43,9 +53,9 @@ class AutoSerde:
 
     __extra: Sexpr | None = None
     __extra_positional: Sexpr | None = None
-    __ser_field_positional: dict[str, tuple[SerMode, Any, bool]]
-    __ser_field: dict[str, tuple[str, tuple[SerMode, Any, bool]]]
-    """class_field: (serialized name, (serialization_mode, serialization_mode_args, keep_if_empty))"""
+    __ser_field_positional: dict[str, SerModWExtra]
+    __ser_field: dict[str, tuple[str, SerModWExtra]]
+    """class_field: (serialized name, SerModWExtra)"""
     __deser_field_positional: list[DeserModWExtra]
     __deser_field: dict[str, DeserModWExtra]
     __deser_field_bare_flags: dict[str, DeserModWExtra]
@@ -53,7 +63,7 @@ class AutoSerde:
     @classmethod
     def __init_deserializer(
         cls, ser_order: list[str], type_hints: dict[str, type], field_meta: dict[str, SerdeOpt]
-    ) -> dict:
+    ) -> dict[str, list[DeserModWExtra] | dict[str, DeserModWExtra]]:
         deser_field, deser_field_positional, deser_field_bare_flags = {}, [], {}
         names_kicad = {v.get("name", k).split(".")[-1] for k, v in field_meta.items()}
 
@@ -132,8 +142,9 @@ class AutoSerde:
             if log.isEnabledFor(TRACE):
                 print("\n#########################################################")
                 print(f"# Deserialization map for {cls}:")
-                pprint(cls.__deser_field_positional)
-                pprint(cls.__deser_field)
+                pprint(deser_field_positional)
+                pprint(deser_field_bare_flags)
+                pprint(deser_field)
                 print()
         return {
             "_AutoSerde__deser_field": deser_field,
@@ -211,7 +222,7 @@ class AutoSerde:
                                 if ret.__extra_positional is None:
                                     ret.__extra_positional = Sexpr()
                                 ret.__extra_positional.append(node)
-                                log.warning(f" Unexpected positional node: `{node}`", extra={"amodule": cls.__name__})
+                                # log.warning(f" Unexpected positional node: `{node}`", extra={"amodule": cls.__name__})
                 pos_idx += 1
                 continue
 
@@ -317,7 +328,7 @@ class AutoSerde:
                         ret.__extra = Sexpr()
                     ret.__extra.append(node)
                     log.warning(f" Unknown node: `{node_name}`", extra={"amodule": cls.__name__})
-                    log.debug(node, extra={"amodule": cls.__name__})
+                    # log.debug(node, extra={"amodule": cls.__name__})
             if inlined:
                 ret = ret_cp
 
@@ -329,7 +340,7 @@ class AutoSerde:
     @classmethod
     def __init_serializer(
         cls, ser_order: list[str], type_hints: dict[str, type], field_meta: dict[str, SerdeOpt]
-    ) -> dict:
+    ) -> dict[str, dict[str, SerModWExtra] | dict[str, tuple[str, SerModWExtra]]]:
         ser_field, ser_field_positional = {}, {}
         for field in ser_order:
             typ = type_hints[field]
@@ -616,7 +627,8 @@ class AutoSerde:
         return ret
 
     def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:
-        type_hints, field_meta, ser_order = preprocess_cls_fields(cls)
+        type_hints, field_meta = preprocess_cls_fields(cls)
+        ser_order = resolve_serialization_order(cls, field_meta)
 
         for glob_name, glob_val in kwargs.items():
             for meta in field_meta.values():
@@ -628,7 +640,7 @@ class AutoSerde:
 
         cls = dataclass(cls)
 
-        default_opts: dict[str, list | dict] = cls.__init_serializer(ser_order, type_hints, field_meta)
+        default_opts: dict[str, list | dict] = cls.__init_serializer(ser_order, type_hints, field_meta)  # type: ignore
         default_opts |= cls.__init_deserializer(ser_order, type_hints, field_meta)
         _askiff_opts_default[cls] = default_opts
         for dict_name, val in default_opts.items():
