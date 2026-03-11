@@ -148,6 +148,7 @@ class Stroke(AutoSerde):
 
 class Property(AutoSerde):
     """Stores object metadata such as Reference, Value, Datasheet, .."""
+
     _askiff_key: ClassVar[str] = "property"
 
     name: str = F(positional=True)

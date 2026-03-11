@@ -59,7 +59,7 @@ class AutoSerdeFile(AutoSerde):
     __version_map: ClassVar[dict[str, str]] = {
         "kicad_pcb": "pcb",
         "kicad_sch": "sch",
-        "symbol": "sym",
+        "kicad_symbol_lib": "sym",
         "footprint": "fp",
         "sym_lib_table": "lib_table",
         "fp_lib_table": "lib_table",

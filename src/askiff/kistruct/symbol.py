@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, ClassVar, Final, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
 from askiff.const import Version
@@ -8,6 +8,7 @@ from askiff.kistruct.common import (
     EmbeddedFile,
     LibId,
     LibTable,
+    PinType,
     Position,
     Property,
     PropertyList,
@@ -19,7 +20,19 @@ if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment
     F = cast(Any, F)  # type: ignore
 
 
-class BaseSymbol(AutoSerde):
+class PinShape(AutoSerdeEnum):
+    LINE = "line"
+    # TODO: add others
+
+
+class Pin(AutoSerde):
+    _askiff_key: ClassVar[str] = "pin"
+    type: PinType = F(PinType.PASSIVE)
+    shape: PinShape = F(PinShape.LINE)
+    position: Position = F(name="at")
+
+
+class SymbolPartial(AutoSerde):
     _askiff_key: ClassVar[str] = "symbol"
 
     lib_id: LibId = F(positional=True)
@@ -28,12 +41,20 @@ class BaseSymbol(AutoSerde):
     graphic_items: AutoSerdeAgg[GrItemSch] = F(flatten=True)
     """List of graphical objects (lines, circles, arcs, texts, ...) in the footprint"""
 
+    pins: list[Pin] = F(name="pin", flatten=True)
+    """List of component pins"""
+
 
 class LibSymbol(AutoSerde):
     _askiff_key: ClassVar[str] = "symbol"
 
     lib_id: LibId = F(positional=True)
     """Defines symbol name and library link"""
+
+    exclude_from_sim: bool | None = F()
+    in_bom: bool | None = F()
+    on_board: bool | None = F()
+    in_pos_files: bool | None = F()
 
     duplicate_pin_numbers_are_jumpers: bool | None = F()
     """If true DRC will consider pins with the same number as electrically connected"""
@@ -44,7 +65,7 @@ class LibSymbol(AutoSerde):
     properties: PropertyList[Property] = F(name="property", flatten=True)
     """Properties of the symbol, such as reference, value, datasheet, ..."""
 
-    symbols: list[BaseSymbol] = F(flatten=True, name="symbol")
+    symbols: list[SymbolPartial] = F(flatten=True, name="symbol")
     """Symbol components: symbol units * symbol styles (+ common elements)"""
 
     embedded_fonts: bool = F()
@@ -72,6 +93,8 @@ class SymbolSchematic(AutoSerde):
 
 
 class SymbolFile(AutoSerdeFile):
+    _askiff_key: ClassVar[str] = "kicad_symbol_lib"
+
     version: int | None = F(Version.DEFAULT.sym, after="lib_id")
     """Defines the file format version"""
 

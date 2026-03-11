@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Generator
 from pathlib import Path
 from threading import RLock
 from typing import Any, Generic, Self, TypeVar
@@ -10,6 +11,7 @@ from .const import TRACE, TRACE_DIS
 from .kistruct.board import Board
 from .kistruct.footprint import FootprintStandalone, LibTableFp
 from .kistruct.schematic import Schematic
+from .kistruct.symbol import LibSymbol, LibTableSym, SymbolFile
 
 logging.addLevelName(TRACE_DIS, "TRACE_DIS")
 logging.addLevelName(TRACE, "TRACE")
@@ -75,6 +77,34 @@ class _LazyFile(Generic[T]):
         return not isinstance(self._value, Path)
 
 
+class AskiffLibSym:
+    path: Path
+    __initial_path: Path
+    objects: list[_LazyFile[SymbolFile]]
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.__initial_path = path
+
+    def load(self, force: bool = False) -> Self:
+        if self.path.suffix == ".kicad_sym" and self.path.exists():
+            self.objects = [_LazyFile(SymbolFile, self.path, force)]
+            return self
+
+        self.objects = []
+        for path in self.path.glob("*.kicad_sym"):
+            self.objects.append(_LazyFile(SymbolFile, path, force))
+        return self
+
+    def symbols(self) -> Generator[LibSymbol]:
+        for o in self.objects:
+            yield from o.symbols
+
+    def save(self, path: Path | None = None) -> None:
+        for o in self.objects:
+            o.save(path, self.__initial_path)
+
+
 class AskiffLibFp:
     path: Path
     __initial_path: Path
@@ -101,8 +131,13 @@ class AskiffPro:
     # pro: dict[Path, Sexpr] # Note: kicad_pro seems to be json
     pcb: list[_LazyFile[Board]]
     sch: list[_LazyFile[Schematic]]
+
     fp: dict[str, AskiffLibFp]
     fp_lib_table: LibTableFp
+
+    sym: dict[str, AskiffLibSym]
+    sym_lib_table: LibTableSym
+
     variables: dict[str, str]
 
     def __init__(self, path: Path) -> None:
@@ -130,6 +165,12 @@ class AskiffPro:
         self.fp_lib_table = LibTableFp.from_file(fp_lib_table_path) if fp_lib_table_path.exists() else LibTableFp()
         self.fp = {lib.name: AskiffLibFp(Path(self.resolve_var(lib.uri))).load(force) for lib in self.fp_lib_table.lib}
 
+        sym_lib_table_path = self.path / "sym-lib-table"
+        self.sym_lib_table = LibTableSym.from_file(sym_lib_table_path) if sym_lib_table_path.exists() else LibTableSym()
+        self.sym = {
+            lib.name: AskiffLibSym(Path(self.resolve_var(lib.uri))).load(force) for lib in self.sym_lib_table.lib
+        }
+
         return self
 
     def save(self, path: Path | None = None) -> None:
@@ -142,10 +183,16 @@ class AskiffPro:
         for sch in self.sch:
             sch.save(path, self.__initial_path)
 
-        for lib in self.fp.values():
-            if path and lib._AskiffLibFp__initial_path.is_relative_to(self.__initial_path):  # type: ignore # ty:ignore[unresolved-attribute]
-                file = lib._AskiffLibFp__initial_path.relative_to(self.__initial_path)  # type: ignore  # ty:ignore[unresolved-attribute]
-                lib.save(path / file)
+        for fp_lib in self.fp.values():
+            if path and fp_lib._AskiffLibFp__initial_path.is_relative_to(self.__initial_path):  # type: ignore # ty:ignore[unresolved-attribute]
+                file = fp_lib._AskiffLibFp__initial_path.relative_to(self.__initial_path)  # type: ignore  # ty:ignore[unresolved-attribute]
+                fp_lib.save(path / file)
             else:
-                lib.save()
+                fp_lib.save()
+        for sch_lib in self.sym.values():
+            if path and sch_lib._AskiffLibSym__initial_path.is_relative_to(self.__initial_path):  # type: ignore # ty:ignore[unresolved-attribute]
+                file = sch_lib._AskiffLibSym__initial_path.relative_to(self.__initial_path)  # type: ignore  # ty:ignore[unresolved-attribute]
+                sch_lib.save(path / file)
+            else:
+                sch_lib.save()
         pass
