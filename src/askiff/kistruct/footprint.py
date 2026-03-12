@@ -46,10 +46,6 @@ class FpProperty(Property):
 
     _effects = F()
 
-    def _askiff_post_deser(self) -> None:
-        # override hide removal of base class
-        return
-
 
 class Attributes(AutoSerde, flag=True, bare=True):  # type: ignore
     smd: bool = F()

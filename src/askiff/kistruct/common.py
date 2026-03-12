@@ -127,7 +127,8 @@ class Justify(AutoSerde, flag=True, bare=True):  # type: ignore
 class Effects(AutoSerde):
     font: Font = F()
     justify: Justify | None = F()
-    hide: bool | None = None
+    hide: bool | None = F(skip=True).version(Version.K9.sch, skip=False)
+    """Use `Property` level setting"""
     href: str | None = None
 
 
@@ -161,17 +162,10 @@ class Property(AutoSerde):
     """Property text position"""
 
     hide: bool | None = None
-    """[Deprecated] Defines if the text is hidden"""
+    """Defines if the text is hidden"""
 
     effects: Effects | None = None
     """Defines how text looks like, eg. font"""
-
-    def _askiff_post_deser(self) -> None:
-        if self.hide is not None:
-            # this looks like serialization bug in some K9 versions
-            self.effects = self.effects or Effects()
-            self.effects.hide = self.hide
-            self.hide = None
 
 
 T = TypeVar("T", bound=Property)

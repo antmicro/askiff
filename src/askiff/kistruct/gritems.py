@@ -27,6 +27,7 @@ class GrItem(AutoSerde):
         "start",
         "mid",
         "center",
+        "radius",
         "position",
         "end",
         "pts",
@@ -68,7 +69,7 @@ class GrItemPCB(GrItem):
 
 
 class GrItemSch(GrItem):
-    pass
+    uuid: Uuid | None = None
 
 
 class _GrShapePCBFp(GrShape):
@@ -109,8 +110,9 @@ class GrArcPCB(BaseArc, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_arc"
 
 
-class GrArcSch(BaseArc, GrShape, GrItemSch):
+class GrArcSch(GrItemSch, BaseArc, GrShape):
     _askiff_key: ClassVar[str] = "arc"
+    fill: FillStyleSch | None = None
 
 
 ############################Line###########################
@@ -143,7 +145,7 @@ class GrPolyPCB(GrPoly, GrShapePCB):
     fill: FillStylePCB | None = None
 
 
-class GrPolySch(GrPoly, GrItemSch):
+class GrPolySch(GrItemSch, GrPoly):
     _askiff_key: ClassVar[str] = "polyline"
     fill: FillStyleSch | None = None
 
@@ -158,26 +160,26 @@ class GrCurvePCB(GrPolyPCB):
 
 
 class GrCurveSch(GrPolySch):
-    _askiff_key: ClassVar[str] = "curve"
+    _askiff_key: ClassVar[str] = "bezier"
 
 
 ###########################Circle##########################
-class GrCircle(GrShape, BaseCircle):
-    pass
 
 
-class GrCircleFp(GrCircle, GrShapeFp):
+class GrCircleFp(BaseCircle, GrShapeFp):
     _askiff_key: ClassVar[str] = "fp_circle"
     fill: FillStylePCB | None = F(FillStylePCB.NONE)
 
 
-class GrCirclePCB(GrCircle, GrShapePCB):
+class GrCirclePCB(BaseCircle, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_circle"
     fill: FillStylePCB | None = F(FillStylePCB.NONE)
 
 
-class GrCircleSch(GrCircle, GrItemSch):
+class GrCircleSch(GrItemSch, GrShape):
     _askiff_key: ClassVar[str] = "circle"
+    center: Position = F()
+    radius: float = F()
     fill: FillStyleSch | None = F()
 
 
@@ -197,8 +199,8 @@ class GrRectPCB(GrRect, GrShapePCB):
     fill: FillStylePCB | None = F(FillStylePCB.NONE)
 
 
-class GrRectSch(GrRect, GrItemSch):
-    _askiff_key: ClassVar[str] = "rect"
+class GrRectSch(GrItemSch, GrRect):
+    _askiff_key: ClassVar[str] = "rectangle"
     fill: FillStyleSch | None = F()
 
 
@@ -274,6 +276,7 @@ class GrTextPCB(GrTextPCBBase, GrItemPCB):
 class GrTextSch(GrText, GrItemSch):
     _askiff_key: ClassVar[str] = "text"
     __askiff_order: ClassVar[list[str]] = [
+        "private",
         "text",
         "exclude_from_sim",
         "locked",
@@ -281,7 +284,9 @@ class GrTextSch(GrText, GrItemSch):
         "uuid",
         "effects",
     ]
-    exclude_from_sim: bool = F()
+    private: bool = F(bare=True, flag=True)
+    exclude_from_sim: bool | None = None
+    uuid: Uuid | None = None
 
 
 ##########################TextBox##########################
@@ -297,9 +302,6 @@ class TextMargin(AutoSerde, positional=True):  # type:ignore
 class GrTextBox(GrItem):
     __askiff_order: ClassVar[list[str]] = [
         "text",
-        "exclude_from_sim",
-        "position",
-        "size",
         "pts",
         "start",
         "end",
@@ -340,9 +342,21 @@ class GrTextBoxPCB(GrTextBox, GrItemPCB):
     layer: Layer = F(Layer.CU_F)
 
 
-class GrTextBoxSch(GrTextBox, GrItemSch):
+class GrTextBoxSch(GrItemSch):
     _askiff_key: ClassVar[str] = "text_box"
-    exclude_from_sim: bool = F()
+    __askiff_order: ClassVar[list[str]] = []
+
+    private: bool = F(bare=True, flag=True)
+    text: str = F(positional=True)
+    exclude_from_sim: bool | None = None
+    position: Position = F(name="at")
+    size: Size = F()
+    margins: TextMargin | None = None
+    border: bool | None = None
+    border_stroke: Stroke | None = F(name="stroke")
+    fill: FillStyleSch | None = None
+    effects: Effects = F()
+    uuid: Uuid | None = None
 
 
 ###########################Image###########################
