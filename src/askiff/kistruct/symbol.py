@@ -57,6 +57,8 @@ class Pin(AutoSerde):
     type: PinType = F(PinType.PASSIVE, positional=True, unquoted=True)
     shape: PinShape = F(PinShape.LINE, positional=True)
     position: Position = F(name="at")
+    length: float = 1.27
+    hide: bool | None = None
 
 
 class SymbolPartial(AutoSerde):

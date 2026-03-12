@@ -296,7 +296,7 @@ class PinType(Qstr, AutoSerdeEnum):
     FREE = "free"
     UNSPECIFIED = "unspecified"
     NO_CONNECT = "no_connect"
-    TRISTATE = "tristate"
+    TRI_STATE = "tri_state"
 
 
 class PinTypePCB(AutoSerde):

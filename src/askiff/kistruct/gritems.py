@@ -24,6 +24,7 @@ if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment
 class GrItem(AutoSerde):
     __askiff_childs: ClassVar[dict[str, type]] = {}
     __askiff_order: ClassVar[list[str]] = [
+        "private",
         "start",
         "mid",
         "center",
@@ -70,6 +71,7 @@ class GrItemPCB(GrItem):
 
 class GrItemSch(GrItem):
     uuid: Uuid | None = None
+    private: bool = F(bare=True, flag=True)
 
 
 class _GrShapePCBFp(GrShape):
