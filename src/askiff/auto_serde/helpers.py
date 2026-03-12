@@ -52,6 +52,8 @@ class SerdeOpt(TypedDict, total=False):
     """(internal) Dict that allows down casting of `inline` type based on its first field"""
     serialize: Callable
     """Function that should be used to serialize field"""
+    deserialize: Callable
+    """Function that should be used to deserialize field"""
     keep_empty: bool
     """Serialize field even if it has value corresponding to false (eg. empty list)"""
     after: str
@@ -257,6 +259,7 @@ class DeserMode(int, Enum):
     DESERIALIZE = auto()
     DESERIALIZE_DOWNCAST = auto()
     DESERIALIZE_NESTED = auto()
+    DESERIALIZE_OVERRIDE = auto()
     BOOL = auto()
     INT = auto()
     FLOAT = auto()

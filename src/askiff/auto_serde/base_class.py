@@ -79,6 +79,12 @@ class AutoSerde:
                 continue
             typ = fparam.typ
             fmode: tuple[DeserMode, Any]
+
+            deserialize_override = fparam.fmeta.get("deserialize", None)
+            if callable(deserialize_override):
+                deser_field[fparam.fname] = inline_wrap(field, DeserMode.DESERIALIZE_OVERRIDE, deserialize_override)
+                continue
+
             if fparam.agg:
                 if fparam.flatten:
                     for var_name, var_type in fparam.agg(inner=fparam.type_args[0]).items():
@@ -170,6 +176,8 @@ class AutoSerde:
                 match mode:
                     case DeserMode.DESERIALIZE:
                         setattr(ret, field, mode_extra.deserialize(node))
+                    case DeserMode.DESERIALIZE_OVERRIDE:
+                        setattr(ret, field, mode_extra(node))
                     case DeserMode.DESERIALIZE_DOWNCAST:
                         setattr(ret, field, mode_extra.deserialize_downcast(node))
                     case DeserMode.BOOL:
@@ -247,6 +255,8 @@ class AutoSerde:
                     setattr(ret, field, mode_extra.deserialize(nodes[0][1:]))
                 case DeserMode.DESERIALIZE_DOWNCAST:
                     setattr(ret, field, mode_extra.deserialize_downcast(nodes))
+                case DeserMode.DESERIALIZE_OVERRIDE:
+                    setattr(ret, field, mode_extra(nodes))
                 case DeserMode.BOOL:
                     setattr(ret, field, nodes in mode_extra)
                 case DeserMode.INT:
@@ -365,7 +375,7 @@ class AutoSerde:
                 if hasattr(typ, "serialize"):
                     fmode = SerMode.SERIALIZE, explicit_name
                 elif issubclass(typ, Enum):
-                    if issubclass(typ, Qstr):
+                    if issubclass(typ, Qstr) and not fparam.fmeta.get("unquoted", False):
                         fmode = SerMode.QENUM, None
                     else:
                         fmode = SerMode.ENUM, None
@@ -451,7 +461,7 @@ class AutoSerde:
                 case SerMode.ENUM:
                     _val = field_val.value
                     if _val:
-                        append(_val)
+                        append(str(_val))
                 case SerMode.QENUM:
                     _val = field_val.value
                     if _val:
