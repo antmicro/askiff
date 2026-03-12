@@ -166,6 +166,28 @@ class AutoSerde:
         pos_idx = 0
         for node in sexp:
             if isinstance(node, str):
+                if not isinstance(node, Qstr):
+                    field, mode, mode_extra = cls.__deser_field_bare_flags.get(node, ("", DeserMode.UNSUPPORTED, None))
+                    match mode:
+                        case DeserMode.BOOL:
+                            setattr(ret, field, True)
+                            continue
+                        case DeserMode.ENUM:
+                            setattr(ret, field, mode_extra(node))
+                            continue
+                        case DeserMode.INLINED:
+                            mode, mode_extra = mode_extra
+                            outer_field, _, field = field.partition(".")
+                            match mode:
+                                case DeserMode.BOOL:
+                                    setattr(getattr(ret, outer_field), field, True)
+                                case DeserMode.ENUM:
+                                    setattr(getattr(ret, outer_field), field, mode_extra(node))
+                            continue
+                        case _:
+                            # keyword does not match any known flags, so it is positional field
+                            pass
+
                 field, mode, mode_extra = (
                     deser_map_pos[pos_idx]
                     if pos_idx < len(deser_map_pos)
@@ -208,29 +230,11 @@ class AutoSerde:
                                 setattr(getattr(ret, outer_field), field, str(node))
                             case DeserMode.ENUM:
                                 setattr(getattr(ret, outer_field), field, mode_extra(node))
-
                     case _:
-                        field, mode, mode_extra = cls.__deser_field_bare_flags.get(
-                            node, ("", DeserMode.UNSUPPORTED, None)
-                        )
-                        match mode:
-                            case DeserMode.BOOL:
-                                setattr(ret, field, True)
-                            case DeserMode.ENUM:
-                                setattr(ret, field, mode_extra(node))
-                            case DeserMode.INLINED:
-                                mode, mode_extra = mode_extra
-                                outer_field, _, field = field.partition(".")
-                                match mode:
-                                    case DeserMode.BOOL:
-                                        setattr(getattr(ret, outer_field), field, True)
-                                    case DeserMode.ENUM:
-                                        setattr(getattr(ret, outer_field), field, mode_extra(node))
-                            case _:
-                                if ret.__extra_positional is None:
-                                    ret.__extra_positional = Sexpr()
-                                ret.__extra_positional.append(node)
-                                log.warning(f" Unexpected positional node: `{node}`", extra={"amodule": cls.__name__})
+                        if ret.__extra_positional is None:
+                            ret.__extra_positional = Sexpr()
+                        ret.__extra_positional.append(node)
+                        log.warning(f" Unexpected positional node: `{node}`", extra={"amodule": cls.__name__})
                 pos_idx += 1
                 continue
 
@@ -380,7 +384,7 @@ class AutoSerde:
                     else:
                         fmode = SerMode.ENUM, None
                 elif typ is bool and fparam.flag and fparam.bare:
-                    fmode = SerMode.BOOL_FLAG_BARE, fparam.invert
+                    fmode = SerMode.BOOL_FLAG_BARE, (fparam.invert, fparam.fname)
                 elif typ is bool and fparam.flag:
                     fmode = SerMode.BOOL_FLAG, fparam.invert
                 elif typ is bool:
@@ -409,7 +413,7 @@ class AutoSerde:
                     fmode = SerMode.LIST_FLAT if fparam.flatten else SerMode.LIST, fmode
                     keep_empty = False
             keep_empty = fparam.fmeta.get("keep_empty", keep_empty)
-            if fparam.positional:
+            if fparam.positional or fparam.bare:
                 ser_field_positional[field] = (*fmode, keep_empty)
             else:
                 ser_field[field] = fparam.fname, (*fmode, keep_empty)
@@ -448,6 +452,10 @@ class AutoSerde:
                 case SerMode.BOOL:
                     (key_true, key_false) = mode_extra
                     append(key_true if field_val else key_false)
+                case SerMode.BOOL_FLAG_BARE:
+                    (invert, fname) = mode_extra
+                    if field_val ^ invert:
+                        append(fname)
                 case SerMode.INT:
                     append(str(field_val))
                 case SerMode.FLOAT:
@@ -528,9 +536,6 @@ class AutoSerde:
                 case SerMode.BOOL_FLAG:
                     if field_val ^ mode_extra:  # mode_extra = invert
                         append((fname,))
-                case SerMode.BOOL_FLAG_BARE:  # mode_extra = invert
-                    if field_val ^ mode_extra:
-                        append(fname)
                 case SerMode.INT:
                     append((fname, str(field_val)))
                 case SerMode.FLOAT:
