@@ -118,23 +118,10 @@ class JustifyH(str, AutoSerdeEnum):
     RIGHT = "right"
 
 
-class Justify(AutoSerde):
-    horizontal: JustifyH = F(JustifyH.CENTER, positional=True)
-    vertical: JustifyV = F(JustifyV.CENTER, positional=True)
-    mirror: bool = F(flag=True, bare=True)
-
-    @classmethod
-    def deserialize(cls, sexp: GeneralizedSexpr) -> Justify:
-        ret = cls()
-        if "mirror" in sexp:
-            ret.mirror = True
-        for x in [JustifyV.TOP, JustifyV.BOTTOM]:
-            if x.value in sexp:  # type: ignore
-                ret.vertical = x  # type: ignore
-        for x in [JustifyH.LEFT, JustifyH.RIGHT]:
-            if x.value in sexp:  # type: ignore
-                ret.horizontal = x  # type: ignore
-        return ret
+class Justify(AutoSerde, flag=True, bare=True):  # type: ignore
+    horizontal: JustifyH = F(JustifyH.CENTER)
+    vertical: JustifyV = F(JustifyV.CENTER)
+    mirror: bool = False
 
 
 class Effects(AutoSerde):
