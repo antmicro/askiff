@@ -1,6 +1,6 @@
-from __future__ import annotations  # noqa: I001
-from copy import copy
+from __future__ import annotations
 
+from copy import copy
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
@@ -8,6 +8,7 @@ from askiff.const import Version
 from askiff.kistruct.common import (
     Effects,
     EmbeddedFile,
+    Font,
     LibId,
     LibTable,
     PinType,
@@ -52,6 +53,45 @@ class PinShape(str, AutoSerdeEnum):
     INVERTED = "inverted"
 
 
+class PinAlternative(AutoSerde):
+    _askiff_key: ClassVar[str] = "alternate"
+    name: str = F(positional=True)
+    type: PinType = F(PinType.PASSIVE, positional=True, unquoted=True)
+    shape: PinShape = F(PinShape.LINE, positional=True)
+
+
+class PinName(AutoSerde):
+    value: str = F(positional=True)
+    """Value of the property"""
+
+    font: Font = F(nested=True, name="effects")
+    """Defines text size"""
+
+
+def _pin_number_deserialize(sexpr: GeneralizedSexpr) -> list[str]:
+    if not isinstance(sexpr, str):
+        raise TypeError("First element of `PinNumber` is expected to be a string")
+    return sexpr.strip("[]").split(",")
+
+
+def _pin_number_serialize(value: list[str]) -> GeneralizedSexpr:
+    match len(value):
+        case 0:
+            return (Qstr(),)
+        case 1:
+            return (Qstr(value[0]),)
+        case _:
+            return (Qstr("[" + ",".join(value) + "]"),)
+
+
+class PinNumber(AutoSerde):
+    value: list[str] = F(positional=True, serialize=_pin_number_serialize, deserialize=_pin_number_deserialize)
+    """Value of the property"""
+
+    font: Font = F(nested=True, name="effects")
+    """Defines text size"""
+
+
 class Pin(AutoSerde):
     _askiff_key: ClassVar[str] = "pin"
     type: PinType = F(PinType.PASSIVE, positional=True, unquoted=True)
@@ -59,6 +99,9 @@ class Pin(AutoSerde):
     position: Position = F(name="at")
     length: float = 1.27
     hide: bool | None = None
+    name: PinName = F()
+    number: PinNumber = F()
+    alternative_functions: list[PinAlternative] = F(flatten=True, name="alternate")
 
 
 class SymbolPartial(AutoSerde):

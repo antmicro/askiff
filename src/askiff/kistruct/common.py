@@ -97,6 +97,7 @@ class Size(AutoSerde, positional=True):  # type: ignore
 
 
 class Font(AutoSerde):
+    _askiff_key: ClassVar[str] = "font"
     face: str | None = None
     size: Size = F()
     thickness: float | None = None

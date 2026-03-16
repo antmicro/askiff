@@ -82,7 +82,11 @@ class AutoSerde:
 
             deserialize_override = fparam.fmeta.get("deserialize", None)
             if callable(deserialize_override):
-                deser_field[fparam.fname] = inline_wrap(field, DeserMode.DESERIALIZE_OVERRIDE, deserialize_override)
+                _mode = inline_wrap(field, DeserMode.DESERIALIZE_OVERRIDE, deserialize_override)
+                if fparam.positional:
+                    deser_field_positional.append(_mode)
+                else:
+                    deser_field[fparam.fname] = _mode
                 continue
 
             if fparam.agg:

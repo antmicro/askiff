@@ -8,6 +8,7 @@ from askiff.kistruct.common import (
     BaseCircle,
     BaseLine,
     BasePoly,
+    Color,
     DataBlockQuoted,
     Effects,
     Position,
@@ -97,8 +98,26 @@ class FillStylePCB(str, AutoSerdeEnum):
     SOLID = "yes"
 
 
-class FillStyleSch(AutoSerde):
-    pass
+class FillStyleSch(AutoSerdeDownCasting):
+    _AutoSerdeDownCasting__downcast_field: ClassVar[str] = "type"
+    type: str = F(unquoted=True)
+
+
+class FillStyleSchColor(FillStyleSch):
+    type: Final[str] = F("color", unquoted=True)  # type: ignore
+    color: Color = F()
+
+
+class FillStyleSchBackground(FillStyleSch):
+    type: Final[str] = F("background", unquoted=True)  # type: ignore
+
+
+class FillStyleSchOutline(FillStyleSch):
+    type: Final[str] = F("outline", unquoted=True)  # type: ignore
+
+
+class FillStyleSchNone(FillStyleSch):
+    type: Final[str] = F("none", unquoted=True)  # type: ignore
 
 
 ############################Arc############################
