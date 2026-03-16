@@ -9,7 +9,7 @@ from typing import Any, Generic, Self, TypeVar
 from .auto_serde import AutoSerdeFile
 from .const import TRACE, TRACE_DIS
 from .kistruct.board import Board
-from .kistruct.footprint import FootprintStandalone, LibTableFp
+from .kistruct.footprint import FootprintFile, LibTableFp
 from .kistruct.schematic import Schematic
 from .kistruct.symbol import LibSymbol, LibTableSym, SymbolFile
 
@@ -108,7 +108,7 @@ class AskiffLibSym:
 class AskiffLibFp:
     path: Path
     __initial_path: Path
-    objects: list[_LazyFile[FootprintStandalone]]
+    objects: list[_LazyFile[FootprintFile]]
 
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -117,7 +117,7 @@ class AskiffLibFp:
     def load(self, force: bool = False) -> Self:
         self.objects = []
         for path in self.path.glob("*.kicad_mod"):
-            self.objects.append(_LazyFile(FootprintStandalone, path, force))
+            self.objects.append(_LazyFile(FootprintFile, path, force))
         return self
 
     def save(self, path: Path | None = None) -> None:

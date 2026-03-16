@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING, Any, ClassVar, Final, cast
 
-from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeFile, F
+from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
 from askiff.const import Version
 from askiff.kistruct.common import (
     ComponentClass,
@@ -47,9 +47,14 @@ class FpProperty(Property):
     _effects = F()
 
 
+class FootprintType(str, AutoSerdeEnum):
+    SMD = "smd"
+    THT = "through_hole"
+    UNSPECIFIED = ""
+
+
 class Attributes(AutoSerde, flag=True, bare=True):  # type: ignore
-    smd: bool = F()
-    through_hole: bool = F()
+    fp_type: FootprintType = F(FootprintType.UNSPECIFIED)
     board_only: bool = F()
     exclude_from_pos_files: bool = F()
     exclude_from_bom: bool = F()
@@ -60,8 +65,8 @@ class Attributes(AutoSerde, flag=True, bare=True):  # type: ignore
     def __bool__(self) -> bool:
         return (
             any(getattr(self, f.name) for f in dataclasses.fields(self))
-            or bool(self._AutoSerde__extra)  # ty:ignore[unresolved-attribute]
-            or bool(self._AutoSerde__extra_positional)  # ty:ignore[unresolved-attribute]
+            or bool(self._AutoSerde__extra)  # type: ignore # ty:ignore[unresolved-attribute]
+            or bool(self._AutoSerde__extra_positional)  # type: ignore # ty:ignore[unresolved-attribute]
         )
 
 
@@ -217,14 +222,14 @@ class FootprintBoard(Footprint):
             self.ki_fp_filters = FpPropertyKiFpFilters(patterns=ki_fp_filters.value)
 
 
-class FootprintStandalone(Footprint, AutoSerdeFile):
-    version: int | None = F(Version.DEFAULT.fp, after="lib_id")
+class FootprintFile(Footprint, AutoSerdeFile):
+    version: int = F(Version.DEFAULT.fp, after="lib_id")
     """Defines the file format version"""
 
-    generator: str | None = Version.generator
+    generator: str = Version.generator
     """Defines the program used to write the file"""
 
-    generator_version: str | None = Version.generator_ver
+    generator_version: str = Version.generator_ver
     """Defines the program version used to write the file"""
 
 

@@ -23,7 +23,7 @@ class Position(AutoSerde):
 
     def serialize(self) -> GeneralizedSexpr:
         ang = self.angle
-        extra = self._AutoSerde__extra  # ty:ignore[unresolved-attribute]
+        extra = self._AutoSerde__extra  # type: ignore # ty:ignore[unresolved-attribute]
         if ang is None:
             return (f"{self.x:.6f}".rstrip("0").rstrip("."), f"{self.y:.6f}".rstrip("0").rstrip("."), *(extra or ()))
         return (
@@ -36,14 +36,14 @@ class Position(AutoSerde):
     @classmethod
     def deserialize(cls, sexp: GeneralizedSexpr) -> Position:
         x, y, *extra = sexp
-        ret = Position(float(x), float(y))
+        ret = Position(float(x), float(y))  # type: ignore
         if extra:
             try:
-                ret.angle = float(extra[0])
+                ret.angle = float(extra[0])  # type: ignore
                 extra = extra[1:]
             except ValueError:
                 pass
-            ret._AutoSerde__extra = extra  # ty:ignore[unresolved-attribute]
+            ret._AutoSerde__extra = extra  # type: ignore # ty:ignore[unresolved-attribute]
         return ret
 
 
@@ -179,8 +179,8 @@ class PropertyList(Generic[T], list[T]):
     def ref(self) -> T:
         return next(p for p in self if p.name == "Reference")
 
-    def get(self, name: str) -> T | None:
-        return next((prop for prop in self if prop.name == name), None)
+    def get(self, name: str, default: T | None = None) -> T | None:
+        return next((prop for prop in self if prop.name == name), default)
 
     def pop(self, name: str) -> T | None:  # type: ignore  # ty:ignore[invalid-method-override]
         idx = next((idx for idx, prop in enumerate(self) if prop.name == name), None)
@@ -207,9 +207,12 @@ class DataBlock(bytearray):
     @classmethod
     def deserialize(cls, sexp: GeneralizedSexpr) -> DataBlock:
         ret = DataBlock()
+        assert isinstance(sexp[0], str)
         ret.extend(base64.b64decode(sexp[0].lstrip("|")))
         for s in sexp[1:-1]:
+            assert isinstance(s, str)
             ret.extend(base64.b64decode(s))
+        assert isinstance(sexp[-1], str)
         ret.extend(base64.b64decode(sexp[-1].rstrip("|")))
         return ret
 
@@ -228,6 +231,7 @@ class DataBlockQuoted(bytearray):
     def deserialize(cls, sexp: GeneralizedSexpr) -> DataBlockQuoted:
         ret = DataBlockQuoted()
         for s in sexp:
+            assert isinstance(s, str)
             ret.extend(base64.b64decode(s))
         return ret
 

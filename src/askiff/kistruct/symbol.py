@@ -189,13 +189,13 @@ class SymbolSchematic(AutoSerde):
 class SymbolFile(AutoSerdeFile):
     _askiff_key: ClassVar[str] = "kicad_symbol_lib"
 
-    version: int | None = F(Version.DEFAULT.sym, after="lib_id")
+    version: int = F(Version.DEFAULT.sym, after="lib_id")
     """Defines the file format version"""
 
-    generator: str | None = Version.generator
+    generator: str = Version.generator
     """Defines the program used to write the file"""
 
-    generator_version: str | None = Version.generator_ver
+    generator_version: str = Version.generator_ver
     """Defines the program version used to write the file"""
 
     symbols: list[LibSymbol] = F(flatten=True, name="symbol")

@@ -22,7 +22,7 @@ class SerdeOpt(TypedDict, total=False):
     """Field is serialized without id: `serialized` instead `(id serialized)`"""
     name: str
     """Override id used in file, by default id == field_name"""
-    name_case: str
+    name_case: str | None
     """Convert field name using following case rule (supported rules: lower)"""
     bare: bool
     """Item shall not be surrounded by parenthesis: `field_name (k v)` instead `(field_name (k v))`

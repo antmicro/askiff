@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import dataclasses
 import logging
 from collections.abc import Iterable
 from copy import deepcopy
@@ -15,7 +14,6 @@ from askiff.sexpr import GeneralizedSexpr, Qstr, Sexpr
 from .helpers import (
     DeserMode,
     DeserModWExtra,
-    F,
     GeneratorParams,
     SerdeOpt,
     SerMode,
@@ -27,7 +25,9 @@ from .helpers import (
 log = logging.getLogger()
 
 
-@dataclass_transform(field_specifiers=(F, dataclasses.field))
+# `field_specifiers` should be specified but then mypy complains about default inference in F()
+# @dataclass_transform(field_specifiers=(F, dataclasses.field))
+@dataclass_transform()
 class AutoSerde:
     """
     Base class that adds serialize/deserialize functions based on field typing and F() objects passed as field defaults
@@ -243,6 +243,8 @@ class AutoSerde:
                 continue
 
             node_name, *nodes = node
+            if not isinstance(node_name, str):
+                raise TypeError(f"First element of expression entry is expected to be a string: {node_name}")
 
             field, mode, mode_extra = deser_map.get(
                 node_name,
@@ -268,8 +270,12 @@ class AutoSerde:
                 case DeserMode.BOOL:
                     setattr(ret, field, nodes in mode_extra)
                 case DeserMode.INT:
+                    if not isinstance(nodes[0], str):
+                        raise TypeError(f"Expected {node_name} to be `int`, is {nodes[0]}")
                     setattr(ret, field, int(nodes[0]))
                 case DeserMode.FLOAT:
+                    if not isinstance(nodes[0], str):
+                        raise TypeError(f"Expected {node_name} to be `float`, is {nodes[0]}")
                     setattr(ret, field, float(nodes[0]))
                 case DeserMode.STR:
                     setattr(ret, field, str(nodes[0]))
@@ -289,8 +295,12 @@ class AutoSerde:
                         case DeserMode.BOOL:
                             list_obj.append(nodes in mode_extra)
                         case DeserMode.INT:
+                            if not isinstance(nodes[0], str):
+                                raise TypeError(f"Expected {node_name} to be `int`, is {nodes[0]}")
                             list_obj.append(int(nodes[0]))
                         case DeserMode.FLOAT:
+                            if not isinstance(nodes[0], str):
+                                raise TypeError(f"Expected {node_name} to be `float`, is {nodes[0]}")
                             list_obj.append(float(nodes[0]))
                         case DeserMode.STR:
                             list_obj.append(str(nodes[0]))
@@ -305,7 +315,7 @@ class AutoSerde:
                         list_obj = constructor()
                         list_obj = []
                         setattr(ret, field, list_obj)
-                    list_obj.extend(agg_map.get(n, Sexpr).deserialize(ns) for n, *ns in nodes)
+                    list_obj.extend(agg_map.get(n, Sexpr).deserialize(ns) for n, *ns in nodes)  # type: ignore
 
                 case DeserMode.LIST:
                     list_obj = getattr(ret, field, None)
@@ -321,9 +331,13 @@ class AutoSerde:
                         case DeserMode.BOOL:
                             list_obj.extend((n in mode_extra) for n in nodes)
                         case DeserMode.INT:
-                            list_obj.extend(int(n) for n in nodes)
+                            if not all(isinstance(n, str) for n in nodes):
+                                raise TypeError(f"Expected objects in {node_name} to be `int`, is {nodes}")
+                            list_obj.extend(int(n) for n in nodes)  # type: ignore
                         case DeserMode.FLOAT:
-                            list_obj.extend(float(n) for n in nodes)
+                            if not all(isinstance(n, str) for n in nodes):
+                                raise TypeError(f"Expected objects in {node_name} to be `float`, is {nodes}")
+                            list_obj.extend(float(n) for n in nodes)  # type: ignore
                         case DeserMode.STR:
                             list_obj.extend(str(n) for n in nodes)
                         case DeserMode.ENUM:
@@ -344,7 +358,7 @@ class AutoSerde:
                 case _:
                     if ret.__extra is None:
                         ret.__extra = Sexpr()
-                    ret.__extra.append(node)
+                    ret.__extra.append(node)  # type: ignore
                     log.warning(f" Unknown node: `{node_name}`", extra={"amodule": cls.__name__})
                     log.debug(node, extra={"amodule": cls.__name__})
             if inlined:
@@ -436,8 +450,8 @@ class AutoSerde:
         ret: GeneralizedSexpr = []
         askiff_pre_ser = getattr(self, "_askiff_pre_ser", None)
         _self = askiff_pre_ser() if askiff_pre_ser else self
-        append = ret.append
-        extend = ret.extend
+        append = ret.append  # type: ignore
+        extend = ret.extend  # type: ignore
         for field, (fmode, mode_extra, force_empty) in _self.__ser_field_positional.items():
             field_val = getattr(_self, field, None)
             if not field_val:

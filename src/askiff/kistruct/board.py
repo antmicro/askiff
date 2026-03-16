@@ -47,9 +47,9 @@ class StackupLayerDielectricSubLayer(AutoSerde):
     def _askiff_pre_ser(self) -> StackupLayerDielectricSubLayer:
         if self.locked:
             ret = copy(self)
-            ret._AutoSerde__ser_field = deepcopy(self._AutoSerde__ser_field)  # ty:ignore[unresolved-attribute]
-            ret._AutoSerde__ser_field["thickness"] = "thickness", (SerMode.SERIALIZE, None, True)  # ty:ignore[unresolved-attribute]
-            ret.thickness = Sexpr((str(self.thickness), "locked"))  # ty:ignore[invalid-assignment]
+            ret._AutoSerde__ser_field = deepcopy(self._AutoSerde__ser_field)  # type: ignore # ty:ignore[unresolved-attribute]
+            ret._AutoSerde__ser_field["thickness"] = "thickness", (SerMode.SERIALIZE, None, True)  # type: ignore # ty:ignore[unresolved-attribute]
+            ret.thickness = Sexpr((str(self.thickness), "locked"))  # type: ignore # ty:ignore[invalid-assignment]
             return ret
         return self
 
@@ -61,7 +61,7 @@ class StackupLayerDielectric(StackupLayer):
 
     @classmethod
     def deserialize(cls, sexp: GeneralizedSexpr) -> StackupLayerDielectric:
-        ret = StackupLayerDielectric(layer="")
+        ret = StackupLayerDielectric(layer="")  # type: ignore
         for node in sexp:
             if isinstance(node, str):
                 if node == "addsublayer":
@@ -69,27 +69,30 @@ class StackupLayerDielectric(StackupLayer):
                 elif not ret.layer:
                     ret.layer = node
                 else:
-                    if ret._AutoSerde__extra_positional is None:  # ty:ignore[unresolved-attribute]
-                        ret._AutoSerde__extra_positional = Sexpr()  # ty:ignore[unresolved-attribute]
-                    ret._AutoSerde__extra_positional.append(node)  # ty:ignore[unresolved-attribute]
+                    if ret._AutoSerde__extra_positional is None:  # type: ignore # ty:ignore[unresolved-attribute]
+                        ret._AutoSerde__extra_positional = Sexpr()  # type: ignore # ty:ignore[unresolved-attribute]
+                    ret._AutoSerde__extra_positional.append(node)  # type: ignore # ty:ignore[unresolved-attribute]
                     log.warning(f" Unexpected positional node: `{node}`", extra={"amodule": cls.__name__})
                 continue
             node_name, *node_val = node
             match node_name:
                 case "type":
+                    assert isinstance(node_val[0], str)
                     ret.type = node_val[0]
                 case "color" | "material":
                     setattr(ret.sublayers[-1], node_name, node_val[0])
                 case "epsilon_r" | "loss_tangent":
+                    assert isinstance(node_val[0], str)
                     setattr(ret.sublayers[-1], node_name, float(node_val[0]))
                 case "thickness":
+                    assert isinstance(node_val[0], str)
                     ret.sublayers[-1].thickness = float(node_val[0])
-                    if node_val[1:]:
-                        ret.sublayers[-1].locked = node_val[1]
+                    if node_val[1:] and node_val[1] == "locked":
+                        ret.sublayers[-1].locked = True
                 case _:
-                    if ret._AutoSerde__extra is None:  # ty:ignore[unresolved-attribute]
-                        ret._AutoSerde__extra = Sexpr()  # ty:ignore[unresolved-attribute]
-                    ret._AutoSerde__extra.append(node)  # ty:ignore[unresolved-attribute]
+                    if ret._AutoSerde__extra is None:  # type: ignore # ty:ignore[unresolved-attribute]
+                        ret._AutoSerde__extra = Sexpr()  # type: ignore # ty:ignore[unresolved-attribute]
+                    ret._AutoSerde__extra.append(node)  # type: ignore # ty:ignore[unresolved-attribute]
                     log.warning(f" Unexpected node: `{node_name}`", extra={"amodule": cls.__name__})
                     log.debug(node, extra={"amodule": cls.__name__})
         return ret
@@ -97,13 +100,13 @@ class StackupLayerDielectric(StackupLayer):
     def serialize(self) -> GeneralizedSexpr:
         ret = [
             Qstr(self.layer),
-            *(self._AutoSerde__extra_positional or ()),  # ty:ignore[unresolved-attribute]
+            *(self._AutoSerde__extra_positional or ()),  # type: ignore # ty:ignore[unresolved-attribute]
             ("type", Qstr(self.type)),
             *(self.sublayers[0].serialize()),
         ]
         for sublayer in self.sublayers[1:]:
             ret.extend(("addsublayer", *(sublayer.serialize())))
-        ret.extend(self._AutoSerde__extra or ())  # ty:ignore[unresolved-attribute]
+        ret.extend(self._AutoSerde__extra or ())  # type: ignore # ty:ignore[unresolved-attribute]
         return ret
 
 
@@ -264,8 +267,8 @@ class ViaTenting(AutoSerde):
             return (
                 *(("front",) if self.front else ()),
                 *(("back",) if self.back else ()),
-                *(self._AutoSerde__extra_positional or ()),  # ty:ignore[unresolved-attribute]
-                *(self._AutoSerde__extra or ()),  # ty:ignore[unresolved-attribute]
+                *(self._AutoSerde__extra_positional or ()),  # type: ignore # ty:ignore[unresolved-attribute]
+                *(self._AutoSerde__extra or ()),  # type: ignore # ty:ignore[unresolved-attribute]
             )
 
         if not self.front and not self.back:
@@ -274,10 +277,10 @@ class ViaTenting(AutoSerde):
             front = "yes" if self.front else "none"
             back = "yes" if self.back else "none"
         return (
-            *(self._AutoSerde__extra_positional or ()),  # ty:ignore[unresolved-attribute]
+            *(self._AutoSerde__extra_positional or ()),  # type: ignore # ty:ignore[unresolved-attribute]
             ("front", front),
             ("back", back),
-            *(self._AutoSerde__extra or ()),  # ty:ignore[unresolved-attribute]
+            *(self._AutoSerde__extra or ()),  # type: ignore # ty:ignore[unresolved-attribute]
         )
 
 
@@ -323,24 +326,24 @@ class Generated(AutoSerdeDownCasting):
     type: str = F(unquoted=True)
 
 
-class GeneratedTunningInitialSide(Qstr, AutoSerdeEnum):
+class GeneratedTuningInitialSide(Qstr, AutoSerdeEnum):
     RIGHT = "right"
     LEFT = "left"
 
 
-class GeneratedTunningStatus(Qstr, AutoSerdeEnum):
+class GeneratedTuningStatus(Qstr, AutoSerdeEnum):
     TOO_LONG = "too_long"
     TOO_SHORT = "too_short"
     TUNED = "tuned"
 
 
-class GeneratedTunningMode(Qstr, AutoSerdeEnum):
+class GeneratedTuningMode(Qstr, AutoSerdeEnum):
     BETWEEN_PAIRS = "diff_pair"
     INSIDE_PAIR = "diff_pair_skew"
     SINGLE_TRACE = "single"
 
 
-class GeneratedTunningPattern(Generated, Group):
+class GeneratedTuningPattern(Generated, Group):
     _uuid = F()
     type: Final[str] = F("tuning_pattern", unquoted=True)  # type: ignore
 
@@ -361,32 +364,32 @@ class GeneratedTunningPattern(Generated, Group):
     """The ``cornerRadius`` token defines the radius of the corner"""
 
     end: Position = F(nested=True)
-    """Ending point of tunning region"""
+    """Ending point of tuning region"""
 
-    initial_side: GeneratedTunningInitialSide = F(GeneratedTunningInitialSide.LEFT)
+    initial_side: GeneratedTuningInitialSide = F(GeneratedTuningInitialSide.LEFT)
     """Indicates on which track side is first meander"""
 
     is_time_domain: bool | None = None
-    """Is tunnig is resolved in time domain (opposing to length domain)"""
+    """Is tunig is resolved in time domain (opposing to length domain)"""
 
     last_diff_pair_gap: float = 0
-    """Gap of diff pair of the tuned track (as of last tunning refresh)"""
+    """Gap of diff pair of the tuned track (as of last tuning refresh)"""
 
     last_netname: str = ""
-    """Net name of track (as of last tunning refresh)"""
+    """Net name of track (as of last tuning refresh)"""
 
-    last_status: GeneratedTunningStatus = F(GeneratedTunningStatus.TUNED)
-    """Status of the tuned track (as of last tunning refresh)"""
+    last_status: GeneratedTuningStatus = F(GeneratedTuningStatus.TUNED)
+    """Status of the tuned track (as of last tuning refresh)"""
 
     last_track_width: float = 0
-    """Width of the tuned track (as of last tunning refresh)"""
+    """Width of the tuned track (as of last tuning refresh)"""
 
     last_tuning: str | None = None
-    """[K10:Deprecated] Length of the tuned track (as of last tunning refresh), 
+    """[K10:Deprecated] Length of the tuned track (as of last tuning refresh), 
     stores sth like `"20.8195 mm (too short)"`"""
 
     last_tuning_length: float | None = None
-    """Length of the tuned track (as of last tunning refresh)"""
+    """Length of the tuned track (as of last tuning refresh)"""
 
     max_amplitude: float = 0
     """Maximal amplitude of meander"""
@@ -398,7 +401,7 @@ class GeneratedTunningPattern(Generated, Group):
     """Minimal spacing between meanders"""
 
     origin: Position = F(nested=True)
-    """Starting point of tunning region"""
+    """Starting point of tuning region"""
 
     override_custom_rules: bool = False
 
@@ -426,8 +429,8 @@ class GeneratedTunningPattern(Generated, Group):
 
     target_skew_min: float = 0
 
-    tuning_mode: GeneratedTunningMode = F(GeneratedTunningMode.SINGLE_TRACE)
-    """Mode of tunnig pattern"""
+    tuning_mode: GeneratedTuningMode = F(GeneratedTuningMode.SINGLE_TRACE)
+    """Mode of tunig pattern"""
 
     _members = F()
     """Uuids of trace primitives that were generated by this object"""
@@ -608,7 +611,7 @@ class BoardSetup(AutoSerde):
     filling: bool | None = None
     """Boardwide via filling option"""
 
-    zone_defaults: list[BoardSetupZoneDefault] = F(netsted=True)
+    zone_defaults: list[BoardSetupZoneDefault] = F(nested=True)
 
     aux_axis_origin: Position | None = None
     """Auxiliary origin if other than (0,0)."""
@@ -623,13 +626,13 @@ class BoardSetup(AutoSerde):
 class Board(AutoSerdeFile):
     _askiff_key: ClassVar[str] = "kicad_pcb"
 
-    version: int | None = Version.DEFAULT.pcb
+    version: int = Version.DEFAULT.pcb
     """Defines the file format version"""
 
-    generator: str | None = Version.generator
+    generator: str = Version.generator
     """Defines the program used to write the file"""
 
-    generator_version: str | None = Version.generator_ver
+    generator_version: str = Version.generator_ver
     """Defines the program version used to write the file"""
 
     general: Sexpr = F()
@@ -667,7 +670,7 @@ class Board(AutoSerdeFile):
     """List of object groups in the footprint"""
 
     generated: list[Generated] = F(flatten=True)
-    """List of generated objects (eg. tunning patterns) in the footprint"""
+    """List of generated objects (eg. tuning patterns) in the footprint"""
 
     embedded_fonts: bool = F()
     """Indicates whether there are fonts embedded into this component"""

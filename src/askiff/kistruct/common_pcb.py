@@ -185,7 +185,7 @@ LayerCopper = Literal[
     Layer.CU_IN20,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
 ]
 
-TL = TypeVar("TL", LayerUser, Layer)
+TL = TypeVar("TL", LayerCopper, LayerUser, Layer)
 
 
 class LayerSet(Generic[TL], set[TL]):
@@ -241,7 +241,7 @@ class Net(AutoSerde):
     def deserialize(cls, sexp: GeneralizedSexpr) -> Net:
         if isinstance(sexp[0], Qstr):
             return cls(name=sexp[0])
-        return cls(int(sexp[0]), sexp[1] if len(sexp) > 1 else None)
+        return cls(int(sexp[0]), sexp[1] if len(sexp) > 1 else None)  # type: ignore
 
 
 ###########################Zone############################

@@ -27,7 +27,7 @@ dependencies = []
 askiff = "askiff.main:main"
 
 [project.optional-dependencies]
-dev = ["mypy==1.19.1", "ruff==0.15.4", "ty==0.0.20"]
+dev = ["mypy==1.19.1", "ruff==0.15.4", "ty==0.0.23"]
 
 [tool.ruff.lint]
 select = ["E", "F", "N", "B", "A", "RET", "UP", "I", "RUF", "ANN"]

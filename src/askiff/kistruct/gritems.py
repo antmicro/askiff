@@ -43,7 +43,7 @@ class GrItem(AutoSerde):
         "uuid",
         "data",
     ]
-    uuid: Uuid = F()
+    uuid: Uuid | None = None
 
     @classmethod
     def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:  # type: ignore
@@ -505,12 +505,12 @@ class GrTable(AutoSerde):
 
 
 class GrTableSch(GrTable):
-    cells: list[TableCellSch] = F()
+    cells: list[TableCellSch] = F()  # type: ignore
 
 
 class GrTablePCB(GrTable):
     layer: Layer = Layer.COMMENTS
-    cells: list[TableCellPCB] = F()
+    cells: list[TableCellPCB] = F()  # type: ignore
 
 
 ########################Dimensions#########################

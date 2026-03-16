@@ -16,7 +16,7 @@ class Qstr(str):
     pass
 
 
-class Sexpr(list[Union["Sexpr", str]]):
+class Sexpr(list[Union["GeneralizedSexpr", str]]):
     __re_pattern: ClassVar = r"""
         # This `()` creates matching group it will match one of contained sub groups
         # retrieve matched string with match.group(1)
