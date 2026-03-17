@@ -17,7 +17,7 @@ from askiff.auto_serde import (
 from askiff.const import Version
 from askiff.kistruct.common import BaseArc, BaseLine, BasePoly, EmbeddedFile, Group, Paper, Position, TitleBlock, Uuid
 from askiff.kistruct.common_pcb import Layer, LayerCopper, LayerFunction, LayerSet, Net, Point, Zone
-from askiff.kistruct.footprint import FootprintBoard
+from askiff.kistruct.footprint import Footprint, FootprintBoard
 from askiff.kistruct.fp_pad import AfterDrill, DrillPostMatching, PadStackMode, TeardropSettings
 from askiff.kistruct.gritems import Barcode, Dimension, GrItemPCB, GrTablePCB
 from askiff.sexpr import GeneralizedSexpr, Qstr, Sexpr
@@ -677,3 +677,13 @@ class Board(AutoSerdeFile):
 
     embedded_files: list[EmbeddedFile] = F()
     """Stores data of embedded files, eg. fonts, 3d-models"""
+
+    def add_footprint(self, fp: Footprint, reference: str | None = None, position: Position | None = None) -> None:
+        # Note: deepcopy is used to regenerate uuid's
+        fp_brd = FootprintBoard(
+            **{k: deepcopy(v) for k, v in fp.__dict__.items() if k in FootprintBoard.__dataclass_fields__}
+        )
+        if reference:
+            fp_brd.properties.ref.value = reference
+        fp_brd.position = position or Position()
+        self.footprints.append(fp_brd)
