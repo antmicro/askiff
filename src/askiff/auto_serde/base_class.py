@@ -191,8 +191,8 @@ class AutoSerde:
                 field, mode, mode_extra = (
                     deser_map_pos[pos_idx]
                     if pos_idx < len(deser_map_pos)
-                    # bellow cast is to trick typecheckers, we are ensuring correct
-                    # types/method availability on __init_deserialzier level
+                    # below cast is to trick typecheckers, we are ensuring correct
+                    # types/method availability on __init_deserializer level
                     else ("", DeserMode.UNSUPPORTED, cast(Any, None))
                 )
                 match mode:
@@ -242,8 +242,8 @@ class AutoSerde:
 
             field, mode, mode_extra = deser_map.get(
                 node_name,
-                # bellow cast is to trick typecheckers, we are ensuring correct
-                # types/method availability on __init_deserialzier level
+                # below cast is to trick typecheckers, we are ensuring correct
+                # types/method availability on __init_deserializer level
                 ("", DeserMode.UNSUPPORTED, cast(Any, None)),
             )
             inlined = mode == DeserMode.INLINED
@@ -454,7 +454,7 @@ class AutoSerde:
                     append(key_true if field_val else key_false)
                 case SerMode.BOOL_FLAG_BARE:
                     (invert, fname) = mode_extra
-                    if field_val ^ invert:
+                    if field_val != invert:
                         append(fname)
                 case SerMode.INT:
                     append(str(field_val))
@@ -534,7 +534,7 @@ class AutoSerde:
                     (key_true, key_false) = mode_extra
                     append(Sexpr((fname, key_true if field_val else key_false)))
                 case SerMode.BOOL_FLAG:
-                    if field_val ^ mode_extra:  # mode_extra = invert
+                    if field_val != mode_extra:  # mode_extra = invert
                         append((fname,))
                 case SerMode.INT:
                     append((fname, str(field_val)))
