@@ -68,24 +68,24 @@ class PinName(AutoSerde):
     """Defines text size"""
 
 
-def _pin_number_deserialize(sexpr: GeneralizedSexpr) -> list[str]:
-    if not isinstance(sexpr, str):
-        raise TypeError("First element of `PinNumber` is expected to be a string")
-    return sexpr.strip("[]").split(",")
-
-
-def _pin_number_serialize(value: list[str]) -> GeneralizedSexpr:
-    match len(value):
-        case 0:
-            return (Qstr(),)
-        case 1:
-            return (Qstr(value[0]),)
-        case _:
-            return (Qstr("[" + ",".join(value) + "]"),)
-
-
 class PinNumber(AutoSerde):
-    value: list[str] = F(positional=True, serialize=_pin_number_serialize, deserialize=_pin_number_deserialize)
+    @staticmethod
+    def __value_deserialize(sexpr: GeneralizedSexpr) -> list[str]:
+        if not isinstance(sexpr, str):
+            raise TypeError("First element of `PinNumber` is expected to be a string")
+        return sexpr.strip("[]").split(",")
+
+    @staticmethod
+    def __value_serialize(value: list[str]) -> GeneralizedSexpr:
+        match len(value):
+            case 0:
+                return (Qstr(),)
+            case 1:
+                return (Qstr(value[0]),)
+            case _:
+                return (Qstr("[" + ",".join(value) + "]"),)
+
+    value: list[str] = F(positional=True, serialize=__value_serialize, deserialize=__value_deserialize)
     """Value of the property"""
 
     font: Font = F(nested=True, name="effects")
