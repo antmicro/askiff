@@ -14,6 +14,7 @@ from askiff.const import Version
 from askiff.sexpr import Sexpr
 
 from .base_class import AutoSerde, _askiff_opts_default, _askiff_opts_version_map
+from .helpers import F
 
 log = logging.getLogger()
 
@@ -55,6 +56,7 @@ class AutoSerdeFile(AutoSerde):
     _askiff_key: ClassVar[str]
     version: int
     _version: int = 0
+    _post_final_deser_objects: list = F(list)
     """This version field is set on (global) class level, and used for simple access to version in any place"""
     _fs_path: Path | None = None
     __version_map: ClassVar[dict[str, str]] = {
@@ -83,8 +85,12 @@ class AutoSerdeFile(AutoSerde):
             vmin, vmax = getattr(Version.MIN, ver_key), getattr(Version.MAX, ver_key)
             if vmin <= ver <= vmax:
                 with _file_serde_lock:
+                    AutoSerdeFile._post_final_deser_objects = []
                     _setup_versioned_serde_environment(ver, vmax)
                     ret = cls.deserialize(Sexpr(sexp[1:]))
+                    for obj in AutoSerdeFile._post_final_deser_objects:
+                        obj._post_final_deser(ret)
+
                 ret._fs_path = path
                 return ret
             raise Exception(

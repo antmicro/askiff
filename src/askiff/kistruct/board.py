@@ -16,7 +16,7 @@ from askiff.auto_serde import (
 )
 from askiff.const import Version
 from askiff.kistruct.common import BaseArc, BaseLine, BasePoly, EmbeddedFile, Group, Paper, Position, TitleBlock, Uuid
-from askiff.kistruct.common_pcb import Layer, LayerCopper, LayerFunction, LayerSet, Net, Point, Zone
+from askiff.kistruct.common_pcb import Layer, LayerCopper, LayerFunction, LayerSet, Net, NetSimple, Point, Zone
 from askiff.kistruct.footprint import Footprint, FootprintBoard
 from askiff.kistruct.fp_pad import AfterDrill, DrillPostMatching, PadStackMode, TeardropSettings
 from askiff.kistruct.gritems import Barcode, Dimension, GrItemPCB, GrTablePCB
@@ -227,7 +227,7 @@ class TraceBase(AutoSerde):
     locked: bool | None = None
     layers: LayerSet[Layer] = F()
     solder_mask_margin: float | None = None
-    net: Net = F()
+    net: NetSimple = F()
     uuid: Uuid = F()
 
     @classmethod

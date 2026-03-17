@@ -319,7 +319,7 @@ def resolve_serialization_order(cls: type, field_meta: dict[str, SerdeOpt]) -> l
         if name.startswith("_") and name[1:] in field_meta:
             ser_order.insert(ser_order_idx, name[1:])
             ser_order_idx += 1
-        elif name.startswith("_") and "name" in options:
+        elif name.startswith("_") and ("name" in options or options.get("positional", False)):
             ser_order.insert(ser_order_idx, name)
             ser_order_idx += 1
         elif not name.startswith("_"):
@@ -343,15 +343,18 @@ def preprocess_cls_fields(cls: type) -> tuple[dict[str, type], dict[str, SerdeOp
     returns (type_hints, field metadata)
     """
     type_hints = get_type_hints(cls)
-    field_meta = {}
+    field_meta: dict[str, SerdeOpt] = {}
     cls_askiff_dict = _askiff_dict.setdefault(cls, {})
 
     parent_dict = _resolve_mro_askiff_dict(cls)
 
     for name, value in (parent_dict | cls.__dict__).items():
         if name.startswith("_"):
-            field_meta[name] = value.options if isinstance(value, F) else {}
-            continue
+            if not isinstance(value, F):
+                field_meta[name] = {}
+                continue
+            if name[1:] in parent_dict:
+                field_meta[name] = value.options
 
         if name not in type_hints:
             continue

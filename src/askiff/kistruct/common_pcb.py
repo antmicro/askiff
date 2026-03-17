@@ -4,8 +4,8 @@ from collections.abc import Iterable
 from enum import EnumMeta
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, TypeVar, cast
 
-from askiff.auto_serde import AutoSerde, AutoSerdeEnum, F
-from askiff.const import KICAD_MAX_LAYER_CU, KICAD_MAX_LAYER_USER
+from askiff.auto_serde import AutoSerde, AutoSerdeEnum, AutoSerdeFile, F
+from askiff.const import KICAD_MAX_LAYER_CU, KICAD_MAX_LAYER_USER, Version
 from askiff.kistruct.common import BasePoly, Position, Uuid
 from askiff.sexpr import GeneralizedSexpr, Qstr, Sexpr
 
@@ -230,18 +230,34 @@ class BoardSide(Qstr, AutoSerdeEnum):
     BACK = "B.Cu"
 
 
-class Net(AutoSerde):
-    number: int | None = F(positional=True)
+class NetBase:
+    name: str
+
+
+class Net(NetBase, AutoSerde):
+    _number: int | None = F(positional=True, skip=True).version(Version.K9.pcb, skip=False)
     """Net identifier eg. `0` [Deprecated in K10]"""
 
-    name: str | None = F(positional=True)
+    name: str = F(positional=True)
     """Net name eg. `"GND"`"""
 
-    @classmethod
-    def deserialize(cls, sexp: GeneralizedSexpr) -> Net:
-        if isinstance(sexp[0], Qstr):
-            return cls(name=sexp[0])
-        return cls(int(sexp[0]), sexp[1] if len(sexp) > 1 else None)  # type: ignore
+
+class NetSimple(NetBase, AutoSerde):
+    _number: int | None = F(positional=True, skip=True).version(Version.K9.pcb, skip=False)
+    """Net identifier eg. `0` [Deprecated in K10]"""
+    name: str = F(positional=True).version(Version.K9.pcb, skip=True)  # type: ignore
+    """Net name eg. `"GND"`"""
+
+    def _askiff_post_deser(self) -> None:
+        AutoSerdeFile._post_final_deser_objects.append(self)
+
+    def _post_final_deser(self, root_object) -> None:  # type: ignore # noqa: ANN001
+        """Retrieve net name from board level net map, after whole board is deserialized"""
+        # Note: annotation skipped to prevent circular imports
+        if self.name is not None or not hasattr(root_object, "nets"):
+            return
+        nr = self._number
+        self.name = next((net.name for net in root_object.nets or () if net._number == nr), "Unknown")
 
 
 ###########################Zone############################
@@ -387,7 +403,7 @@ class ZonePadConnection(AutoSerde):
 
 
 class Zone(AutoSerde):
-    net: Net | None = None
+    net: NetSimple | None = None
     net_name: str | None = None
     locked: bool | None = None
     layers: LayerSet[Layer] = F()

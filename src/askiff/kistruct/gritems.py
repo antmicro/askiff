@@ -18,7 +18,7 @@ from askiff.kistruct.common import (
     Stroke,
     Uuid,
 )
-from askiff.kistruct.common_pcb import Layer, LayerSet, Net
+from askiff.kistruct.common_pcb import Layer, LayerSet, NetSimple
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore
@@ -101,7 +101,7 @@ class GrShapeFp(_GrShapePCBFp, GrItemFp):
 
 
 class GrShapePCB(_GrShapePCBFp, GrItemPCB):
-    net: Net | None = None
+    net: NetSimple | None = None
     locked: bool | None = None
 
 
