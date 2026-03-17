@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from os import PathLike
 from pathlib import Path
 from typing import (
     ClassVar,
@@ -66,7 +67,8 @@ class AutoSerdeFile(AutoSerde):
     }
 
     @classmethod
-    def from_file(cls, path: Path) -> Self:
+    def from_file(cls, path: PathLike) -> Self:
+        path = Path(path)
         with _Timer(f"Load `{path}`"):
             sexp = Sexpr.from_file(path)
             askiff_key = cls._askiff_key
@@ -89,8 +91,8 @@ class AutoSerdeFile(AutoSerde):
                 f"{cls.__name__}: File {path} has unsupported version (Expects: {vmin}-{vmax}, File: {ver})"
             )
 
-    def to_file(self, path: Path | None = None) -> None:
-        path = path if path else self._fs_path
+    def to_file(self, path: PathLike | None = None) -> None:
+        path = Path(path) if path else self._fs_path
         with _Timer(f"Save `{path}`"):
             ver_key = self.__version_map[self._askiff_key]
             latest_version = getattr(Version.MAX, ver_key)

@@ -53,7 +53,7 @@ class Layer(Qstr, AutoSerdeEnum, metaclass=__LayerMeta):
     MASK_F = "F.Mask"
     MASK_B = "B.Mask"
     MASK_ALL = "*.Mask"
-    EDGE = "Edge.Cuts"
+    EDGE_CUTS = "Edge.Cuts"
     MARGIN = "Margin"
     COURTYARD_F = "F.CrtYd"
     COURTYARD_B = "B.CrtYd"
@@ -111,7 +111,7 @@ _layer_order_dict: dict[Layer, int] = {
     Layer.MASK_F: 1,
     Layer.MASK_B: 3,
     Layer.MASK_ALL: 1,
-    Layer.EDGE: 25,
+    Layer.EDGE_CUTS: 25,
     Layer.MARGIN: 27,
     Layer.COURTYARD_F: 31,
     Layer.COURTYARD_B: 29,

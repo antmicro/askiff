@@ -189,9 +189,9 @@ class FootprintBoard(Footprint):
 
     placed: bool | None = None
 
-    uuid: Uuid | None = F(after="side")
+    uuid: Uuid = F(after="side")
 
-    position: Position | None = F(name="at")
+    position: Position = F(name="at")
     """Defines the X and Y coordinates and rotation of the footprint"""
 
     autoplace_cost90: int | None = F(after="tags")
