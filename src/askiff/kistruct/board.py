@@ -77,15 +77,18 @@ class StackupLayerDielectric(StackupLayer):
             node_name, *node_val = node
             match node_name:
                 case "type":
-                    assert isinstance(node_val[0], str)
+                    if not isinstance(node_val[0], str):
+                        raise TypeError("Stackup Layer type is expected to be string")
                     ret.type = node_val[0]
                 case "color" | "material":
                     setattr(ret.sublayers[-1], node_name, node_val[0])
                 case "epsilon_r" | "loss_tangent":
-                    assert isinstance(node_val[0], str)
+                    if not isinstance(node_val[0], str):
+                        raise TypeError(f"Stackup Layer {node_name} is expected to be string convertible to float")
                     setattr(ret.sublayers[-1], node_name, float(node_val[0]))
                 case "thickness":
-                    assert isinstance(node_val[0], str)
+                    if not isinstance(node_val[0], str):
+                        raise TypeError("Stackup Layer thickness is expected to be string convertible to float")
                     ret.sublayers[-1].thickness = float(node_val[0])
                     if node_val[1:] and node_val[1] == "locked":
                         ret.sublayers[-1].locked = True

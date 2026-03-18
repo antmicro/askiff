@@ -61,7 +61,8 @@ class LibId(AutoSerde):
 
     @classmethod
     def deserialize(cls, sexp: GeneralizedSexpr) -> LibId:
-        assert isinstance(sexp, str)
+        if not isinstance(sexp, str):
+            raise TypeError("Library ID expected to be a string")
         spl = sexp.partition(":")
         return LibId(spl[0], spl[2]) if spl[1] else LibId(None, spl[0])
 
@@ -207,12 +208,15 @@ class DataBlock(bytearray):
     @classmethod
     def deserialize(cls, sexp: GeneralizedSexpr) -> DataBlock:
         ret = DataBlock()
-        assert isinstance(sexp[0], str)
+        if not isinstance(sexp[0], str):
+            raise TypeError("Elements of data block are expected to be strings")
         ret.extend(base64.b64decode(sexp[0].lstrip("|")))
         for s in sexp[1:-1]:
-            assert isinstance(s, str)
+            if not isinstance(s, str):
+                raise TypeError("Elements of data block are expected to be strings")
             ret.extend(base64.b64decode(s))
-        assert isinstance(sexp[-1], str)
+        if not isinstance(sexp[-1], str):
+            raise TypeError("Elements of data block are expected to be strings")
         ret.extend(base64.b64decode(sexp[-1].rstrip("|")))
         return ret
 
@@ -231,7 +235,8 @@ class DataBlockQuoted(bytearray):
     def deserialize(cls, sexp: GeneralizedSexpr) -> DataBlockQuoted:
         ret = DataBlockQuoted()
         for s in sexp:
-            assert isinstance(s, str)
+            if not isinstance(s, str):
+                raise TypeError("Elements of data block are expected to be strings")
             ret.extend(base64.b64decode(s))
         return ret
 
