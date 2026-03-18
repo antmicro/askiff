@@ -1,28 +1,20 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
-from enum import EnumMeta
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, TypeVar, cast
+import logging
+from collections.abc import Iterable, Iterator, MutableSet
+from typing import TYPE_CHECKING, Any, ClassVar, Final, Generic, TypeVar, cast
 
 from askiff.auto_serde import AutoSerde, AutoSerdeEnum, AutoSerdeFile, F
 from askiff.const import KICAD_MAX_LAYER_CU, KICAD_MAX_LAYER_USER, Version
 from askiff.kistruct.common import BasePoly, Position, Uuid
-from askiff.sexpr import GeneralizedSexpr, Qstr, Sexpr
+from askiff.sexpr import GeneralizedSexpr, Qstr
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore
 
+log = logging.getLogger()
 
 ###########################Layer###########################
-
-
-class __LayerMeta(EnumMeta):
-    def __new__(mcls: type, name: str, bases: tuple[type, ...], namespace: dict[str, Any]) -> type:
-        for i in range(1, KICAD_MAX_LAYER_CU + 1):
-            namespace[f"CU_IN{i}"] = f"In{i}.Cu"
-        for i in range(1, KICAD_MAX_LAYER_USER + 1):
-            namespace[f"USER{i}"] = f"User.{i}"
-        return super().__new__(mcls, name, bases, namespace)  # type: ignore  # ty:ignore[invalid-super-argument]
 
 
 class LayerFunction(str, AutoSerdeEnum):
@@ -35,192 +27,218 @@ class LayerFunction(str, AutoSerdeEnum):
     AUX_B = "back"
 
 
-class Layer(Qstr, AutoSerdeEnum, metaclass=__LayerMeta):
-    """PCB layer keywords
-    To keep type checker happy use .incu(1)/.user(1) for In1.Cu/User.1 (instead CU_IN1/USER1)
-    Used metaclass based generation of options is valid python but seems to be unsupported by typechecker
-    """
+class BaseLayer:
+    _value: str
+    _order_id: int
+    all: ClassVar[dict[str, BaseLayer]] = {}
 
-    CU_F = "F.Cu"
-    CU_B = "B.Cu"
-    CU_ALL = "*.Cu"
-    ADHESIVE_F = "F.Adhes"
-    ADHESIVE_B = "B.Adhes"
-    PASTE_F = "F.Paste"
-    PASTE_B = "B.Paste"
-    SILKS_F = "F.SilkS"
-    SILKS_B = "B.SilkS"
-    MASK_F = "F.Mask"
-    MASK_B = "B.Mask"
-    MASK_ALL = "*.Mask"
-    EDGE_CUTS = "Edge.Cuts"
-    MARGIN = "Margin"
-    COURTYARD_F = "F.CrtYd"
-    COURTYARD_B = "B.CrtYd"
-    FAB_F = "F.Fab"
-    FAB_B = "B.Fab"
-    DRAWINGS = "Dwgs.User"
-    COMMENTS = "Cmts.User"
-    ECO1 = "Eco1.User"
-    ECO2 = "Eco2.User"
-
-    INNER = "Inner"
-    """Only used inside padstack; all inner copper layers"""
-
-    _KNOCKOUT = "knockout"
-    """This is not layer, but for text items in PCB/FP, KiCad inserts here info if text is knockout or not"""
-
-    @staticmethod
-    def user(number: int) -> Layer:
-        if 1 <= number <= KICAD_MAX_LAYER_USER:
-            return Layer(f"User.{number}")
-        raise ValueError(f"User.{number} is not supported, number should be between 1 & {KICAD_MAX_LAYER_USER}")
-
-    @staticmethod
-    def incu(number: int) -> Layer:
-        if 1 <= number <= KICAD_MAX_LAYER_CU:
-            return Layer(f"In{number}.Cu")
-        raise ValueError(f"In{number}.Cu is not supported, number should be between 1 & {KICAD_MAX_LAYER_CU}")
+    class __PrivateGuard(int):
+        pass
 
     def order_id(self) -> int:
-        return _layer_order_dict.get(self, 1000)
-
-    def default_function(self) -> LayerFunction:
-        return LayerFunction.SIGNAL if ".Cu" in self.value else LayerFunction.AUX  # type: ignore
+        return self._order_id
 
     def validate_function(self, function: LayerFunction | None) -> LayerFunction:
-        valid_functions = (
-            [LayerFunction.SIGNAL, LayerFunction.JUMPER, LayerFunction.POWER, LayerFunction.MIXED]
-            if ".Cu" in self.value
-            else [LayerFunction.AUX, LayerFunction.AUX_B, LayerFunction.AUX_F]
-        )
+        return function or LayerFunction.AUX
 
-        return function if function in valid_functions else self.default_function()
+    def serialize(self) -> GeneralizedSexpr:
+        return (Qstr(self._value),)
 
+    def __init_subclass__(cls) -> None:
+        cls.all = {}
 
-_layer_order_dict: dict[Layer, int] = {
-    Layer.CU_F: 0,
-    Layer.CU_B: 2,
-    Layer.CU_ALL: 0,
-    Layer.ADHESIVE_F: 9,
-    Layer.ADHESIVE_B: 11,
-    Layer.PASTE_F: 13,
-    Layer.PASTE_B: 15,
-    Layer.SILKS_F: 5,
-    Layer.SILKS_B: 7,
-    Layer.MASK_F: 1,
-    Layer.MASK_B: 3,
-    Layer.MASK_ALL: 1,
-    Layer.EDGE_CUTS: 25,
-    Layer.MARGIN: 27,
-    Layer.COURTYARD_F: 31,
-    Layer.COURTYARD_B: 29,
-    Layer.FAB_F: 35,
-    Layer.FAB_B: 33,
-    Layer.DRAWINGS: 17,
-    Layer.COMMENTS: 19,
-    Layer.ECO1: 21,
-    Layer.ECO2: 23,
-    **{Layer(f"In{i + 1}.Cu"): 4 + 2 * i for i in range(KICAD_MAX_LAYER_CU)},
-    **{Layer(f"User.{i + 1}"): 39 + 2 * i for i in range(KICAD_MAX_LAYER_USER)},
-}
+    def __init__(self, value: str, order_id: int, _guard: __PrivateGuard) -> None:
+        self._value = value
+        self._order_id = order_id
+        for parent in self.__class__.__mro__:
+            if parent is object:
+                continue
+            if hasattr(parent, "all"):
+                parent.all[value] = self  # ty:ignore[invalid-assignment]
 
-LayerUser = Literal[
-    Layer.DRAWINGS,
-    Layer.COMMENTS,
-    Layer.ECO1,
-    Layer.ECO2,
-    Layer.USER1,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER2,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER3,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER4,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER5,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER6,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER7,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER8,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER9,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER10,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER11,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER12,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER13,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER14,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER15,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER16,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER17,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER18,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER19,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER20,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER21,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER22,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER23,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER24,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER25,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER26,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER27,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER28,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.USER29,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-]
-LayerCopper = Literal[
-    Layer.CU_F,
-    Layer.CU_B,
-    Layer.CU_IN1,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN2,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN3,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN4,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN5,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN6,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN7,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN8,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN9,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN10,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN11,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN12,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN13,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN14,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN15,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN16,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN17,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN18,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN19,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-    Layer.CU_IN20,  # type: ignore # ty:ignore[invalid-type-form, unresolved-attribute]
-]
-
-TL = TypeVar("TL", LayerCopper, LayerUser, Layer)
+    @classmethod
+    def deserialize_downcast(cls, sexp: GeneralizedSexpr) -> BaseLayer:
+        val = sexp if isinstance(sexp, str) else sexp[0]
+        if not isinstance(val, str):
+            raise TypeError("Layer is expected to be represented by string")
+        if val not in BaseLayer.all:
+            log.warning(
+                f" Downcast failed: `{val}` does not match child types ({BaseLayer.all.keys()})",
+                extra={"amodule": cls.__name__},
+            )
+            log.debug(sexp, extra={"amodule": cls.__name__})
+            return BaseLayer(val, 999, BaseLayer.__PrivateGuard())
+        return BaseLayer.all[val]
 
 
-class LayerSet(Generic[TL], set[TL]):
+class LayerCopper(BaseLayer):
+    def validate_function(self, function: LayerFunction | None) -> LayerFunction:
+        valid_functions = [LayerFunction.SIGNAL, LayerFunction.JUMPER, LayerFunction.POWER, LayerFunction.MIXED]
+        return function if function in valid_functions else LayerFunction.SIGNAL
+
+
+class LayerCopperOuter(LayerCopper):
+    pass
+
+
+class LayerCopperInner(LayerCopper):
+    pass
+
+
+class LayerTech(BaseLayer):
+    def validate_function(self, function: LayerFunction | None) -> LayerFunction:
+        valid_functions = [LayerFunction.AUX, LayerFunction.AUX_B, LayerFunction.AUX_F]
+
+        return function if function in valid_functions else LayerFunction.AUX
+
+
+class LayerPaste(LayerTech):
+    pass
+
+
+class LayerSilkS(LayerTech):
+    pass
+
+
+class LayerMask(LayerTech):
+    pass
+
+
+class LayerAdhesive(LayerTech):
+    pass
+
+
+class LayerCourtyard(LayerTech):
+    pass
+
+
+class LayerFab(LayerTech):
+    pass
+
+
+class LayerUser(BaseLayer):
+    def validate_function(self, function: LayerFunction | None) -> LayerFunction:
+        valid_functions = [LayerFunction.AUX, LayerFunction.AUX_B, LayerFunction.AUX_F]
+
+        return function if function in valid_functions else LayerFunction.AUX
+
+
+class LayerSpecial(BaseLayer):
+    pass
+
+
+class Layer:
+    __PrivateGuard = BaseLayer._BaseLayer__PrivateGuard  # type: ignore  # ty:ignore[unresolved-attribute]
+    CU_F: Final[LayerCopperOuter] = LayerCopperOuter("F.Cu", 0, __PrivateGuard())
+    CU_B: Final[LayerCopperOuter] = LayerCopperOuter("B.Cu", 2, __PrivateGuard())
+    ADHESIVE_F: Final[LayerAdhesive] = LayerAdhesive("F.Adhes", 9, __PrivateGuard())
+    ADHESIVE_B: Final[LayerAdhesive] = LayerAdhesive("B.Adhes", 11, __PrivateGuard())
+    PASTE_F: Final[LayerPaste] = LayerPaste("F.Paste", 13, __PrivateGuard())
+    PASTE_B: Final[LayerPaste] = LayerPaste("B.Paste", 15, __PrivateGuard())
+    SILKS_F: Final[LayerSilkS] = LayerSilkS("F.SilkS", 5, __PrivateGuard())
+    SILKS_B: Final[LayerSilkS] = LayerSilkS("B.SilkS", 7, __PrivateGuard())
+    MASK_F: Final[LayerMask] = LayerMask("F.Mask", 1, __PrivateGuard())
+    MASK_B: Final[LayerMask] = LayerMask("B.Mask", 3, __PrivateGuard())
+    EDGE_CUTS: Final[LayerTech] = LayerTech("Edge.Cuts", 25, __PrivateGuard())
+    MARGIN: Final[LayerTech] = LayerTech("Margin", 27, __PrivateGuard())
+    COURTYARD_F: Final[LayerCourtyard] = LayerCourtyard("F.CrtYd", 31, __PrivateGuard())
+    COURTYARD_B: Final[LayerCourtyard] = LayerCourtyard("B.CrtYd", 29, __PrivateGuard())
+    FAB_F: Final[LayerFab] = LayerFab("F.Fab", 35, __PrivateGuard())
+    FAB_B: Final[LayerFab] = LayerFab("B.Fab", 33, __PrivateGuard())
+    DRAWINGS: Final[LayerUser] = LayerUser("Dwgs.User", 17, __PrivateGuard())
+    COMMENTS: Final[LayerUser] = LayerUser("Cmts.User", 19, __PrivateGuard())
+    ECO1: Final[LayerUser] = LayerUser("Eco1.User", 21, __PrivateGuard())
+    ECO2: Final[LayerUser] = LayerUser("Eco2.User", 23, __PrivateGuard())
+
+    CU_ALL: Final[LayerSpecial] = LayerSpecial("*.Cu", 0, __PrivateGuard())
+    CU_FB: Final[LayerSpecial] = LayerSpecial(
+        "F&B.Cu", 0, __PrivateGuard()
+    )  # used in tht pads that are top&bottom only
+    CU_IN_ALL: Final[LayerSpecial] = LayerSpecial("Inner", 1, __PrivateGuard())
+    """Only used inside pad stack; all inner copper layers"""
+
+    MASK_ALL: Final[LayerSpecial] = LayerSpecial("*.Mask", 1, __PrivateGuard())
+
+    @staticmethod
+    def CU_IN(number: int) -> LayerCopperInner:  # noqa: N802
+        if 1 <= number <= KICAD_MAX_LAYER_CU:
+            return LayerCopperInner(f"In{number}.Cu", 2 + 2 * number, Layer.__PrivateGuard())
+        raise ValueError(f"In{number}.Cu is not supported, number should be between 1 & {KICAD_MAX_LAYER_CU}")
+
+    @staticmethod
+    def USER(number: int) -> LayerUser:  # noqa: N802
+        if 1 <= number <= KICAD_MAX_LAYER_USER:
+            return LayerUser(f"User.{number}", 37 + 2 * number, Layer.__PrivateGuard())
+        raise ValueError(f"User.{number} is not supported, number should be between 1 & {KICAD_MAX_LAYER_USER}")
+
+
+# Cycle procedural layers, so that they are added in BaseLayer._know_layers
+for i in range(1, KICAD_MAX_LAYER_CU + 1):
+    Layer.CU_IN(i)
+for i in range(1, KICAD_MAX_LAYER_USER + 1):
+    Layer.USER(i)
+
+TL = TypeVar("TL", bound=BaseLayer)
+
+
+class LayerSet(Generic[TL], AutoSerde, MutableSet[TL]):
     __askiff_alias: ClassVar[set[str]] = {"layer", "layers"}
+    _layers: set[TL] = F(positional=True)
+    _knockout: bool = F(name="knockout", flag=True, bare=True)
+
+    def __init__(self, *args: TL) -> None:
+        self._layers = set(args)
+        self._knockout = False
 
     def append(self, val: TL) -> None:
-        if val.value.endswith("Cu") and Layer.CU_ALL in self:
-            return
         self.add(val)
 
     def extend(self, val: Iterable[TL]) -> None:
         for v in val:
             self.append(v)
 
+    def __contains__(self, x: object) -> bool:
+        return (
+            x in self._layers
+            or (isinstance(x, LayerCopper) and Layer.CU_ALL in self._layers)
+            or (isinstance(x, LayerCopperOuter) and Layer.CU_FB in self._layers)
+            or (isinstance(x, LayerCopperInner) and Layer.CU_IN_ALL in self._layers)
+            or (isinstance(x, LayerMask) and Layer.MASK_ALL in self._layers)
+        )
+
+    def __iter__(self) -> Iterator[TL]:
+        return iter(self._layers)
+
+    def __len__(self) -> int:
+        return len(self._layers)
+
+    def add(self, value: TL) -> None:
+        if self.__contains__(value):  # ty:ignore[invalid-argument-type]
+            return
+        self._layers.add(value)
+
+    def discard(self, value: TL) -> None:
+        self._layers.discard(value)
+
     def _askiff_key(self, name: str | None = None) -> str:
         return (
             name or "layer"
-            if len(self) == (2 if Layer._KNOCKOUT in self else 1)
-            and Layer.CU_ALL not in self
-            and Layer.MASK_ALL not in self
+            if len(self._layers) <= 1 and all(not isinstance(layer, LayerSpecial) for layer in self._layers)
             else "layers"
         )
 
     def serialize(self) -> GeneralizedSexpr:
-        ser: set = self - {Layer._KNOCKOUT}
-        return Sexpr(
-            (
-                *(Qstr(x.value) for x in sorted(ser, key=Layer.order_id)),
-                *((str(Layer._KNOCKOUT.value),) if Layer._KNOCKOUT in self else ()),
-            )
+        return (
+            *(Qstr(x._value) for x in sorted(self._layers, key=BaseLayer.order_id)),
+            *(("knockout",) if self._knockout else ()),
         )
 
     def serialize_nested(self) -> GeneralizedSexpr:
-        ser: set = self - {Layer._KNOCKOUT}
-        return tuple(("layer", Qstr(x.value)) for x in sorted(ser, key=Layer.order_id))
+        return tuple(("layer", Qstr(x._value)) for x in sorted(self._layers, key=BaseLayer.order_id))
+
+    @classmethod
+    def deserialize_nested(cls, sexp: GeneralizedSexpr) -> LayerSet:
+        return LayerSet(*(BaseLayer.deserialize_downcast(s[1]) for s in sexp))
 
 
 class BoardSide(Qstr, AutoSerdeEnum):
@@ -265,7 +283,7 @@ class NetSimple(NetBase, AutoSerde):
 
 class SimplePolyFilled(BasePoly):
     _askiff_key: ClassVar[str] = "filled_polygon"
-    layer: Layer = F(Layer.CU_F)
+    layer: LayerCopper = F(Layer.CU_F)
     _pts = F()
 
 
@@ -406,7 +424,7 @@ class Zone(AutoSerde):
     net: NetSimple | None = None
     net_name: str | None = None
     locked: bool | None = None
-    layers: LayerSet[Layer] = F()
+    layers: LayerSet[BaseLayer] = F()
     uuid: Uuid | None = None
     name: str | None = None
     hatch: ZoneHatch = F()
@@ -439,7 +457,7 @@ class Point(AutoSerde):
     _askiff_key: ClassVar[str] = "point"
     position: Position = F(name="at")
     size: float = 1
-    layer: Layer = F(Layer.DRAWINGS)
+    layer: BaseLayer = F(Layer.DRAWINGS)
     uuid: Uuid = F()
 
 

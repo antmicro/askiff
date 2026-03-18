@@ -234,6 +234,19 @@ class AutoSerde:
                                 setattr(getattr(ret, outer_field), field, str(node))
                             case DeserMode.ENUM:
                                 setattr(getattr(ret, outer_field), field, mode_extra(node))
+                    case DeserMode.LIST:
+                        list_obj = getattr(ret, field, None)
+                        (mode, mode_extra), constructor = mode_extra
+                        if list_obj is None:
+                            list_obj = constructor()
+                            setattr(ret, field, list_obj)
+                        pos_idx -= 1
+                        match mode:
+                            case DeserMode.DESERIALIZE_DOWNCAST:
+                                list_obj.add(mode_extra.deserialize_downcast(node))
+                            case _:
+                                raise Exception(f"Unreachable {field} {mode}")
+
                     case _:
                         if ret.__extra_positional is None:
                             ret.__extra_positional = Sexpr()
@@ -464,7 +477,7 @@ class AutoSerde:
 
             match fmode:
                 case SerMode.SERIALIZE:
-                    append(field_val.serialize())
+                    append(*field_val.serialize())
                 case SerMode.SERIALIZE_OVERRIDE:
                     append(*mode_extra(field_val))  # mode_extra =  custom serialize function
                 case SerMode.BOOL:
@@ -497,7 +510,7 @@ class AutoSerde:
                     fmode, mode_extra = mode_extra
                     match fmode:
                         case SerMode.SERIALIZE:
-                            extend(f.serialize() for f in field_val)
+                            extend(x for f in field_val for x in f.serialize())
                         case SerMode.BOOL:
                             (key_true, key_false) = mode_extra
                             extend(key_true if f else key_false for f in field_val)

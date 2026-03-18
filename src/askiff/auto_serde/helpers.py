@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import dataclasses
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, MutableSet, Sequence
 from copy import deepcopy
 from enum import Enum, auto
 from types import NoneType, UnionType
-from typing import Any, Final, Literal, TypedDict, Union, Unpack, get_args, get_origin, get_type_hints
+from typing import Any, Final, Literal, TypedDict, TypeVar, Union, Unpack, get_args, get_origin, get_type_hints
 
 log = logging.getLogger()
 
@@ -106,10 +106,17 @@ def normalize_type(typ: type) -> type:
     if type_origin is Final:
         typ = type_args[0]
         type_origin, type_args = get_origin(typ), get_args(typ)
-    if type_origin is not None and [arg for arg in type_args if get_origin(arg) is Literal]:
+    if type_origin is None:
+        return typ
+    if type_origin is UnionType:
+        type_origin = Union
+
+    if [arg for arg in type_args if get_origin(arg) is Literal]:
         type_args = tuple(type(get_args(arg)[0]) if get_origin(arg) is Literal else arg for arg in type_args)
-        typ = type_origin[*type_args]
-    return typ
+
+    type_args = tuple(arg.__bound__ if isinstance(arg, TypeVar) else arg for arg in type_args)
+
+    return type_origin[*type_args]  # type: ignore
 
 
 @dataclasses.dataclass
@@ -148,7 +155,7 @@ class GeneratorParams:
             # class inherited from list but with generics
             or (isinstance(type_origin, type) and issubclass(type_origin, (list, set)))
             # class inherited from list
-            or (isinstance(typ, type) and issubclass(typ, (list, set)))
+            or (isinstance(typ, type) and issubclass(typ, (list, MutableSet)))
         )
 
     def unwrap_list_type(self) -> None:
@@ -204,6 +211,8 @@ class GeneratorParams:
         fname = GeneratorParams._get_serialization_name(fmeta, class_field_name)
 
         alias: set[str] = getattr(typ, f"_{typ.__name__}__askiff_alias", set())
+        if alias:
+            alias = deepcopy(alias)
         alias.add(fname)
 
         agg = getattr(typ, f"_{typ.__name__}__askiff_aggregator", None)
@@ -319,20 +328,17 @@ def resolve_serialization_order(cls: type, field_meta: dict[str, SerdeOpt]) -> l
         if name.startswith("_") and name[1:] in field_meta:
             ser_order.insert(ser_order_idx, name[1:])
             ser_order_idx += 1
-        elif name.startswith("_") and ("name" in options or options.get("positional", False)):
+            continue
+        if ("_" + name) not in cls.__dict__:
+            after = options.get("after", None)
+            if after == "__begin__":
+                ser_order_idx = 0
+            elif after and after in ser_order:
+                ser_order_idx = ser_order.index(after) + 1
+            else:
+                pass
             ser_order.insert(ser_order_idx, name)
             ser_order_idx += 1
-        elif not name.startswith("_"):
-            if ("_" + name) not in cls.__dict__:
-                after = options.get("after", None)
-                if after == "__begin__":
-                    ser_order_idx = 0
-                elif after and after in ser_order:
-                    ser_order_idx = ser_order.index(after) + 1
-                else:
-                    pass
-                ser_order.insert(ser_order_idx, name)
-                ser_order_idx += 1
 
     return ser_order
 
@@ -350,8 +356,9 @@ def preprocess_cls_fields(cls: type) -> tuple[dict[str, type], dict[str, SerdeOp
 
     for name, value in (parent_dict | cls.__dict__).items():
         if name.startswith("_"):
-            if not isinstance(value, F):
-                field_meta[name] = {}
+            if not isinstance(value, F) or (
+                value.options.get("skip", False) and not value.options.get("_version_options", ())
+            ):
                 continue
             if name[1:] in parent_dict:
                 field_meta[name] = value.options

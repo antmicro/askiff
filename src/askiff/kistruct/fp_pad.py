@@ -4,7 +4,16 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack, cast
 
 from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeDownCasting, AutoSerdeEnum, F, SerdeOpt
 from askiff.kistruct.common import PinTypePCB, Position, Size, Uuid
-from askiff.kistruct.common_pcb import BasePoly, BoardSide, Layer, LayerCopper, LayerSet, Net, TeardropSettings
+from askiff.kistruct.common_pcb import (
+    BaseLayer,
+    BasePoly,
+    BoardSide,
+    Layer,
+    LayerCopper,
+    LayerSet,
+    Net,
+    TeardropSettings,
+)
 from askiff.kistruct.gritems import BaseArc, BaseCircle, BaseLine
 from askiff.sexpr import GeneralizedSexpr
 
@@ -131,7 +140,7 @@ class PadStackMode(str, AutoSerdeEnum):
 
 class PadStackLayer(AutoSerde):
     _askiff_key: ClassVar[str] = "layer"
-    layer: Layer = F(Layer.CU_B, positional=True)
+    layer: LayerCopper = F(Layer.CU_B, positional=True)
     shape: PadShape = F(inline=True)
     offset: Position | None = None
     thermal_bridge_angle: float | None = None
@@ -263,7 +272,7 @@ class Pad(AutoSerdeDownCasting):
     property: PadProperty | None = None
     drill: PadDrill | None = None
     remove_unused_layers: bool | None = None
-    layers: LayerSet[Layer] = F(name="layers")
+    layers: LayerSet[BaseLayer] = F(name="layers")
     die_length: float | None = None
     die_delay: float | None = None
     solder_mask_margin: float | None = None

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from copy import copy, deepcopy
-from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Final, Self, Unpack, cast
 
 from askiff.auto_serde import (
     AutoSerde,
@@ -16,7 +16,18 @@ from askiff.auto_serde import (
 )
 from askiff.const import Version
 from askiff.kistruct.common import BaseArc, BaseLine, BasePoly, EmbeddedFile, Group, Paper, Position, TitleBlock, Uuid
-from askiff.kistruct.common_pcb import Layer, LayerCopper, LayerFunction, LayerSet, Net, NetSimple, Point, Zone
+from askiff.kistruct.common_pcb import (
+    BaseLayer,
+    Layer,
+    LayerCopper,
+    LayerFunction,
+    LayerSet,
+    LayerTech,
+    Net,
+    NetSimple,
+    Point,
+    Zone,
+)
 from askiff.kistruct.footprint import Footprint, FootprintBoard
 from askiff.kistruct.fp_pad import AfterDrill, DrillPostMatching, PadStackMode, TeardropSettings
 from askiff.kistruct.gritems import Barcode, Dimension, GrItemPCB, GrTablePCB
@@ -124,7 +135,7 @@ class StackupLayerDielectricPrepreg(StackupLayerDielectric):
 
 
 class StackupLayerCopper(StackupLayer):
-    layer: LayerCopper = F(Layer.CU_F, positional=True)
+    layer: LayerCopper = F(Layer.CU_F, positional=True)  # type: ignore
     type: Final[str] = "copper"  # type: ignore
     thickness: float = 0.035
 
@@ -139,22 +150,22 @@ class StackupLayerMask(StackupLayer):
 
 
 class StackupLayerMaskTop(StackupLayerMask):
-    layer: Final[Layer] = F(Layer.MASK_F, positional=True, after="__begin__")  # type: ignore
+    layer: Final[LayerTech] = F(Layer.MASK_F, positional=True, after="__begin__")  # type: ignore
     type: Final[str] = F("Top Solder Mask")  # type: ignore
 
 
 class StackupLayerMaskBottom(StackupLayerMask):
-    layer: Final[Layer] = F(Layer.MASK_B, positional=True, after="__begin__")  # type: ignore
+    layer: Final[LayerTech] = F(Layer.MASK_B, positional=True, after="__begin__")  # type: ignore
     type: Final[str] = "Bottom Solder Mask"  # type: ignore
 
 
 class StackupLayerPasteTop(StackupLayer):
-    layer: Final[Layer] = F(Layer.PASTE_F, positional=True, after="__begin__")  # type: ignore
+    layer: Final[LayerTech] = F(Layer.PASTE_F, positional=True, after="__begin__")  # type: ignore
     type: Final[str] = "Top Solder Paste"  # type: ignore
 
 
 class StackupLayerPasteBottom(StackupLayer):
-    layer: Final[Layer] = F(Layer.PASTE_B, positional=True, after="__begin__")  # type: ignore
+    layer: Final[LayerTech] = F(Layer.PASTE_B, positional=True, after="__begin__")  # type: ignore
     type: Final[str] = "Bottom Solder Paste"  # type: ignore
 
 
@@ -165,12 +176,12 @@ class StackupLayerSilks(StackupLayer):
 
 
 class StackupLayerSilksTop(StackupLayerSilks):
-    layer: Final[Layer] = F(Layer.SILKS_F, positional=True, after="__begin__")  # type: ignore
+    layer: Final[LayerTech] = F(Layer.SILKS_F, positional=True, after="__begin__")  # type: ignore
     type: Final[str] = "Top Silk Screen"  # type: ignore
 
 
 class StackupLayerSilksBottom(StackupLayerSilks):
-    layer: Final[Layer] = F(Layer.SILKS_B, positional=True, after="__begin__")  # type: ignore
+    layer: Final[LayerTech] = F(Layer.SILKS_B, positional=True, after="__begin__")  # type: ignore
     type: Final[str] = "Bottom Silk Screen"  # type: ignore
 
 
@@ -207,12 +218,12 @@ class Stackup(AutoSerde):
 
 
 class LayerDef(AutoSerde, positional=True):  # type: ignore
-    layer: Layer = F()
+    layer: BaseLayer = F()
     function: LayerFunction = F()
     user_name: str | None = None
 
     def __init__(
-        self, layer: Layer = Layer.CU_F, function: LayerFunction | None = None, user_name: str | None = None
+        self, layer: BaseLayer = Layer.CU_F, function: LayerFunction | None = None, user_name: str | None = None
     ) -> None:
         self.std_name = layer
         self.function = layer.validate_function(function)
@@ -225,7 +236,6 @@ class LayerDef(AutoSerde, positional=True):  # type: ignore
 class TraceBase(AutoSerde):
     __askiff_childs: ClassVar[dict[str, type]] = {}
     locked: bool | None = None
-    layers: LayerSet[Layer] = F()
     solder_mask_margin: float | None = None
     net: NetSimple = F()
     uuid: Uuid = F()
@@ -240,12 +250,29 @@ class TraceBase(AutoSerde):
         setattr(cls, f"_{cls.__name__}__askiff_childs", TraceBase.__askiff_childs)
 
 
-class TraceSegment(TraceBase, BaseLine):
+class TraceCopper(TraceBase):
+    _layers: LayerSet[BaseLayer] = F(after="locked")
+    primary_layer: LayerCopper = F(Layer.CU_F, skip=True)
+
+    def _askiff_post_deser(self) -> None:
+        self.primary_layer = next(x for x in self._layers if isinstance(x, LayerCopper))
+
+    def _askiff_pre_ser(self) -> Self:
+        self._layers = LayerSet(self.primary_layer)
+        if self.solder_mask_margin:
+            if self.primary_layer not in (Layer.CU_B, Layer.CU_F):
+                self.solder_mask_margin = None
+            else:
+                self._layers.add(Layer.MASK_F if self.primary_layer == Layer.CU_F else Layer.MASK_B)
+        return self
+
+
+class TraceSegment(TraceCopper, BaseLine):
     _askiff_key: ClassVar[str] = "segment"
     width: float = F(0.2, after="end")
 
 
-class TraceArc(TraceBase, BaseArc):
+class TraceArc(TraceCopper, BaseArc):
     _askiff_key: ClassVar[str] = "arc"
     width: float = F(0.2, after="end")
 
@@ -289,13 +316,20 @@ class ViaTenting(AutoSerde):
 
 class ViaPadStackLayer(AutoSerde):
     _askiff_key: ClassVar[str] = "layer"
-    layer: Layer = F(Layer.CU_B, positional=True)
+    layer: LayerCopper = F(Layer.CU_F, positional=True)
     size: float = 0.45
 
 
 class ViaPadStack(AutoSerde):
     mode: PadStackMode = F(PadStackMode.FRONT_INNER_BACK)
     layers: list[ViaPadStackLayer] = F(flatten=True, name="layer")
+
+
+class ViaSpanLayers(AutoSerde, positional=True):  # type: ignore
+    start_layer: LayerCopper = F(Layer.CU_F)
+    """Drill start layer (for buried via, board side for through via)"""
+    stop_layer: LayerCopper = F(Layer.CU_B)
+    """stop layer / how deep should drill extend"""
 
 
 class Via(TraceBase):
@@ -308,12 +342,12 @@ class Via(TraceBase):
     tertiary_drill: AfterDrill | None = None
     front_post_machining: DrillPostMatching | None = None
     back_post_machining: DrillPostMatching | None = None
-    _layers = F()
+    layers: ViaSpanLayers = F()
     _locked = F()
     remove_unused_layers: bool | None = None
     keep_end_layers: bool | None = None
     free: bool | None = None
-    zone_layer_connections: LayerSet[Layer] | None = F(name="zone_layer_connections", keep_empty=True)
+    zone_layer_connections: LayerSet[LayerCopper] | None = F(name="zone_layer_connections", keep_empty=True)
     tenting: ViaTenting | None = None
     capping: bool | None = None
     covering: ViaSidedBool | None = None

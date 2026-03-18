@@ -18,7 +18,7 @@ from askiff.kistruct.common import (
     Stroke,
     Uuid,
 )
-from askiff.kistruct.common_pcb import Layer, LayerSet, NetSimple
+from askiff.kistruct.common_pcb import BaseLayer, Layer, LayerSet, NetSimple
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore
@@ -84,7 +84,7 @@ class GrItemSch(GrItem):
 
 
 class _GrShapePCBFp(GrShape):
-    layers: LayerSet[Layer] = F()
+    layers: LayerSet[BaseLayer] = F()
     solder_mask_margin: float | None = None
 
 
@@ -316,16 +316,13 @@ class GrTextPCBBase(GrText):
         "render_cache",
     ]
     knockout: bool = F(skip=True)
-    layers: LayerSet[Layer] = F()
+    layers: LayerSet[BaseLayer] = F()
 
     def _askiff_post_deser(self) -> None:
-        if Layer._KNOCKOUT in self.layers:
-            self.layers -= {Layer._KNOCKOUT}
-            self.knockout = True
+        self.knockout = self.layers._knockout
 
     def _askiff_pre_ser(self) -> GrTextPCBBase:
-        if self.knockout:
-            self.layers.add(Layer._KNOCKOUT)
+        self.layers._knockout = self.knockout
         return self
 
 
@@ -413,13 +410,13 @@ class GrTextBox(GrItem):
 class GrTextBoxFp(GrTextBox, GrItemFp):
     _askiff_key: ClassVar[str] = "fp_text_box"
     render_cache: RenderCache | None = None
-    layer: Layer = F(Layer.CU_F)
+    layer: BaseLayer = F(Layer.COMMENTS)
 
 
 class GrTextBoxPCB(GrTextBox, GrItemPCB):
     _askiff_key: ClassVar[str] = "gr_text_box"
     render_cache: RenderCache | None = None
-    layer: Layer = F(Layer.CU_F)
+    layer: BaseLayer = F(Layer.COMMENTS)
 
 
 class GrTextBoxSch(GrItemSch):
@@ -445,7 +442,7 @@ class Image(GrItemFp, GrItemPCB, GrItemSch):
     __askiff_order: ClassVar[list[str]] = []
     position: Position = F(name="at")
     scale: float | None = None
-    layer: Layer | None = None
+    layer: BaseLayer | None = None
     data: DataBlockQuoted = F()
     _uuid = F()
 
@@ -478,7 +475,7 @@ class BarcodeECCLevel(str, AutoSerdeEnum):
 class Barcode(AutoSerde):
     _askiff_key: ClassVar[str] = "barcode"
     position: Position = F(name="at")
-    layer: Layer = F(Layer.CU_F)
+    layer: BaseLayer = F(Layer.SILKS_F)
     size: Size = F()
     text: str = ""
     text_height: float = 1.5
@@ -537,7 +534,7 @@ class TableCellSch(TableCell):
 
 class TableCellPCB(TableCell):
     _askiff_key: ClassVar[str] = "table_cell"
-    layer: Layer | None = None
+    layer: BaseLayer | None = None
     render_cache: RenderCache | None = None
 
 
@@ -568,7 +565,7 @@ class GrTableSch(GrTable):
 
 
 class GrTablePCB(GrTable):
-    layer: Layer = Layer.COMMENTS
+    layer: BaseLayer = Layer.COMMENTS
     cells: list[TableCellPCB] = F()  # type: ignore
 
 
@@ -682,7 +679,7 @@ class Dimension(AutoSerdeDownCasting):
     ]
 
     locked: bool | None = None
-    layer: Layer = Layer.DRAWINGS
+    layer: BaseLayer = Layer.DRAWINGS
     uuid: Uuid = F()
     pts: list[Position] = F()
     style: DimensionStyle = F()

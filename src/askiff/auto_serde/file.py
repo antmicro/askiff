@@ -56,7 +56,7 @@ class AutoSerdeFile(AutoSerde):
     _askiff_key: ClassVar[str]
     version: int
     _version: int = 0
-    _post_final_deser_objects: list = F(list)
+    _post_final_deser_objects: list = F(list, skip=True)
     """This version field is set on (global) class level, and used for simple access to version in any place"""
     _fs_path: Path | None = None
     __version_map: ClassVar[dict[str, str]] = {

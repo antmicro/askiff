@@ -56,8 +56,8 @@ class LibId(AutoSerde):
 
     def serialize(self) -> GeneralizedSexpr:
         if self.library:
-            return Qstr(f"{self.library}:{self.name}")
-        return Qstr(self.name)
+            return (Qstr(f"{self.library}:{self.name}"),)
+        return (Qstr(self.name),)
 
     @classmethod
     def deserialize(cls, sexp: GeneralizedSexpr) -> LibId:

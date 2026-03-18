@@ -16,7 +16,7 @@ from askiff.kistruct.common import (
     PropertyList,
     Uuid,
 )
-from askiff.kistruct.common_pcb import BoardSide, Layer, LayerSet, LayerUser, Point, Zone
+from askiff.kistruct.common_pcb import BaseLayer, BoardSide, Layer, LayerSet, LayerUser, Point, Zone
 from askiff.kistruct.fp_pad import Pad, ZoneConnect
 from askiff.kistruct.gritems import Barcode, Dimension, GrItemFp, GrTablePCB
 
@@ -37,7 +37,7 @@ class FpProperty(Property):
     locked: bool | None = F.unlocked()
     """Defines if the property can be edited"""
 
-    layer: Layer = Layer.FAB_F
+    layer: BaseLayer = Layer.FAB_F
     """Layer the text resides on"""
 
     _hide = F()
@@ -130,7 +130,7 @@ class Footprint(AutoSerde):
     attributes: Attributes = F(name="attr")
     """Attributes of the footprint, such as smd/tht, dnp, ..."""
 
-    stackup: LayerSet[Layer] = F(nested=True, serialize=LayerSet.serialize_nested)
+    stackup: LayerSet[BaseLayer] = F(serialize=LayerSet.serialize_nested, deserialize=LayerSet.deserialize_nested)
 
     private_layers: LayerSet[LayerUser] = F(name="private_layers")
     """Defines a list of private layers assigned to the footprint"""
