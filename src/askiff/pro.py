@@ -81,9 +81,11 @@ class AskiffLibSym:
     path: Path
     __initial_path: Path
     objects: list[_LazyFile[SymbolFile]]
+    name: str
 
     def __init__(self, path: Path) -> None:
         self.path = path
+        self.name = path.stem
         self.__initial_path = path
 
     def load(self, force: bool = False) -> Self:
@@ -109,9 +111,11 @@ class AskiffLibFp:
     path: Path
     __initial_path: Path
     objects: list[_LazyFile[FootprintFile]]
+    name: str
 
     def __init__(self, path: Path) -> None:
         self.path = path
+        self.name = path.stem
         self.__initial_path = path
 
     def load(self, force: bool = False) -> Self:
