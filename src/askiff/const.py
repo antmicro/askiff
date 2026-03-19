@@ -44,7 +44,7 @@ class Version:
 
     class K10(BaseVer):
         sym = 20251024
-        sch = 20260101
+        sch = 20260306
         pcb = 20260206
         fp = pcb
         lib_table = 7
