@@ -1,5 +1,5 @@
 (kicad_sch
-	(version 20260101)
+	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
 	(uuid "dd09c591-cfa4-4215-bd04-d1b0e4b3429a")
@@ -5951,7 +5951,7 @@
 			(uuid "541acc63-1cc9-4743-a100-5140415fd74e")
 		)
 		(instances
-			(project ""
+			(project "test_project"
 				(path "/59f522e0-0cf7-48a6-bc09-47b340553d24/289a0a7f-f68f-4441-9bf4-46da344280bc"
 					(reference "#PWR039")
 					(unit 1)
@@ -6042,7 +6042,7 @@
 			(uuid "49f34f51-f816-4d2a-8536-b1ec8fbf790c")
 		)
 		(instances
-			(project ""
+			(project "test_project"
 				(path "/59f522e0-0cf7-48a6-bc09-47b340553d24/289a0a7f-f68f-4441-9bf4-46da344280bc"
 					(reference "D3")
 					(unit 1)
@@ -6380,7 +6380,7 @@
 			(uuid "2d4483e5-9ba8-438e-a83b-24ce33883e00")
 		)
 		(instances
-			(project ""
+			(project "test_project"
 				(path "/59f522e0-0cf7-48a6-bc09-47b340553d24/289a0a7f-f68f-4441-9bf4-46da344280bc"
 					(reference "J4")
 					(unit 1)
@@ -6471,7 +6471,7 @@
 			(uuid "49f34f51-f816-4d2a-8536-b1ec8fbf790d")
 		)
 		(instances
-			(project ""
+			(project "test_project"
 				(path "/59f522e0-0cf7-48a6-bc09-47b340553d24/289a0a7f-f68f-4441-9bf4-46da344280bc"
 					(reference "D3")
 					(unit 2)
@@ -6549,7 +6549,7 @@
 			(uuid "c14a90af-93ee-4b24-b001-5089c9c554d7")
 		)
 		(instances
-			(project ""
+			(project "test_project"
 				(path "/59f522e0-0cf7-48a6-bc09-47b340553d24/289a0a7f-f68f-4441-9bf4-46da344280bc"
 					(reference "#FLG01")
 					(unit 1)
@@ -6641,7 +6641,7 @@
 			(uuid "49f34f51-f816-4d2a-8536-b1ec8fbf790e")
 		)
 		(instances
-			(project ""
+			(project "test_project"
 				(path "/59f522e0-0cf7-48a6-bc09-47b340553d24/289a0a7f-f68f-4441-9bf4-46da344280bc"
 					(reference "D3")
 					(unit 4)
@@ -6889,7 +6889,7 @@
 			(uuid "49f34f51-f816-4d2a-8536-b1ec8fbf790f")
 		)
 		(instances
-			(project ""
+			(project "test_project"
 				(path "/59f522e0-0cf7-48a6-bc09-47b340553d24/289a0a7f-f68f-4441-9bf4-46da344280bc"
 					(reference "D3")
 					(unit 3)
@@ -6971,7 +6971,7 @@
 			(uuid "a4ccf383-6fe8-4a8b-a164-1dc625c4e33b")
 		)
 		(instances
-			(project ""
+			(project "test_project"
 				(path "/59f522e0-0cf7-48a6-bc09-47b340553d24/289a0a7f-f68f-4441-9bf4-46da344280bc"
 					(reference "R11")
 					(unit 1)

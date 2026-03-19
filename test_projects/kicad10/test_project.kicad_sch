@@ -1,5 +1,5 @@
 (kicad_sch
-	(version 20260101)
+	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
 	(uuid "59f522e0-0cf7-48a6-bc09-47b340553d24")
@@ -936,6 +936,16 @@
 		)
 		(uuid "2e82ffc0-8130-41c1-aba4-9cb5a6169730")
 	)
+	(text "Exclude from board"
+		(exclude_from_sim no)
+		(at 350.52 94.234 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+		(uuid "3509d6b0-eabd-4696-87dd-f6636d9ea6e9")
+	)
 	(text "Audio"
 		(exclude_from_sim no)
 		(at 277.368 124.968 0)
@@ -1506,6 +1516,26 @@
 			(uuid "8bb3b879-cfc8-4533-ae02-0bcb87d56753")
 		)
 	)
+	(rule_area
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board no)
+		(dnp no)
+		(polyline
+			(pts
+				(xy 337.82 91.44) (xy 363.22 91.44) (xy 363.22 115.57) (xy 361.95 116.84) (xy 347.98 116.84) (xy 337.82 106.68)
+			)
+			(stroke
+				(width 0)
+				(type dash)
+			)
+			(fill
+				(type hatch)
+				(color 255 0 255 0.5019607843)
+			)
+			(uuid "8fd9aa86-f6ef-4669-ad2d-a6b80467f058")
+		)
+	)
 	(netclass_flag ""
 		(length 2.54)
 		(shape round)
@@ -1612,7 +1642,7 @@
 			(uuid "a0291987-8468-431b-a204-fcd077b2dd1c")
 		)
 		(instances
-			(project ""
+			(project "test_project"
 				(path "/59f522e0-0cf7-48a6-bc09-47b340553d24"
 					(reference "H1")
 					(unit 1)
@@ -1846,7 +1876,7 @@
 			)
 		)
 		(instances
-			(project ""
+			(project "test_project"
 				(path "/59f522e0-0cf7-48a6-bc09-47b340553d24"
 					(reference "#SYM1")
 					(unit 1)
@@ -1924,7 +1954,7 @@
 			(uuid "6add75ad-6370-475b-8193-62ba45ccaa97")
 		)
 		(instances
-			(project ""
+			(project "test_project"
 				(path "/59f522e0-0cf7-48a6-bc09-47b340553d24"
 					(reference "#PWR041")
 					(unit 1)

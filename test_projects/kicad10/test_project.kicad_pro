@@ -268,11 +268,13 @@
       "zones_allow_external_fillets": false
     },
     "ipc2581": {
+      "bom_rev": "",
       "dist": "",
       "distpn": "",
       "internal_id": "",
       "mfg": "",
-      "mpn": ""
+      "mpn": "",
+      "sch_revision": "1.0.0"
     },
     "layer_pairs": [
       {
@@ -644,6 +646,9 @@
       ],
       "/Connectors/hdmi_in.SDA": [
         "I2C"
+      ],
+      "/Power/label_features": [
+        "Test_netclass"
       ]
     },
     "netclass_patterns": [
@@ -817,8 +822,13 @@
         "uuid": "59f522e0-0cf7-48a6-bc09-47b340553d24"
       }
     ],
-    "used_designators": "",
-    "variants": []
+    "used_designators": "U5,U7-9",
+    "variants": [
+      {
+        "description": "All LED are DNP",
+        "name": "NO LEDS"
+      }
+    ]
   },
   "sheets": [
     [
