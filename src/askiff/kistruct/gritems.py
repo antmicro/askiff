@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from math import cos, radians, sin
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack, cast
 
 from askiff.auto_serde import AutoSerde, AutoSerdeDownCasting, AutoSerdeEnum, F, SerdeOpt
 from askiff.kistruct.common import (
     BaseArc,
+    BaseBezier,
     BaseCircle,
     BaseLine,
     BasePoly,
+    BaseRect,
+    BaseShape,
     Color,
     DataBlockQuoted,
     Effects,
@@ -35,6 +38,7 @@ class GrItem(AutoSerde):
         "position",
         "end",
         "pts",
+        "_pts",
         "scale",
         "stroke",
         "locked",
@@ -63,7 +67,7 @@ class GrItem(AutoSerde):
         pass
 
 
-class GrShape(GrItem):
+class GrShape(GrItem, BaseShape):
     """GrShape is subclass of graphics that encompasses base shapes like lines, circles, polygons"""
 
     stroke: Stroke | None = None
@@ -88,13 +92,6 @@ class _GrShapePCBFp(GrShape):
     solder_mask_margin: float | None = None
 
 
-def _to_glob_coordinate(pos: Position, fp_pos: Position) -> Position:
-    angle = radians(-fp_pos.angle if fp_pos.angle is not None else 0)
-    sina, cosa = sin(angle), cos(angle)
-
-    return Position(fp_pos.x + pos.x * cosa - pos.y * sina, fp_pos.y + pos.x * sina + pos.y * cosa)
-
-
 class GrShapeFp(_GrShapePCBFp, GrItemFp):
     @abstractmethod
     def to_shape_pcb(self, fp_position: Position | None = None) -> GrShapePCB: ...
@@ -103,6 +100,10 @@ class GrShapeFp(_GrShapePCBFp, GrItemFp):
 class GrShapePCB(_GrShapePCBFp, GrItemPCB):
     net: NetSimple | None = None
     locked: bool | None = None
+
+
+class GrShapeSch(GrShape, GrItemSch):
+    pass
 
 
 ###########################Common##########################
@@ -144,10 +145,7 @@ class GrArcFp(BaseArc, GrShapeFp):
 
     def to_shape_pcb(self, fp_position: Position | None = None) -> GrArcPCB:
         ret = GrArcPCB(**{k: v for k, v in self.__dict__.items() if k in self._GrItem__askiff_order})  # type: ignore  # ty:ignore[unresolved-attribute]
-        fp_position = fp_position or Position()
-        ret.start = _to_glob_coordinate(ret.start, fp_position)
-        ret.mid = _to_glob_coordinate(ret.mid, fp_position)
-        ret.end = _to_glob_coordinate(ret.end, fp_position)
+        ret.to_global(fp_position or Position())
         ret.uuid = Uuid()
         return ret
 
@@ -156,10 +154,7 @@ class GrArcPCB(BaseArc, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_arc"
 
 
-A = GrArcFp().to_shape_pcb()
-
-
-class GrArcSch(GrItemSch, BaseArc, GrShape):
+class GrArcSch(BaseArc, GrShapeSch):
     _askiff_key: ClassVar[str] = "arc"
     fill: FillStyleSch | None = None
 
@@ -167,64 +162,66 @@ class GrArcSch(GrItemSch, BaseArc, GrShape):
 ############################Line###########################
 
 
-class GrLine(GrShape, BaseLine):
-    pass
-
-
-class GrLineFp(GrLine, GrShapeFp):
+class GrLineFp(BaseLine, GrShapeFp):
     _askiff_key: ClassVar[str] = "fp_line"
 
     def to_shape_pcb(self, fp_position: Position | None = None) -> GrLinePCB:
         ret = GrLinePCB(**{k: v for k, v in self.__dict__.items() if k in self._GrItem__askiff_order})  # type: ignore  # ty:ignore[unresolved-attribute]
-        fp_position = fp_position or Position()
-        ret.start = _to_glob_coordinate(ret.start, fp_position)
-        ret.end = _to_glob_coordinate(ret.end, fp_position)
+        ret.to_global(fp_position or Position())
         ret.uuid = Uuid()
         return ret
 
 
-class GrLinePCB(GrLine, GrShapePCB):
+class GrLinePCB(BaseLine, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_line"
 
 
 ##########################Polygon##########################
-class GrPoly(BasePoly, GrShape):
-    pass
 
 
-class GrPolyFp(GrPoly, GrShapeFp):
+class GrPolyFp(BasePoly, GrShapeFp):
     _askiff_key: ClassVar[str] = "fp_poly"
     fill: FillStylePCB | None = None
 
     def to_shape_pcb(self, fp_position: Position | None = None) -> GrPolyPCB:
         ret = GrPolyPCB(**{k: v for k, v in self.__dict__.items() if k in self._GrItem__askiff_order})  # type: ignore  # ty:ignore[unresolved-attribute]
-        fp_position = fp_position or Position()
-        ret.pts = [_to_glob_coordinate(p, fp_position) for p in ret.pts]
+        ret.to_global(fp_position or Position())
         ret.uuid = Uuid()
         return ret
 
 
-class GrPolyPCB(GrPoly, GrShapePCB):
+class GrPolyPCB(BasePoly, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_poly"
     fill: FillStylePCB | None = None
 
 
-class GrPolySch(GrItemSch, GrPoly):
+class GrPolySch(BasePoly, GrShapeSch):
     _askiff_key: ClassVar[str] = "polyline"
     fill: FillStyleSch | None = None
 
 
 ###########################Bezier##########################
-class GrCurveFp(GrPolyFp):
+
+
+class GrCurveFp(BaseBezier, GrShapeFp):
     _askiff_key: ClassVar[str] = "fp_curve"
+    fill: FillStylePCB | None = None
+
+    def to_shape_pcb(self, fp_position: Position | None = None) -> GrCurvePCB:
+        ret = GrCurvePCB(**{k: v for k, v in self.__dict__.items() if k in self._GrItem__askiff_order})  # type: ignore  # ty:ignore[unresolved-attribute]
+        ret.to_global(fp_position or Position())
+        ret.uuid = Uuid()
+        return ret
 
 
-class GrCurvePCB(GrPolyPCB):
+class GrCurvePCB(BaseBezier, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_curve"
+    fill: FillStylePCB | None = None
 
 
-class GrCurveSch(GrPolySch):
+class GrCurveSch(BaseBezier, GrShapeSch):
     _askiff_key: ClassVar[str] = "bezier"
+    fill: FillStyleSch | None = None
 
 
 ###########################Circle##########################
@@ -236,9 +233,7 @@ class GrCircleFp(BaseCircle, GrShapeFp):
 
     def to_shape_pcb(self, fp_position: Position | None = None) -> GrCirclePCB:
         ret = GrCirclePCB(**{k: v for k, v in self.__dict__.items() if k in self._GrItem__askiff_order})  # type: ignore  # ty:ignore[unresolved-attribute]
-        fp_position = fp_position or Position()
-        ret.center = _to_glob_coordinate(ret.center, fp_position)
-        ret.end = _to_glob_coordinate(ret.end, fp_position)
+        ret.to_global(fp_position or Position())
         ret.uuid = Uuid()
         return ret
 
@@ -248,38 +243,39 @@ class GrCirclePCB(BaseCircle, GrShapePCB):
     fill: FillStylePCB | None = F(FillStylePCB.NONE)
 
 
-class GrCircleSch(GrItemSch, GrShape):
+class GrCircleSch(GrShapeSch):
     _askiff_key: ClassVar[str] = "circle"
     center: Position = F()
     radius: float = F()
     fill: FillStyleSch | None = F()
 
+    def extrema_points(self) -> Sequence[Position]:
+        return BaseCircle(self.center, Position(self.center.x + self.radius, self.center.y)).extrema_points()
+
+    def to_global(self, ref_pos: Position) -> None:
+        self.center = self.center.to_global(ref_pos)
+
 
 #########################Rectangle#########################
-class GrRect(GrShape):
-    start: Position = F()
-    end: Position = F()
 
 
-class GrRectFp(GrRect, GrShapeFp):
+class GrRectFp(BaseRect, GrShapeFp):
     _askiff_key: ClassVar[str] = "fp_rect"
     fill: FillStylePCB | None = F(FillStylePCB.NONE)
 
     def to_shape_pcb(self, fp_position: Position | None = None) -> GrLinePCB:
         ret = GrLinePCB(**{k: v for k, v in self.__dict__.items() if k in self._GrItem__askiff_order})  # type: ignore  # ty:ignore[unresolved-attribute]
-        fp_position = fp_position or Position()
-        ret.start = _to_glob_coordinate(ret.start, fp_position)
-        ret.end = _to_glob_coordinate(ret.end, fp_position)
+        ret.to_global(fp_position or Position())
         ret.uuid = Uuid()
         return ret
 
 
-class GrRectPCB(GrRect, GrShapePCB):
+class GrRectPCB(BaseRect, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_rect"
     fill: FillStylePCB | None = F(FillStylePCB.NONE)
 
 
-class GrRectSch(GrItemSch, GrRect):
+class GrRectSch(BaseRect, GrShapeSch):
     _askiff_key: ClassVar[str] = "rectangle"
     fill: FillStyleSch | None = F()
 
