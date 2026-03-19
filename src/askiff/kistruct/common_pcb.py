@@ -56,6 +56,9 @@ class BaseLayer:
             if hasattr(parent, "all"):
                 parent.all[value] = self  # ty:ignore[invalid-assignment]
 
+    def __str__(self) -> str:
+        return self._value
+
     @classmethod
     def deserialize_downcast(cls, sexp: GeneralizedSexpr) -> BaseLayer:
         val = sexp if isinstance(sexp, str) else sexp[0]
