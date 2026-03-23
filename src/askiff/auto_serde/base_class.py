@@ -456,7 +456,7 @@ class AutoSerde:
                 pprint(ser_field)
                 print()
         return {"_AutoSerde__ser_field": ser_field, "_AutoSerde__ser_field_positional": ser_field_positional}
-
+    
     def serialize(self) -> GeneralizedSexpr:
         # asserts in this function are just to keep mypy happy, __init_serializer ensures correct types
 
@@ -474,64 +474,73 @@ class AutoSerde:
                     field_val = field_val and getattr(field_val, inner_field, None)
                 if field_val is None or (not field_val and not force_empty):
                     continue
-
-            match fmode:
-                case SerMode.SERIALIZE:
-                    append(*field_val.serialize())
-                case SerMode.SERIALIZE_OVERRIDE:
-                    append(*mode_extra(field_val))  # mode_extra =  custom serialize function
-                case SerMode.BOOL:
-                    (key_true, key_false) = mode_extra
-                    append(key_true if field_val else key_false)
-                case SerMode.BOOL_FLAG_BARE:
-                    (invert, fname) = mode_extra
-                    if field_val != invert:
-                        append(fname)
-                case SerMode.INT:
-                    append(str(field_val))
-                case SerMode.FLOAT:
-                    append(f"{field_val:.{mode_extra}f}".rstrip("0").rstrip("."))
-                case SerMode.FLOAT_NO_TRIM:
-                    append(f"{field_val:.{mode_extra}f}")
-                case SerMode.STR:
-                    append(field_val)
-                case SerMode.QSTR:
-                    append(Qstr(field_val))
-                case SerMode.ENUM:
-                    _val = field_val.value
-                    if _val:
-                        append(str(_val))
-                case SerMode.QENUM:
-                    _val = field_val.value
-                    if _val:
-                        append(Qstr(_val))
-                case SerMode.LIST | SerMode.LIST_FLAT:
-                    assert isinstance(field_val, Iterable)
-                    fmode, mode_extra = mode_extra
-                    match fmode:
-                        case SerMode.SERIALIZE:
-                            extend(x for f in field_val for x in f.serialize())
-                        case SerMode.BOOL:
-                            (key_true, key_false) = mode_extra
-                            extend(key_true if f else key_false for f in field_val)
-                        case SerMode.INT:
-                            extend(str(f) for f in field_val)
-                        case SerMode.FLOAT:
-                            extend(f"{f:.{mode_extra}f}".rstrip("0").rstrip(".") for f in field_val)
-                        case SerMode.FLOAT_NO_TRIM:
-                            extend(f"{f:.{mode_extra}f}" for f in field_val)
-                        case SerMode.STR:
-                            extend(f for f in field_val)
-                        case SerMode.QSTR:
-                            extend(Qstr(f) for f in field_val)
-                        case SerMode.ENUM:
-                            extend(f.value for f in field_val)
-                        case SerMode.QENUM:
-                            extend(Qstr(f.value) for f in field_val)
-                        case _:
-                            raise Exception(f"Unreachable {field} {mode_extra}")
-                case _:
-                    raise Exception(f"Unreachable {field}")
+            try:
+                match fmode:
+                    case SerMode.SERIALIZE:
+                        append(*field_val.serialize())
+                    case SerMode.SERIALIZE_OVERRIDE:
+                        append(*mode_extra(field_val))  # mode_extra =  custom serialize function
+                    case SerMode.BOOL:
+                        (key_true, key_false) = mode_extra
+                        append(key_true if field_val else key_false)
+                    case SerMode.BOOL_FLAG_BARE:
+                        (invert, fname) = mode_extra
+                        if field_val != invert:
+                            append(fname)
+                    case SerMode.INT:
+                        append(str(field_val))
+                    case SerMode.FLOAT:
+                        append(f"{field_val:.{mode_extra}f}".rstrip("0").rstrip("."))
+                    case SerMode.FLOAT_NO_TRIM:
+                        append(f"{field_val:.{mode_extra}f}")
+                    case SerMode.STR:
+                        append(field_val)
+                    case SerMode.QSTR:
+                        append(Qstr(field_val))
+                    case SerMode.ENUM:
+                        _val = field_val.value
+                        if _val:
+                            append(str(_val))
+                    case SerMode.QENUM:
+                        _val = field_val.value
+                        if _val:
+                            append(Qstr(_val))
+                    case SerMode.LIST | SerMode.LIST_FLAT:
+                        assert isinstance(field_val, Iterable)
+                        ifmode, imode_extra = mode_extra
+                        match ifmode:
+                            case SerMode.SERIALIZE:
+                                extend(x for f in field_val for x in f.serialize())
+                            case SerMode.BOOL:
+                                (key_true, key_false) = mode_extra
+                                extend(key_true if f else key_false for f in field_val)
+                            case SerMode.INT:
+                                extend(str(f) for f in field_val)
+                            case SerMode.FLOAT:
+                                extend(f"{f:.{imode_extra}f}".rstrip("0").rstrip(".") for f in field_val)
+                            case SerMode.FLOAT_NO_TRIM:
+                                extend(f"{f:.{imode_extra}f}" for f in field_val)
+                            case SerMode.STR:
+                                extend(f for f in field_val)
+                            case SerMode.QSTR:
+                                extend(Qstr(f) for f in field_val)
+                            case SerMode.ENUM:
+                                extend(f.value for f in field_val)
+                            case SerMode.QENUM:
+                                extend(Qstr(f.value) for f in field_val)
+                            case _:
+                                raise Exception("Unreachable")
+                    case _:
+                        raise Exception("Unreachable")
+            except Exception as e:
+                e.add_note(
+                    f"""Class: {self.__class__.__name__};
+                    Field name: {field};
+                    Field value: {field_val};
+                    Field value type: {type(field_val).__name__};
+                    Serialization Mode: {fmode} {mode_extra}"""
+                )
+                raise
 
         extend(_self.__extra_positional or ())
 
@@ -544,133 +553,140 @@ class AutoSerde:
                     field_val = field_val and getattr(field_val, inner_field, None)
                 if field_val is None or (not field_val and not force_empty):
                     continue
-            match fmode:
-                case SerMode.SERIALIZE:
-                    if not mode_extra:  # mode_extra = name attribute from F(..)
-                        askiff_key = getattr(field_val, "_askiff_key", None)
-                        fname = askiff_key() if callable(askiff_key) else fname
-                    # serial id priority: 1. explicit name, 2. _askiff_key method, 3. field name
-                    # (note that _askiff_key string is ignored in this case)
-                    append((fname, *field_val.serialize()))
-                case SerMode.SERIALIZE_OVERRIDE:
-                    if not mode_extra:  # mode_extra = name attribute from F(..)
-                        askiff_key = getattr(field_val, "_askiff_key", None)
-                        fname = askiff_key() if callable(askiff_key) else fname
-                    append((fname, *mode_extra(field_val)))  # mode_extra =  custom serialize function
-                case SerMode.SERIALIZE_NESTED:
-                    askiff_key = getattr(field_val, "_askiff_key", "")
-                    askiff_key = askiff_key() if callable(askiff_key) else askiff_key
-                    append((fname, ((askiff_key, *field_val.serialize()))))
-                case SerMode.BOOL:
-                    (key_true, key_false) = mode_extra
-                    append(Sexpr((fname, key_true if field_val else key_false)))
-                case SerMode.BOOL_FLAG:
-                    if field_val != mode_extra:  # mode_extra = invert
-                        append((fname,))
-                case SerMode.INT:
-                    append((fname, str(field_val)))
-                case SerMode.FLOAT:
-                    append((fname, f"{field_val:.{mode_extra}f}".rstrip("0").rstrip(".")))  # mode_extra=precision
-                case SerMode.FLOAT_NO_TRIM:
-                    append((fname, f"{field_val:.{mode_extra}f}"))  # mode_extra=precision
-                case SerMode.STR:
-                    append((fname, field_val))
-                case SerMode.QSTR:
-                    append((fname, Qstr(field_val)))
-                case SerMode.ENUM:
-                    _val = field_val.value
-                    if _val:
-                        append((fname, _val))
-                case SerMode.QENUM:
-                    _val = field_val.value
-                    if _val:
-                        append((fname, Qstr(_val)))
-                case SerMode.LIST:
-                    assert isinstance(field_val, Iterable)
-                    fmode, mode_extra = mode_extra
-                    match fmode:
-                        case SerMode.SERIALIZE:
+            try:
+                match fmode:
+                    case SerMode.SERIALIZE:
+                        if not mode_extra:  # mode_extra = name attribute from F(..)
                             askiff_key = getattr(field_val, "_askiff_key", None)
-                            if askiff_key:
-                                fname = askiff_key() if callable(askiff_key) else askiff_key
-                            temp = [
-                                fname,
-                            ]
-                            temp_append = temp.append
-                            for f in field_val:
-                                askiff_key = getattr(f, "_askiff_key", "")
-                                n = askiff_key() if callable(askiff_key) else askiff_key
-                                temp_append((n, *f.serialize()))
-                            append(temp)
-                        case SerMode.BOOL:
-                            (key_true, key_false) = mode_extra
-                            append((fname, *(key_true if f else key_false for f in field_val)))
-                        case SerMode.INT:
-                            append((fname, *(str(f) for f in field_val)))
-                        case SerMode.FLOAT:  # mode_extra=precision
-                            append((fname, *(f"{f:.{mode_extra}f}".rstrip("0").rstrip(".") for f in field_val)))
-                        case SerMode.FLOAT_NO_TRIM:  # mode_extra=precision
-                            append((fname, *(f"{f:.{mode_extra}f}" for f in field_val)))
-                        case SerMode.STR:
-                            append((fname, *(f for f in field_val)))
-                        case SerMode.QSTR:
-                            append((fname, *(Qstr(f) for f in field_val)))
-                        case SerMode.ENUM:
-                            append((fname, *(f.value for f in field_val)))
-                        case SerMode.QENUM:
-                            append((fname, *(Qstr(f.value) for f in field_val)))
-                        case SerMode.LIST:
-                            assert isinstance(field_val, Iterable)
-                            fmode, mode_extra = mode_extra
-                            match fmode:
-                                case SerMode.STR:
-                                    append((fname, *((fi for fi in f) for f in field_val)))
-                                case SerMode.QSTR:
-                                    append((fname, *((Qstr(fi) for fi in f) for f in field_val)))
-                                case SerMode.ENUM:
-                                    append((fname, *((fi.value for fi in f) for f in field_val)))
-                                case SerMode.QENUM:
-                                    append((fname, *((Qstr(fi.value) for fi in f) for f in field_val)))
-                                case _:
-                                    raise Exception(f"Unreachable {field} {mode_extra}")
-                        case _:
-                            raise Exception(f"Unreachable {field} {mode_extra}")
-                case SerMode.LIST_FLAT:
-                    assert isinstance(field_val, Iterable)
-                    fmode, mode_extra = mode_extra
-                    match fmode:
-                        case SerMode.SERIALIZE:
-                            for f in field_val:
-                                n = fname
-                                if not mode_extra:  # mode_extra = name attribute from F(..)
-                                    askiff_key = getattr(f, "_askiff_key", None)
-                                    if askiff_key:
-                                        n = askiff_key() if callable(askiff_key) else askiff_key
-                                append((n, *f.serialize()))
-                        case SerMode.BOOL:
-                            (key_true, key_false) = mode_extra
-                            extend((fname, key_true if f else key_false) for f in field_val)
-                        case SerMode.INT:
-                            extend((fname, str(f)) for f in field_val)
-                        case SerMode.FLOAT:  # mode_extra=precision
-                            extend((fname, f"{f:.{mode_extra}f}".rstrip("0").rstrip(".")) for f in field_val)
-                        case SerMode.FLOAT_NO_TRIM:  # mode_extra=precision
-                            extend((fname, f"{f:.{mode_extra}f}") for f in field_val)
-                        case SerMode.STR:
-                            extend((fname, f) for f in field_val)
-                        case SerMode.QSTR:
-                            extend((fname, Qstr(f)) for f in field_val)
-                        case SerMode.ENUM:
-                            extend((fname, f.value) for f in field_val)
-                        case SerMode.QENUM:
-                            extend((fname, Qstr(f.value)) for f in field_val)
-                        case _:
-                            raise Exception(f"Unreachable {field} {mode_extra}")
-                case _:
-                    raise Exception(f"Unreachable {field} {fmode}")
-        extend(_self.__extra or ())
-
-        return ret
+                            fname = askiff_key() if callable(askiff_key) else fname
+                        # serial id priority: 1. explicit name, 2. _askiff_key method, 3. field name
+                        # (note that _askiff_key string is ignored in this case)
+                        append((fname, *field_val.serialize()))
+                    case SerMode.SERIALIZE_OVERRIDE:
+                        if not mode_extra:  # mode_extra = name attribute from F(..)
+                            askiff_key = getattr(field_val, "_askiff_key", None)
+                            fname = askiff_key() if callable(askiff_key) else fname
+                        append((fname, *mode_extra(field_val)))  # mode_extra =  custom serialize function
+                    case SerMode.SERIALIZE_NESTED:
+                        askiff_key = getattr(field_val, "_askiff_key", "")
+                        askiff_key = askiff_key() if callable(askiff_key) else askiff_key
+                        append((fname, ((askiff_key, *field_val.serialize()))))
+                    case SerMode.BOOL:
+                        (key_true, key_false) = mode_extra
+                        append(Sexpr((fname, key_true if field_val else key_false)))
+                    case SerMode.BOOL_FLAG:
+                        if field_val != mode_extra:  # mode_extra = invert
+                            append((fname,))
+                    case SerMode.INT:
+                        append((fname, str(field_val)))
+                    case SerMode.FLOAT:
+                        append((fname, f"{field_val:.{mode_extra}f}".rstrip("0").rstrip(".")))  # mode_extra=precision
+                    case SerMode.FLOAT_NO_TRIM:
+                        append((fname, f"{field_val:.{mode_extra}f}"))  # mode_extra=precision
+                    case SerMode.STR:
+                        append((fname, field_val))
+                    case SerMode.QSTR:
+                        append((fname, Qstr(field_val)))
+                    case SerMode.ENUM:
+                        _val = field_val.value
+                        if _val:
+                            append((fname, _val))
+                    case SerMode.QENUM:
+                        _val = field_val.value
+                        if _val:
+                            append((fname, Qstr(_val)))
+                    case SerMode.LIST:
+                        assert isinstance(field_val, Iterable)
+                        ifmode, imode_extra = mode_extra
+                        match ifmode:
+                            case SerMode.SERIALIZE:
+                                askiff_key = getattr(field_val, "_askiff_key", None)
+                                if askiff_key:
+                                    fname = askiff_key() if callable(askiff_key) else askiff_key
+                                temp = [
+                                    fname,
+                                ]
+                                temp_append = temp.append
+                                for f in field_val:
+                                    askiff_key = getattr(f, "_askiff_key", "")
+                                    n = askiff_key() if callable(askiff_key) else askiff_key
+                                    temp_append((n, *f.serialize()))
+                                append(temp)
+                            case SerMode.BOOL:
+                                (key_true, key_false) = imode_extra
+                                append((fname, *(key_true if f else key_false for f in field_val)))
+                            case SerMode.INT:
+                                append((fname, *(str(f) for f in field_val)))
+                            case SerMode.FLOAT:  # mode_extra=precision
+                                append((fname, *(f"{f:.{imode_extra}f}".rstrip("0").rstrip(".") for f in field_val)))
+                            case SerMode.FLOAT_NO_TRIM:  # mode_extra=precision
+                                append((fname, *(f"{f:.{imode_extra}f}" for f in field_val)))
+                            case SerMode.STR:
+                                append((fname, *(f for f in field_val)))
+                            case SerMode.QSTR:
+                                append((fname, *(Qstr(f) for f in field_val)))
+                            case SerMode.ENUM:
+                                append((fname, *(f.value for f in field_val)))
+                            case SerMode.QENUM:
+                                append((fname, *(Qstr(f.value) for f in field_val)))
+                            case SerMode.LIST:
+                                assert isinstance(field_val, Iterable)
+                                ifmode, imode_extra = imode_extra
+                                match ifmode:
+                                    case SerMode.STR:
+                                        append((fname, *((fi for fi in f) for f in field_val)))
+                                    case SerMode.QSTR:
+                                        append((fname, *((Qstr(fi) for fi in f) for f in field_val)))
+                                    case SerMode.ENUM:
+                                        append((fname, *((fi.value for fi in f) for f in field_val)))
+                                    case SerMode.QENUM:
+                                        append((fname, *((Qstr(fi.value) for fi in f) for f in field_val)))
+                                    case _:
+                                        raise Exception("Unreachable")
+                            case _:
+                                raise Exception("Unreachable")
+                    case SerMode.LIST_FLAT:
+                        assert isinstance(field_val, Iterable)
+                        ifmode, imode_extra = mode_extra
+                        match ifmode:
+                            case SerMode.SERIALIZE:
+                                for f in field_val:
+                                    n = fname
+                                    if not imode_extra:  # mode_extra = name attribute from F(..)
+                                        askiff_key = getattr(f, "_askiff_key", None)
+                                        if askiff_key:
+                                            n = askiff_key() if callable(askiff_key) else askiff_key
+                                    append((n, *f.serialize()))
+                            case SerMode.BOOL:
+                                (key_true, key_false) = imode_extra
+                                extend((fname, key_true if f else key_false) for f in field_val)
+                            case SerMode.INT:
+                                extend((fname, str(f)) for f in field_val)
+                            case SerMode.FLOAT:  # mode_extra=precision
+                                extend((fname, f"{f:.{imode_extra}f}".rstrip("0").rstrip(".")) for f in field_val)
+                            case SerMode.FLOAT_NO_TRIM:  # mode_extra=precision
+                                extend((fname, f"{f:.{imode_extra}f}") for f in field_val)
+                            case SerMode.STR:
+                                extend((fname, f) for f in field_val)
+                            case SerMode.QSTR:
+                                extend((fname, Qstr(f)) for f in field_val)
+                            case SerMode.ENUM:
+                                extend((fname, f.value) for f in field_val)
+                            case SerMode.QENUM:
+                                extend((fname, Qstr(f.value)) for f in field_val)
+                            case _:
+                                raise Exception("Unreachable")
+                    case _:
+                        raise Exception("Unreachable")
+            except Exception as e:
+                e.add_note(
+                    f"""Class: {self.__class__.__name__};
+                    Field name: {field};
+                    Field value: {field_val};
+                    Field value type: {type(field_val).__name__};
+                    Serialization Mode: {fmode} {mode_extra}"""
+                )
+                raise
 
     def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:
         type_hints, field_meta = preprocess_cls_fields(cls)
