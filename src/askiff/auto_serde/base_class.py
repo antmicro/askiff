@@ -456,7 +456,7 @@ class AutoSerde:
                 pprint(ser_field)
                 print()
         return {"_AutoSerde__ser_field": ser_field, "_AutoSerde__ser_field_positional": ser_field_positional}
-    
+
     def serialize(self) -> GeneralizedSexpr:
         # asserts in this function are just to keep mypy happy, __init_serializer ensures correct types
 
@@ -687,6 +687,9 @@ class AutoSerde:
                     Serialization Mode: {fmode} {mode_extra}"""
                 )
                 raise
+        extend(_self.__extra or ())
+
+        return ret
 
     def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:
         type_hints, field_meta = preprocess_cls_fields(cls)
