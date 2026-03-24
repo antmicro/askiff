@@ -17,7 +17,7 @@ from askiff.kistruct.common import (
     PropertyList,
     Uuid,
 )
-from askiff.kistruct.gritems import GrItemSch
+from askiff.kistruct.gritems import GrItemSym
 from askiff.sexpr import GeneralizedSexpr, Qstr
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
@@ -26,6 +26,7 @@ if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment
 
 class SymProperty(Property):
     show_name: bool | None = F(after="position").version(Version.K9.sym, flag=True)
+    # show_name: bool | None = F(after="hide").version(Version.K9.sym, flag=True) # order in sym on sch is different
     do_not_autoplace: bool | None = None
 
     def _askiff_post_deser(self) -> None:
@@ -113,7 +114,7 @@ class SymbolPartial(AutoSerde):
     unit_name: str | None = None
     """Optional custom name for unit"""
 
-    graphic_items: AutoSerdeAgg[GrItemSch] = F(flatten=True)
+    graphic_items: AutoSerdeAgg[GrItemSym] = F(flatten=True)
     """List of graphical objects (lines, circles, arcs, texts, ...) in the footprint"""
 
     pins: list[Pin] = F(name="pin", flatten=True)
@@ -131,6 +132,21 @@ class SymbolPower(str, AutoSerdeEnum):
         return SymbolPower.GLOBAL  # type: ignore
 
 
+class LibSymbolPinNames(AutoSerde):
+    offset: float | None = None
+    hide: bool | None = None
+
+    def __bool__(self) -> bool:
+        return self.hide or self.offset is not None
+
+
+class LibSymbolPinNumbers(AutoSerde):
+    hide: bool = False
+
+    def __bool__(self) -> bool:
+        return self.hide
+
+
 class LibSymbol(AutoSerde):
     _askiff_key: ClassVar[str] = "symbol"
 
@@ -142,6 +158,8 @@ class LibSymbol(AutoSerde):
     power: SymbolPower | None = F().version(
         Version.K9.sch, serialize=SymbolPower.serialize_k9, deserialize=SymbolPower.deserialize_k9
     )
+    pin_numbers: LibSymbolPinNumbers = F()
+    pin_names: LibSymbolPinNames = F()
     exclude_from_sim: bool | None = None
     in_bom: bool | None = None
     on_board: bool | None = None
@@ -169,7 +187,7 @@ class LibSymbol(AutoSerde):
 class SymbolSchematic(AutoSerde):
     _askiff_key: ClassVar[str] = "symbol"
 
-    lib_id: LibId = F(positional=True)
+    lib_id: LibId = F()
     """Defines symbol name and library link"""
 
     locked: bool | None = F(after="lib_id")
@@ -178,10 +196,20 @@ class SymbolSchematic(AutoSerde):
     position: Position | None = F(name="at")
     """Defines the X and Y coordinates and rotation of the footprint"""
 
+    unit: int = 1
+    body_style: int = 1
+
+    exclude_from_sim: bool = True
+    in_bom: bool = True
+    on_board: bool = True
+    in_pos_files: bool = True
+    dnp: bool = False
+    fields_autoplaced: bool = True
+
+    uuid: Uuid = F()
+
     properties: PropertyList[SymProperty] = F(name="property", flatten=True)
     """Properties of the symbol, such as reference, value, datasheet, ..."""
-
-    uuid: Uuid | None = F()
 
     # instances: ? = F()
 

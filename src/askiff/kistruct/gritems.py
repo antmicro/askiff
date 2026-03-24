@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Sequence
+from math import cos, sin
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack, cast
 
 from askiff.auto_serde import AutoSerde, AutoSerdeDownCasting, AutoSerdeEnum, F, SerdeOpt
@@ -28,7 +29,7 @@ if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment
 
 
 class GrItem(AutoSerde):
-    __askiff_childs: ClassVar[dict[str, type]] = {}
+    __askiff_childs: ClassVar[dict[str, type]]  # = {}
     __askiff_order: ClassVar[list[str]] = [
         "private",
         "start",
@@ -49,16 +50,19 @@ class GrItem(AutoSerde):
         "uuid",
         "data",
     ]
-    uuid: Uuid | None = None
 
     @classmethod
     def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:  # type: ignore
         super().__init_subclass__(**kwargs)
-        askiff_key = "_askiff_key"
-        if hasattr(cls, askiff_key):
-            GrItem.__askiff_childs[getattr(cls, askiff_key)] = cls
-        # Note that this is not copy, it is exactly the same memory as for GrItem
-        setattr(cls, f"_{cls.__name__}__askiff_childs", GrItem.__askiff_childs)
+        base = (getattr(parent, f"_{parent.__name__}__askiff_childs", None) for parent in cls.__mro__[1:])
+        base_filtr = [b for b in base if b is not None]
+        if not base_filtr:
+            setattr(cls, f"_{cls.__name__}__askiff_childs", {})
+            return
+        for base_askiff_childs in base_filtr:
+            askiff_key = getattr(cls, "_askiff_key", None)
+            if askiff_key:
+                base_askiff_childs[askiff_key] = cls
 
     # added to forbid direct creation of base classes (child classes should assign value to _askiff_key)
     @property
@@ -67,7 +71,7 @@ class GrItem(AutoSerde):
         pass
 
 
-class GrShape(GrItem, BaseShape):
+class GrShape(BaseShape):
     """GrShape is subclass of graphics that encompasses base shapes like lines, circles, polygons"""
 
     stroke: Stroke | None = None
@@ -75,15 +79,18 @@ class GrShape(GrItem, BaseShape):
 
 ####################Base Classes (file)####################
 class GrItemFp(GrItem):
-    pass
+    uuid: Uuid = F()
 
 
 class GrItemPCB(GrItem):
-    pass
+    uuid: Uuid = F()
 
 
 class GrItemSch(GrItem):
-    uuid: Uuid | None = None
+    uuid: Uuid = F()
+
+
+class GrItemSym(GrItem):
     private: bool = F(bare=True, flag=True)
 
 
@@ -106,8 +113,12 @@ class GrShapeSch(GrShape, GrItemSch):
     pass
 
 
+class GrShapeSym(GrShape, GrItemSym):
+    pass
+
+
 ###########################Common##########################
-class FillStylePCB(str, AutoSerdeEnum):
+class FillStylePCBEnum(str, AutoSerdeEnum):
     NONE = "no"
     HATCH = "hatch"
     HATCH_REVERSE = "reverse_hatch"
@@ -115,26 +126,39 @@ class FillStylePCB(str, AutoSerdeEnum):
     SOLID = "yes"
 
 
-class FillStyleSch(AutoSerdeDownCasting):
+class FillStyleSchEnum(str, AutoSerdeEnum):
+    NONE = "none"
+    HATCH = "hatch"
+    HATCH_REVERSE = "reverse_hatch"
+    HATCH_CROSS = "cross_hatch"
+    SOLID = "color"
+
+
+class FillStyleSch(AutoSerde):
+    type: FillStyleSchEnum = F(FillStyleSchEnum.NONE)
+    color: Color | None = F()
+
+
+class FillStyleSym(AutoSerdeDownCasting):
     _AutoSerdeDownCasting__downcast_field: ClassVar[str] = "type"
-    type: str = F(unquoted=True)
+    type: Final[str] = F(unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
 
 
-class FillStyleSchColor(FillStyleSch):
-    type: Final[str] = F("color", unquoted=True)  # type: ignore
+class FillStyleSymColor(FillStyleSym):
+    type: Final[str] = F("color", unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
     color: Color = F()
 
 
-class FillStyleSchBackground(FillStyleSch):
-    type: Final[str] = F("background", unquoted=True)  # type: ignore
+class FillStyleSymBackground(FillStyleSym):
+    type: Final[str] = F("background", unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
 
 
-class FillStyleSchOutline(FillStyleSch):
-    type: Final[str] = F("outline", unquoted=True)  # type: ignore
+class FillStyleSymOutline(FillStyleSym):
+    type: Final[str] = F("outline", unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
 
 
-class FillStyleSchNone(FillStyleSch):
-    type: Final[str] = F("none", unquoted=True)  # type: ignore
+class FillStyleSymNone(FillStyleSym):
+    type: Final[str] = F("none", unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
 
 
 ############################Arc############################
@@ -159,6 +183,11 @@ class GrArcSch(BaseArc, GrShapeSch):
     fill: FillStyleSch | None = None
 
 
+class GrArcSym(BaseArc, GrShapeSym):
+    _askiff_key: ClassVar[str] = "arc"
+    fill: FillStyleSym | None = None
+
+
 ############################Line###########################
 
 
@@ -181,7 +210,7 @@ class GrLinePCB(BaseLine, GrShapePCB):
 
 class GrPolyFp(BasePoly, GrShapeFp):
     _askiff_key: ClassVar[str] = "fp_poly"
-    fill: FillStylePCB | None = None
+    fill: FillStylePCBEnum | None = None
 
     def to_shape_pcb(self, fp_position: Position | None = None) -> GrPolyPCB:
         ret = GrPolyPCB(**{k: v for k, v in self.__dict__.items() if k in self._GrItem__askiff_order})  # type: ignore  # ty:ignore[unresolved-attribute]
@@ -192,7 +221,7 @@ class GrPolyFp(BasePoly, GrShapeFp):
 
 class GrPolyPCB(BasePoly, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_poly"
-    fill: FillStylePCB | None = None
+    fill: FillStylePCBEnum | None = None
 
 
 class GrPolySch(BasePoly, GrShapeSch):
@@ -200,12 +229,17 @@ class GrPolySch(BasePoly, GrShapeSch):
     fill: FillStyleSch | None = None
 
 
+class GrPolySym(BasePoly, GrShapeSym):
+    _askiff_key: ClassVar[str] = "polyline"
+    fill: FillStyleSym | None = None
+
+
 ###########################Bezier##########################
 
 
 class GrCurveFp(BaseBezier, GrShapeFp):
     _askiff_key: ClassVar[str] = "fp_curve"
-    fill: FillStylePCB | None = None
+    fill: FillStylePCBEnum | None = None
 
     def to_shape_pcb(self, fp_position: Position | None = None) -> GrCurvePCB:
         ret = GrCurvePCB(**{k: v for k, v in self.__dict__.items() if k in self._GrItem__askiff_order})  # type: ignore  # ty:ignore[unresolved-attribute]
@@ -216,7 +250,7 @@ class GrCurveFp(BaseBezier, GrShapeFp):
 
 class GrCurvePCB(BaseBezier, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_curve"
-    fill: FillStylePCB | None = None
+    fill: FillStylePCBEnum | None = None
 
 
 class GrCurveSch(BaseBezier, GrShapeSch):
@@ -224,12 +258,17 @@ class GrCurveSch(BaseBezier, GrShapeSch):
     fill: FillStyleSch | None = None
 
 
+class GrCurveSym(BaseBezier, GrShapeSym):
+    _askiff_key: ClassVar[str] = "bezier"
+    fill: FillStyleSym | None = None
+
+
 ###########################Circle##########################
 
 
 class GrCircleFp(BaseCircle, GrShapeFp):
     _askiff_key: ClassVar[str] = "fp_circle"
-    fill: FillStylePCB | None = F(FillStylePCB.NONE)
+    fill: FillStylePCBEnum | None = F(FillStylePCBEnum.NONE)
 
     def to_shape_pcb(self, fp_position: Position | None = None) -> GrCirclePCB:
         ret = GrCirclePCB(**{k: v for k, v in self.__dict__.items() if k in self._GrItem__askiff_order})  # type: ignore  # ty:ignore[unresolved-attribute]
@@ -240,7 +279,7 @@ class GrCircleFp(BaseCircle, GrShapeFp):
 
 class GrCirclePCB(BaseCircle, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_circle"
-    fill: FillStylePCB | None = F(FillStylePCB.NONE)
+    fill: FillStylePCBEnum | None = F(FillStylePCBEnum.NONE)
 
 
 class GrCircleSch(GrShapeSch):
@@ -256,12 +295,25 @@ class GrCircleSch(GrShapeSch):
         self.center = self.center.to_global(ref_pos)
 
 
+class GrCircleSym(GrShapeSym):
+    _askiff_key: ClassVar[str] = "circle"
+    center: Position = F()
+    radius: float = F()
+    fill: FillStyleSym | None = F()
+
+    def extrema_points(self) -> Sequence[Position]:
+        return BaseCircle(self.center, Position(self.center.x + self.radius, self.center.y)).extrema_points()
+
+    def to_global(self, ref_pos: Position) -> None:
+        self.center = self.center.to_global(ref_pos)
+
+
 #########################Rectangle#########################
 
 
 class GrRectFp(BaseRect, GrShapeFp):
     _askiff_key: ClassVar[str] = "fp_rect"
-    fill: FillStylePCB | None = F(FillStylePCB.NONE)
+    fill: FillStylePCBEnum | None = F(FillStylePCBEnum.NONE)
 
     def to_shape_pcb(self, fp_position: Position | None = None) -> GrLinePCB:
         ret = GrLinePCB(**{k: v for k, v in self.__dict__.items() if k in self._GrItem__askiff_order})  # type: ignore  # ty:ignore[unresolved-attribute]
@@ -272,12 +324,17 @@ class GrRectFp(BaseRect, GrShapeFp):
 
 class GrRectPCB(BaseRect, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_rect"
-    fill: FillStylePCB | None = F(FillStylePCB.NONE)
+    fill: FillStylePCBEnum | None = F(FillStylePCBEnum.NONE)
 
 
 class GrRectSch(BaseRect, GrShapeSch):
     _askiff_key: ClassVar[str] = "rectangle"
     fill: FillStyleSch | None = F()
+
+
+class GrRectSym(BaseRect, GrShapeSym):
+    _askiff_key: ClassVar[str] = "rectangle"
+    fill: FillStyleSym | None = F()
 
 
 ############################Text###########################
@@ -293,7 +350,7 @@ class TextType(str, AutoSerdeEnum):
     USER = "user"
 
 
-class GrText(GrItem):
+class GrText(AutoSerde):
     text: str = F(positional=True)
     effects: Effects = F()
     position: Position = F(name="at")
@@ -313,6 +370,7 @@ class GrTextPCBBase(GrText):
     ]
     knockout: bool = F(skip=True)
     layers: LayerSet[BaseLayer] = F()
+    uuid: Uuid = F()
 
     def _askiff_post_deser(self) -> None:
         self.knockout = self.layers._knockout
@@ -348,23 +406,18 @@ class GrTextPCB(GrTextPCBBase, GrItemPCB):
 
 class GrTextSch(GrText, GrItemSch):
     _askiff_key: ClassVar[str] = "text"
-    __askiff_order: ClassVar[list[str]] = [
-        "private",
-        "text",
-        "exclude_from_sim",
-        "locked",
-        "position",
-        "uuid",
-        "effects",
-    ]
+    __askiff_order: ClassVar[list[str]] = ["text", "exclude_from_sim", "locked", "position", "effects", "uuid"]
+    exclude_from_sim: bool | None = None
+
+
+class GrTextSym(GrText, GrItemSym):
+    _askiff_key: ClassVar[str] = "text"
+    __askiff_order: ClassVar[list[str]] = ["private", "text", "exclude_from_sim", "locked", "position", "effects"]
     private: bool = F(bare=True, flag=True)
     exclude_from_sim: bool | None = None
-    uuid: Uuid | None = None
 
 
 ##########################TextBox##########################
-
-
 class TextMargin(AutoSerde, positional=True):  # type:ignore
     left: float = 1.0025
     top: float = 1.0025
@@ -372,14 +425,113 @@ class TextMargin(AutoSerde, positional=True):  # type:ignore
     bottom: float = 1.0025
 
 
-class GrTextBox(GrItem):
+class RectTextBox(AutoSerde):
+    margins: TextMargin | None = None
+
+
+class RectTextBoxPCB(RectTextBox):
+    _pts: list[Position] | None = F()
+    _start: Position | None = F()
+    _end: Position | None = F()
+    _angle: float | None = F()
+
+    def __set_from_pos_size(self, pos: Position, size: Size) -> None:
+        if pos.angle:
+            dx, dy = size.width / 2, size.height / 2
+            local = [(-dx, -dy), (dx, -dy), (dx, dy), (-dx, dy)]
+            cos_t, sin_t = cos(pos.angle), sin(pos.angle)
+
+            self._pts = [Position(pos.x + lx * cos_t - ly * sin_t, pos.y + lx * sin_t + ly * cos_t) for lx, ly in local]
+            self._angle = pos.angle
+            self._end = None
+            self._start = None
+        else:
+            self._pts = None
+            self._angle = None
+            self._end = Position(pos.x - size.width / 2, pos.y - size.height / 2)
+            self._start = Position(pos.x + size.width / 2, pos.y + size.height / 2)
+
+    @property
+    def position(self) -> Position:
+        if self._start is not None and self._end is not None:
+            return Position((self._start.x + self._end.x) / 2, (self._start.y + self._end.y) / 2)
+        if self._pts and self._angle is not None:
+            x, y = 0.0, 0.0
+            for p in self._pts:
+                x += p.x
+                y += p.y
+            return Position(x / 4, y / 4, self._angle)
+        return Position()
+
+    @position.setter
+    def position(self, val: Position) -> None:
+        self.__set_from_pos_size(val, self.size)
+
+    @property
+    def size(self) -> Size:
+        if self._start is not None and self._end is not None:
+            return Size(abs(self._start.x - self._end.x), abs(self._start.y - self._end.y))
+        if self._pts and self._angle is not None:
+            return Size(
+                self._pts[0].distance(self._pts[1]),
+                self._pts[1].distance(self._pts[2]),
+            )
+        return Size()
+
+    @size.setter
+    def size(self, val: Size) -> None:
+        self.__set_from_pos_size(self.position, val)
+
+
+class RectTextBoxSch(RectTextBox):
+    position: Position = F(name="at")
+    size: Size = F()
+
+
+class GrTextBox(AutoSerde):
+    text: str = F(positional=True)
+    effects: Effects = F()
+    border: bool | None = None
+    border_stroke: Stroke | None = F(name="stroke")
+    box: RectTextBox = F(inline=True)
+
+
+class _GrTextBoxFpPCB(GrTextBox):
+    layer: BaseLayer = F(Layer.COMMENTS)
+    render_cache: RenderCache | None = F()
+    knockout: bool | None = None
+    box: RectTextBoxPCB = F(inline=True)
+
+
+class GrTextBoxFp(_GrTextBoxFpPCB, GrItemFp):
+    _askiff_key: ClassVar[str] = "fp_text_box"
     __askiff_order: ClassVar[list[str]] = [
         "text",
-        "pts",
-        "start",
-        "end",
-        "margins",
-        "angle",
+        "box._pts",
+        "box._start",
+        "box._end",
+        "box.margins",
+        "box._angle",
+        "locked",
+        "layer",
+        "uuid",
+        "effects",
+        "border",
+        "border_stroke",
+        "render_cache",
+        "knockout",
+    ]
+
+
+class GrTextBoxPCB(_GrTextBoxFpPCB, GrItemPCB):
+    _askiff_key: ClassVar[str] = "gr_text_box"
+    __askiff_order: ClassVar[list[str]] = [
+        "text",
+        "box._pts",
+        "box._start",
+        "box._end",
+        "box.margins",
+        "box._angle",
         "locked",
         "layer",
         "uuid",
@@ -390,50 +542,50 @@ class GrTextBox(GrItem):
         "render_cache",
         "knockout",
     ]
-    text: str = F(positional=True)
-    effects: Effects = F()
-    margins: TextMargin | None = None
-    border: bool | None = None
-    border_stroke: Stroke | None = F(name="stroke")
-    # TODO: textbox, size/position can be in 3 flavours in kicad files, but provide unified way to operate on them
-    pts: list[Position] = F()
-    angle: float | None = None
-    start: Position | None = None
-    end: Position | None = None
-    knockout: bool | None = None
 
 
-class GrTextBoxFp(GrTextBox, GrItemFp):
-    _askiff_key: ClassVar[str] = "fp_text_box"
-    render_cache: RenderCache | None = None
-    layer: BaseLayer = F(Layer.COMMENTS)
-
-
-class GrTextBoxPCB(GrTextBox, GrItemPCB):
-    _askiff_key: ClassVar[str] = "gr_text_box"
-    render_cache: RenderCache | None = None
-    layer: BaseLayer = F(Layer.COMMENTS)
-
-
-class GrTextBoxSch(GrItemSch):
+class GrTextBoxSch(GrTextBox, GrItemSch):
     _askiff_key: ClassVar[str] = "text_box"
-    __askiff_order: ClassVar[list[str]] = []
-
-    private: bool = F(bare=True, flag=True)
-    text: str = F(positional=True)
+    __askiff_order: ClassVar[list[str]] = [
+        "text",
+        "exclude_from_sim",
+        "box.position",
+        "box.size",
+        "box.margins",
+        "locked",
+        "uuid",
+        "border",
+        "border_stroke",
+        "fill",
+        "effects",
+    ]
     exclude_from_sim: bool | None = None
-    position: Position = F(name="at")
-    size: Size = F()
-    margins: TextMargin | None = None
-    border: bool | None = None
-    border_stroke: Stroke | None = F(name="stroke")
+    box: RectTextBoxSch = F(inline=True)
     fill: FillStyleSch | None = None
-    effects: Effects = F()
-    uuid: Uuid | None = None
+
+
+class GrTextBoxSym(GrTextBox, GrItemSym):
+    _askiff_key: ClassVar[str] = "text_box"
+    __askiff_order: ClassVar[list[str]] = [
+        "private",
+        "text",
+        "exclude_from_sim",
+        "box.position",
+        "box.size",
+        "box.margins",
+        "locked",
+        "border",
+        "border_stroke",
+        "fill",
+        "effects",
+    ]
+    exclude_from_sim: bool | None = None
+    box: RectTextBoxSch = F(inline=True)
+    fill: FillStyleSym | None = None
 
 
 ###########################Image###########################
-class Image(GrItemFp, GrItemPCB, GrItemSch):
+class ImagePCB(GrItemFp, GrItemPCB):
     _askiff_key: ClassVar[str] = "image"
     __askiff_order: ClassVar[list[str]] = []
     position: Position = F(name="at")
@@ -441,6 +593,15 @@ class Image(GrItemFp, GrItemPCB, GrItemSch):
     layer: BaseLayer | None = None
     data: DataBlockQuoted = F()
     _uuid = F()
+
+
+class ImageSch(GrItemSch):
+    _askiff_key: ClassVar[str] = "image"
+    __askiff_order: ClassVar[list[str]] = []
+    position: Position = F(name="at")
+    _uuid = F()
+    scale: float | None = None
+    data: DataBlockQuoted = F()
 
 
 ##########################Barcode##########################
@@ -497,24 +658,8 @@ class TableSeparator(AutoSerde):
 
 
 class TableCell(AutoSerde):
-    __askiff_order: ClassVar[list[str]] = [
-        "text",
-        "exclude_from_sim",
-        "start",
-        "end",
-        "margins",
-        "span",
-        "layer",
-        "uuid",
-        "fill",
-        "effects",
-        "render_cache",
-    ]
-
     text: str = F(positional=True)
-    start: Position = F()
-    end: Position = F()
-    margins: TextMargin = F()
+    box: RectTextBox = F(inline=True)
     span: list[int] = F()
     """Indicates expansion of this cell over others (cell merging)
     (span 2 1) means that this cell is merged with cell that is in next column"""
@@ -524,28 +669,44 @@ class TableCell(AutoSerde):
 
 class TableCellSch(TableCell):
     _askiff_key: ClassVar[str] = "table_cell"
-    fill: FillStyleSch | None = None
+    __askiff_order: ClassVar[list[str]] = [
+        "text",
+        "exclude_from_sim",
+        "box.position",
+        "box.size",
+        "box.margins",
+        "span",
+        "fill",
+        "effects",
+        "uuid",
+    ]
+    box: RectTextBoxSch = F(inline=True)
+    fill: FillStyleSym | None = None
     exclude_from_sim: bool = F()
 
 
 class TableCellPCB(TableCell):
     _askiff_key: ClassVar[str] = "table_cell"
+    __askiff_order: ClassVar[list[str]] = [
+        "text",
+        "box._start",
+        "box._end",
+        "box._pts",
+        "box.margins",
+        "box._angle",
+        "span",
+        "layer",
+        "uuid",
+        "fill",
+        "effects",
+        "render_cache",
+    ]
+    box: RectTextBoxPCB = F(inline=True)
     layer: BaseLayer | None = None
     render_cache: RenderCache | None = None
 
 
 class GrTable(AutoSerde):
-    __askiff_order: ClassVar[list[str]] = [
-        "column_count",
-        "uuid",
-        "locked",
-        "layer",
-        "border",
-        "separators",
-        "column_widths",
-        "row_heights",
-        "cells",
-    ]
     column_count: int = F()
     uuid: Uuid | None = None
     locked: bool | None = None
@@ -557,12 +718,13 @@ class GrTable(AutoSerde):
 
 
 class GrTableSch(GrTable):
+    _uuid = F()
     cells: list[TableCellSch] = F()  # type: ignore
 
 
 class GrTablePCB(GrTable):
-    layer: BaseLayer = Layer.COMMENTS
-    cells: list[TableCellPCB] = F()  # type: ignore
+    layer: BaseLayer = F(Layer.COMMENTS, after="locked")
+    cells: list[TableCellPCB] = F(after="row_heights")  # type: ignore
 
 
 ########################Dimensions#########################
@@ -684,18 +846,18 @@ class Dimension(AutoSerdeDownCasting):
 class DimensionCenter(Dimension):
     """Dimension that is just cross to mark center of sth"""
 
-    type: Final[str] = F("center", unquoted=True)
+    type: Final[str] = F("center", unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
 
 
 class DimensionAligned(Dimension):
-    type: Final[str] = F("aligned", unquoted=True)
+    type: Final[str] = F("aligned", unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
     height: float = 0.0
     format: DimensionValueFormat = F()
     text: GrTextPCBBase = F(name="gr_text")
 
 
 class DimensionOrthogonal(Dimension):
-    type: Final[str] = F("orthogonal", unquoted=True)
+    type: Final[str] = F("orthogonal", unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
     height: float = 0.0
     orientation: DimensionOrthogonalOrientation = F(DimensionOrthogonalOrientation.HORIZONTAL)
     format: DimensionValueFormat = F()
@@ -703,13 +865,13 @@ class DimensionOrthogonal(Dimension):
 
 
 class DimensionLeader(Dimension):
-    type: Final[str] = F("leader", unquoted=True)
+    type: Final[str] = F("leader", unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
     format: DimensionValueFormat = F()
     text: GrTextPCBBase = F(name="gr_text")
 
 
 class DimensionRadial(Dimension):
-    type: Final[str] = F("radial", unquoted=True)
+    type: Final[str] = F("radial", unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
     leader_length: float = 0.0
     format: DimensionValueFormat = F()
     text: GrTextPCBBase = F(name="gr_text")

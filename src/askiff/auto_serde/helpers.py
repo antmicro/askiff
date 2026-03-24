@@ -183,7 +183,7 @@ class GeneratorParams:
         fname = class_field_name
         if name_case == "lower":
             fname = fname.lower().replace("_", "")
-        return fmeta.get("name", fname).split(".")[-1]
+        return fmeta.get("name", fname).split(".")[-1].removeprefix("_")
 
     @staticmethod
     def extract(
