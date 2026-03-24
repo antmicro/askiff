@@ -506,7 +506,8 @@ class AutoSerde:
                         if _val:
                             append(Qstr(_val))
                     case SerMode.LIST | SerMode.LIST_FLAT:
-                        assert isinstance(field_val, Iterable)
+                        if not isinstance(field_val, Iterable):
+                            raise TypeError(f"Field {field} is expected to be Iterable!")
                         ifmode, imode_extra = mode_extra
                         match ifmode:
                             case SerMode.SERIALIZE:
@@ -529,9 +530,13 @@ class AutoSerde:
                             case SerMode.QENUM:
                                 extend(Qstr(f.value) for f in field_val)
                             case _:
-                                raise Exception("Unreachable")
+                                raise NotImplementedError(
+                                    f"Support for mode: {fmode}:{ifmode} in positional contex is not implemented"
+                                )
                     case _:
-                        raise Exception("Unreachable")
+                        raise NotImplementedError(
+                            f"Support for mode: {fmode}:{ifmode} in positional contex is not implemented"
+                        )
             except Exception as e:
                 e.add_note(
                     f"""Class: {self.__class__.__name__};
@@ -631,8 +636,8 @@ class AutoSerde:
                                 append((fname, *(Qstr(f.value) for f in field_val)))
                             case SerMode.LIST:
                                 assert isinstance(field_val, Iterable)
-                                ifmode, imode_extra = imode_extra
-                                match ifmode:
+                                iifmode, iimode_extra = imode_extra
+                                match iifmode:
                                     case SerMode.STR:
                                         append((fname, *((fi for fi in f) for f in field_val)))
                                     case SerMode.QSTR:
@@ -642,9 +647,11 @@ class AutoSerde:
                                     case SerMode.QENUM:
                                         append((fname, *((Qstr(fi.value) for fi in f) for f in field_val)))
                                     case _:
-                                        raise Exception("Unreachable")
+                                        raise NotImplementedError(
+                                            f"Support for mode: {fmode}:{ifmode}:{iifmode} is not implemented"
+                                        )
                             case _:
-                                raise Exception("Unreachable")
+                                raise NotImplementedError(f"Support for mode: {fmode}:{ifmode} is not implemented")
                     case SerMode.LIST_FLAT:
                         assert isinstance(field_val, Iterable)
                         ifmode, imode_extra = mode_extra
@@ -675,16 +682,16 @@ class AutoSerde:
                             case SerMode.QENUM:
                                 extend((fname, Qstr(f.value)) for f in field_val)
                             case _:
-                                raise Exception("Unreachable")
+                                raise NotImplementedError(f"Support for mode: {fmode}:{ifmode} is not implemented")
                     case _:
-                        raise Exception("Unreachable")
+                        raise NotImplementedError(f"Support for mode: {fmode} is not implemented")
             except Exception as e:
                 e.add_note(
                     f"""Class: {self.__class__.__name__};
                     Field name: {field};
-                    Field value: {field_val};
                     Field value type: {type(field_val).__name__};
-                    Serialization Mode: {fmode} {mode_extra}"""
+                    Serialization Mode: {fmode} {mode_extra};
+                    Field value: {field_val}"""
                 )
                 raise
         extend(_self.__extra or ())
