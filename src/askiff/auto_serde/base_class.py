@@ -601,7 +601,8 @@ class AutoSerde:
                         if _val:
                             append((fname, Qstr(_val)))
                     case SerMode.LIST:
-                        assert isinstance(field_val, Iterable)
+                        if not isinstance(field_val, Iterable):
+                            raise TypeError(f"Field {field} is expected to be Iterable!")
                         ifmode, imode_extra = mode_extra
                         match ifmode:
                             case SerMode.SERIALIZE:
@@ -635,8 +636,9 @@ class AutoSerde:
                             case SerMode.QENUM:
                                 append((fname, *(Qstr(f.value) for f in field_val)))
                             case SerMode.LIST:
-                                assert isinstance(field_val, Iterable)
-                                iifmode, iimode_extra = imode_extra
+                                if not isinstance(field_val, Iterable):
+                                    raise TypeError(f"Field {field} is expected to be Iterable!")
+                                iifmode, _iimode_extra = imode_extra
                                 match iifmode:
                                     case SerMode.STR:
                                         append((fname, *((fi for fi in f) for f in field_val)))
@@ -653,7 +655,8 @@ class AutoSerde:
                             case _:
                                 raise NotImplementedError(f"Support for mode: {fmode}:{ifmode} is not implemented")
                     case SerMode.LIST_FLAT:
-                        assert isinstance(field_val, Iterable)
+                        if not isinstance(field_val, Iterable):
+                            raise TypeError(f"Field {field} is expected to be Iterable!")
                         ifmode, imode_extra = mode_extra
                         match ifmode:
                             case SerMode.SERIALIZE:
