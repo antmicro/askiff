@@ -3,15 +3,15 @@ from __future__ import annotations
 import builtins
 import logging
 from abc import abstractmethod
-from collections.abc import Generator, Hashable, Sequence
+from collections.abc import Generator, Sequence
 from enum import Enum
 from types import UnionType
-from typing import ClassVar, Generic, Self, TypeVar, Unpack, get_args, get_origin
+from typing import ClassVar, Final, Generic, Self, TypeVar, Unpack, get_args, get_origin
 
 from askiff.sexpr import GeneralizedSexpr, Sexpr
 
 from .base_class import AutoSerde
-from .helpers import SerdeOpt
+from .helpers import F, SerdeOpt
 
 log = logging.getLogger()
 
@@ -76,10 +76,7 @@ class AutoSerdeAgg(Generic[T], list[T]):
 class AutoSerdeDownCasting(AutoSerde):
     __askiff_childs: ClassVar[dict[str, builtins.type[Self]]]
 
-    @property
-    @abstractmethod
-    def type(self) -> Hashable:
-        pass
+    type: Final[str] = F()
 
     @property
     @abstractmethod

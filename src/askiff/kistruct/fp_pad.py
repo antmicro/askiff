@@ -196,18 +196,18 @@ class PadDrillNone(PadDrill):
 
 class DrillPostMatching(AutoSerdeDownCasting):
     _AutoSerdeDownCasting__downcast_field: ClassVar[int] = 0
-    type: str = F(positional=True, unquoted=True)
+    type: Final[str] = F(positional=True, unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
     size: float = F()
 
 
 class DrillPostMatchingCounterbore(DrillPostMatching):
-    type: Final[str] = F("counterbore", positional=True, unquoted=True)  # type: ignore
+    type: Final[str] = F("counterbore", positional=True, unquoted=True)   # type: ignore  # ty:ignore[override-of-final-variable]
     _size = F()
     depth: float = F()
 
 
 class DrillPostMatchingCountersink(DrillPostMatching):
-    type: Final[str] = F("countersink", positional=True, unquoted=True)  # type: ignore
+    type: Final[str] = F("countersink", positional=True, unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
     _size = F()
     angle: float = F()
 
@@ -265,7 +265,7 @@ class Pad(AutoSerdeDownCasting):
         "padstack",
     ]
     number: str = F(positional=True)
-    type: str = F(positional=True, unquoted=True)
+    type: Final[str] = F(positional=True, unquoted=True) # type: ignore  # ty:ignore[override-of-final-variable]
     shape: PadShape = F(inline=True, positional=True)
     padstack: PadStack | None = None
     position: Position = F(name="at")
@@ -291,7 +291,7 @@ class Pad(AutoSerdeDownCasting):
 
 
 class PadTHT(Pad):
-    type: Final[str] = F("thru_hole", positional=True, unquoted=True)  # type: ignore
+    type: Final[str] = F("thru_hole", positional=True, unquoted=True)   # type: ignore  # ty:ignore[override-of-final-variable]
     keep_end_layers: bool | None = None
     backdrill: AfterDrill | None = None
     tertiary_drill: AfterDrill | None = None
@@ -300,14 +300,14 @@ class PadTHT(Pad):
 
 
 class PadSMD(Pad):
-    type: Final[str] = F("smd", positional=True, unquoted=True)  # type: ignore
+    type: Final[str] = F("smd", positional=True, unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
     drill: PadDrillNone | None = None
 
 
 class PadEdgeConnector(Pad):
-    type: Final[str] = F("connect", positional=True, unquoted=True)  # type: ignore
+    type: Final[str] = F("connect", positional=True, unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
     drill: PadDrillNone | None = None
 
 
 class PadNonPlated(Pad):
-    type: Final[str] = F("np_thru_hole", positional=True, unquoted=True)  # type: ignore
+    type: Final[str] = F("np_thru_hole", positional=True, unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]

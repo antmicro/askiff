@@ -44,7 +44,7 @@ class StackupLayer(AutoSerdeDownCasting):
     _askiff_key: Final[str] = "layer"
     _AutoSerdeDownCasting__downcast_field: ClassVar[str] = "type"
     layer: str = F("", positional=True)
-    type: str = F()
+    type: Final[str] = F()  # type: ignore  # ty:ignore[override-of-final-variable]
 
 
 class StackupLayerDielectricSubLayer(AutoSerde):
@@ -67,7 +67,7 @@ class StackupLayerDielectricSubLayer(AutoSerde):
 
 class StackupLayerDielectric(StackupLayer):
     layer: str = F("dielectric 1", positional=True)
-    type: str = ""
+    type: Final[str] = ""  # type: ignore  # ty:ignore[override-of-final-variable]
     sublayers: list[StackupLayerDielectricSubLayer] = F(lambda: [StackupLayerDielectricSubLayer()])
 
     @classmethod
@@ -90,7 +90,7 @@ class StackupLayerDielectric(StackupLayer):
                 case "type":
                     if not isinstance(node_val[0], str):
                         raise TypeError("Stackup Layer type is expected to be string")
-                    ret.type = node_val[0]
+                    ret.type = node_val[0]  # type: ignore  # ty:ignore[invalid-assignment]
                 case "color" | "material":
                     setattr(ret.sublayers[-1], node_name, node_val[0])
                 case "epsilon_r" | "loss_tangent":
@@ -126,22 +126,22 @@ class StackupLayerDielectric(StackupLayer):
 
 class StackupLayerDielectricCore(StackupLayerDielectric):
     layer: str = F("dielectric 1", positional=True)
-    type: Final[str] = "core"  # type: ignore
+    type: Final[str] = "core"  # type: ignore  # ty:ignore[override-of-final-variable]
 
 
 class StackupLayerDielectricPrepreg(StackupLayerDielectric):
     layer: str = F("dielectric 1", positional=True)
-    type: Final[str] = "prepreg"  # type: ignore
+    type: Final[str] = "prepreg"  # type: ignore  # ty:ignore[override-of-final-variable]
 
 
 class StackupLayerCopper(StackupLayer):
     layer: LayerCopper = F(Layer.CU_F, positional=True)  # type: ignore
-    type: Final[str] = "copper"  # type: ignore
+    type: Final[str] = "copper"  # type: ignore  # ty:ignore[override-of-final-variable]
     thickness: float = 0.035
 
 
 class StackupLayerMask(StackupLayer):
-    type: str = ""
+    type: Final[str] = ""  # type: ignore  # ty:ignore[override-of-final-variable]
     color: str | None = None
     thickness: float = 0.01
     material: str | None = None
@@ -151,38 +151,38 @@ class StackupLayerMask(StackupLayer):
 
 class StackupLayerMaskTop(StackupLayerMask):
     layer: Final[LayerTech] = F(Layer.MASK_F, positional=True, after="__begin__")  # type: ignore
-    type: Final[str] = F("Top Solder Mask")  # type: ignore
+    type: Final[str] = F("Top Solder Mask")  # type: ignore  # ty:ignore[override-of-final-variable]
 
 
 class StackupLayerMaskBottom(StackupLayerMask):
     layer: Final[LayerTech] = F(Layer.MASK_B, positional=True, after="__begin__")  # type: ignore
-    type: Final[str] = "Bottom Solder Mask"  # type: ignore
+    type: Final[str] = "Bottom Solder Mask"  # type: ignore  # ty:ignore[override-of-final-variable]
 
 
 class StackupLayerPasteTop(StackupLayer):
     layer: Final[LayerTech] = F(Layer.PASTE_F, positional=True, after="__begin__")  # type: ignore
-    type: Final[str] = "Top Solder Paste"  # type: ignore
+    type: Final[str] = "Top Solder Paste"  # type: ignore  # ty:ignore[override-of-final-variable]
 
 
 class StackupLayerPasteBottom(StackupLayer):
     layer: Final[LayerTech] = F(Layer.PASTE_B, positional=True, after="__begin__")  # type: ignore
-    type: Final[str] = "Bottom Solder Paste"  # type: ignore
+    type: Final[str] = "Bottom Solder Paste"  # type: ignore  # ty:ignore[override-of-final-variable]
 
 
 class StackupLayerSilks(StackupLayer):
-    type: str = ""
+    type: Final[str] = ""  # type: ignore  # ty:ignore[override-of-final-variable]
     color: str | None = None
     material: str | None = None
 
 
 class StackupLayerSilksTop(StackupLayerSilks):
     layer: Final[LayerTech] = F(Layer.SILKS_F, positional=True, after="__begin__")  # type: ignore
-    type: Final[str] = "Top Silk Screen"  # type: ignore
+    type: Final[str] = "Top Silk Screen"  # type: ignore  # ty:ignore[override-of-final-variable]
 
 
 class StackupLayerSilksBottom(StackupLayerSilks):
     layer: Final[LayerTech] = F(Layer.SILKS_B, positional=True, after="__begin__")  # type: ignore
-    type: Final[str] = "Bottom Silk Screen"  # type: ignore
+    type: Final[str] = "Bottom Silk Screen"  # type: ignore  # ty:ignore[override-of-final-variable]
 
 
 class StackupEdgeConn(str, AutoSerdeEnum):
@@ -360,7 +360,7 @@ class Via(TraceBase):
 class Generated(AutoSerdeDownCasting):
     _AutoSerdeDownCasting__downcast_field: ClassVar[str] = "type"
     uuid: Uuid = F()
-    type: str = F(unquoted=True)
+    type: Final[str] = F(unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
 
 
 class GeneratedTuningInitialSide(Qstr, AutoSerdeEnum):
@@ -382,7 +382,7 @@ class GeneratedTuningMode(Qstr, AutoSerdeEnum):
 
 class GeneratedTuningPattern(Generated, Group):
     _uuid = F()
-    type: Final[str] = F("tuning_pattern", unquoted=True)  # type: ignore
+    type: Final[str] = F("tuning_pattern", unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
 
     name: str = "Tuning Pattern"
 

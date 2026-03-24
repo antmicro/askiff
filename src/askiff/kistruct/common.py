@@ -79,6 +79,7 @@ class LibId(AutoSerde):
 
     @classmethod
     def deserialize(cls, sexp: GeneralizedSexpr) -> LibId:
+        sexp = sexp if isinstance(sexp, str) else sexp[0]
         if not isinstance(sexp, str):
             raise TypeError("Library ID expected to be a string")
         spl = sexp.partition(":")
@@ -107,7 +108,7 @@ class Color(AutoSerde, positional=True):  # type: ignore
     R: int = 0
     G: int = 0
     B: int = 0
-    A: float = 0
+    A: float = F(precision=10)
 
 
 class Size(AutoSerde, positional=True):  # type: ignore
@@ -310,6 +311,9 @@ class TitleBlock(AutoSerde):
     rev: str | None = None
     company: str | None = None
     comment: list[TitleBlockComment] = F(flatten=True)
+
+    def __bool__(self) -> bool:
+        return any((self.title, self.date, self.rev, self.company, self.comment))
 
 
 class PinType(Qstr, AutoSerdeEnum):

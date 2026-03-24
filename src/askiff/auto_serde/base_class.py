@@ -92,6 +92,8 @@ class AutoSerde:
             if fparam.agg:
                 if fparam.flatten:
                     for var_name, var_type in fparam.agg(inner=fparam.type_args[0]).items():
+                        if var_name in names_kicad:
+                            continue
                         fmode = DeserMode.DESERIALIZE, var_type
                         deser_field[var_name] = inline_wrap(field, DeserMode.LIST_FLAT, (fmode, typ))
                 else:
