@@ -31,8 +31,10 @@ class _Timer:
 
     def __exit__(self, *args) -> None:  # type: ignore # noqa: ANN002
         elapsed = time.perf_counter() - self.start
-        time_logger = logging.getLogger("time_log")
-        time_logger.info(f"{self.message}: {elapsed:.3f} seconds")
+        log_name = "time_log"
+        if log_name in logging.Logger.manager.loggerDict:
+            time_logger = logging.getLogger(log_name)
+            time_logger.info(f"{self.message}: {elapsed:.3f} seconds")
 
 
 def _setup_versioned_serde_environment(version: int, latest_version: int) -> None:

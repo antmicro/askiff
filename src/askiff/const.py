@@ -52,7 +52,7 @@ class Version:
     MIN = K8
     """Oldest supported file version (for read operation)"""
 
-    DEFAULT = K9
+    DEFAULT = K10
     """Default file version (used when creating new objects)"""
 
     MAX = K10
