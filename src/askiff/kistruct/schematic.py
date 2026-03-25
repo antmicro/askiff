@@ -70,8 +70,26 @@ class NetclassFlag(AutoSerde):
     pass
 
 
-class Sheet(AutoSerde):
+class SheetFillStyle(AutoSerde):
+    # color: Color
     pass
+
+
+class Sheet(AutoSerde):
+    position: Position = F(name="at")
+    size: Size = F()
+    exclude_from_sim: bool | None = None
+    in_bom: bool | None = None
+    on_board: bool | None = None
+    in_pos_files: bool | None = None
+    dnp: bool | None = None
+    fields_autoplaced: bool | None = None
+    stroke: Stroke = F()
+    fill: SheetFillStyle = F()
+    uuid: Uuid = F()
+
+    properties: PropertyList[SymProperty] = F(name="property", flatten=True)
+    """Sheet properties such as file, name"""
 
 
 class HierarchicalInstance(AutoSerde):

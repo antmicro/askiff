@@ -154,12 +154,28 @@ class AskiffPro:
             string = string.replace("${" + var + "}", subst)
         return string
 
+    def __discover_child_sch(self, sch: Path, force: bool = False) -> None:
+        if sch.exists():
+            self.sch_root = _LazyFile(Schematic, sch, force)
+            self.sch.append(self.sch_root)
+            for sheet in self.sch_root.sheets:
+                child_sch_path = sch.parent / sheet.properties.get("Sheetfile").value
+                if [True for sch in self.sch if child_sch_path == sch._fs_path]:
+                    # if file already loaded, skip it
+                    continue
+                self.__discover_child_sch(child_sch_path, force)
+
     def load(self, force: bool = False) -> Self:
-        # self.pro={p: Sexpr.from_file(p) for p in self.path.glob("*.kicad_pro")}
+        pro_path = next((p for p in self.path.glob("*.kicad_pro")), None)
 
         self.sch = []
-        for path in self.path.glob("*.kicad_sch"):
-            self.sch.append(_LazyFile(Schematic, path, force))
+        if pro_path:
+            sch_root_path = pro_path.with_suffix(".kicad_sch")
+            self.__discover_child_sch(sch_root_path, force)
+        else:
+            # If there is not project file, load all sch in directory
+            for path in self.path.glob("*.kicad_sch"):
+                self.sch.append(_LazyFile(Schematic, path, force))
 
         self.pcb = []
         for path in self.path.glob("*.kicad_pcb"):
