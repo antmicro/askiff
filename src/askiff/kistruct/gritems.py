@@ -29,7 +29,7 @@ if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment
 
 
 class GrItem(AutoSerde):
-    __askiff_childs: ClassVar[dict[str, type]]  # = {}
+    __askiff_childs: ClassVar[dict[str, type]]
     __askiff_order: ClassVar[list[str]] = [
         "private",
         "start",
