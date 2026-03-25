@@ -25,7 +25,7 @@ if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment
 
 
 class SymProperty(Property):
-    show_name: bool | None = F(after="hide").version(Version.K9.sym, flag=True)
+    show_name: bool | None = F(after="hide")
     do_not_autoplace: bool | None = None
 
     def _askiff_post_deser(self) -> None:
@@ -34,7 +34,7 @@ class SymProperty(Property):
 
     def _askiff_pre_ser(self) -> Property:
         _self = copy(self)
-        if AutoSerdeFile._version <= Version.K9.sym:
+        if AutoSerdeFile._version <= Version.K9.sch:
             _self.effects = _self.effects or Effects()
             _self.effects.hide = self.hide
             _self.hide = None
@@ -43,7 +43,7 @@ class SymProperty(Property):
 
 class _SymPropertyLibOrder(SymProperty):
     # order in sym library definitions is different (than in eg. schematic instances)
-    show_name: bool | None = F(after="position").version(Version.K9.sym, flag=True)
+    show_name: bool | None = F(after="position").version(Version.K9.sch, flag=True)
     _do_not_autoplace = F()
 
     @staticmethod
@@ -167,7 +167,7 @@ class LibSymbol(AutoSerde):
     extends: str | None = None
     body_styles: list[str] | None = F(serialize=lambda val: (v if v in ["demorgan"] else Qstr(v) for v in val))
     power: SymbolPower | None = F().version(
-        Version.K9.sch, serialize=SymbolPower.serialize_k9, deserialize=SymbolPower.deserialize_k9
+        Version.K9.sch, serialize=SymbolPower.serialize_k9, deserialize=SymbolPower.deserialize_k9, keep_empty=True
     )
     pin_numbers: LibSymbolPinNumbers = F()
     pin_names: LibSymbolPinNames = F()
@@ -215,12 +215,12 @@ class SymbolSchematic(AutoSerde):
     mirror: Mirror | None = None
 
     unit: int = 1
-    body_style: int = 1
+    body_style: int = F(1).version(Version.K9.sch, name="convert", serialize=lambda x: x if x != 1 else None)
 
     exclude_from_sim: bool = True
     in_bom: bool = True
     on_board: bool = True
-    in_pos_files: bool = True
+    in_pos_files: bool = F(True).version(Version.K9.sch, skip=True)
     dnp: bool = False
     fields_autoplaced: bool | None = None
 

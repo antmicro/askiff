@@ -81,7 +81,6 @@ class F(Any):
     def __init__(self, default: Any = AUTO_DEFAULT, **kwargs: Unpack[SerdeOpt]) -> None:  # noqa: ANN401
         self.default = default
         self.options = kwargs
-        self.options.setdefault("_version_options", {})
 
     @staticmethod
     def unlocked(default: Any = AUTO_DEFAULT, **kwargs: Unpack[SerdeOpt]) -> F:  # noqa: ANN401
@@ -89,6 +88,7 @@ class F(Any):
 
     def version(self, up_to_version: int, **kwargs: Unpack[SerdeOpt]) -> F:
         """Different config options up to file `version` (inclusive)"""
+        self.options.setdefault("_version_options", {})
         self.options["_version_options"][up_to_version] = kwargs
         return self
 
@@ -292,12 +292,17 @@ _askiff_dict: dict[type, dict[str, Any]] = {}
 
 
 def _resolve_mro_askiff_dict(cls: type) -> dict[str, Any]:
-    parent_dict = {}
+    parent_dict: dict[str, Any] = {}
     for parent in reversed(cls.__mro__[1:]):  # first elem is class itself, ignore it
         parent_askiff_dict = _askiff_dict.get(parent, None)
         if parent_askiff_dict:
             # below handles indirect inheritance (C: subclass(B), B: subclass(A) & field is defined in A, but not in B)
             filtered_dict = {k: v for k, v in parent_askiff_dict.items() if not isinstance(v, dataclasses.Field)}  # type: ignore
+
+            # If field is in multiple steps of inheritance use one with more direct ancestry
+            overridden_fields = parent_dict.keys() & filtered_dict.keys()
+            for key in overridden_fields:
+                parent_dict.pop(key)
             parent_dict.update(filtered_dict)
 
     # If field is redefined in current class, use field position from current class, not parent
@@ -329,18 +334,25 @@ def resolve_serialization_order(cls: type, field_meta: dict[str, SerdeOpt]) -> l
             ser_order.insert(ser_order_idx, name[1:])
             ser_order_idx += 1
             continue
-        if ("_" + name) not in cls.__dict__:
-            after = options.get("after", None)
-            if after == "__begin__":
-                ser_order_idx = 0
-            elif after and after in ser_order:
-                ser_order_idx = ser_order.index(after) + 1
-            else:
-                pass
-            ser_order.insert(ser_order_idx, name)
-            ser_order_idx += 1
+        after = options.get("after", None)
+        if after == "__begin__":
+            ser_order_idx = 0
+        elif after and after in ser_order:
+            ser_order_idx = ser_order.index(after) + 1
+        else:
+            pass
+        ser_order.insert(ser_order_idx, name)
+        ser_order_idx += 1
 
     return ser_order
+
+
+def _reorder_insert(meta_dict: dict, key: str, val: Any) -> None:  # noqa: ANN401
+    if not isinstance(val, F):
+        meta_dict[key] = meta_dict.pop(key, {})
+        return
+
+    meta_dict[key] = val.options or meta_dict.pop(key, {})
 
 
 def preprocess_cls_fields(cls: type) -> tuple[dict[str, type], dict[str, SerdeOpt]]:
@@ -361,7 +373,7 @@ def preprocess_cls_fields(cls: type) -> tuple[dict[str, type], dict[str, SerdeOp
             ):
                 continue
             if name[1:] in parent_dict:
-                field_meta[name] = value.options
+                _reorder_insert(field_meta, name[1:], value)
 
         if name not in type_hints:
             continue
@@ -373,10 +385,10 @@ def preprocess_cls_fields(cls: type) -> tuple[dict[str, type], dict[str, SerdeOp
         cls.__annotations__.setdefault(name, typ)
 
         if not isinstance(value, F):
-            field_meta[name] = {}
+            field_meta.setdefault(name, {})
             continue
 
-        field_meta[name] = value.options
+        _reorder_insert(field_meta, name, value)
 
         if value.options.get("inline", False):
             value.options["skip"] = True
@@ -391,7 +403,7 @@ def preprocess_cls_fields(cls: type) -> tuple[dict[str, type], dict[str, SerdeOp
                 full_id = name + "." + inline_field
                 inline_typ = normalize_type(inline_type_hints[inline_field])
                 type_hints[full_id] = inline_typ
-                field_meta[full_id] = inline_val.options if isinstance(inline_val, F) else {}
+                _reorder_insert(field_meta, full_id, inline_val)
                 if inline_field == inner_dc_field:
                     filt_opt = deepcopy(value.options)
                     filt_opt.pop("inline")

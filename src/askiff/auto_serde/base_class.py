@@ -572,9 +572,13 @@ class AutoSerde:
                         append((fname, *field_val.serialize()))
                     case SerMode.SERIALIZE_OVERRIDE:
                         if isinstance(mode_extra, tuple) and mode_extra[0] == SerMode.LIST_FLAT:
-                            extend(mode_extra[1](field_val))
+                            sexpr = mode_extra[1](field_val)
+                            if sexpr:
+                                extend(sexpr)
                         else:
-                            append((fname, *mode_extra(field_val)))  # mode_extra =  custom serialize function
+                            sexpr = mode_extra(field_val)
+                            if sexpr or force_empty:
+                                append((fname, *sexpr))  # mode_extra =  custom serialize function
                     case SerMode.SERIALIZE_NESTED:
                         askiff_key = getattr(field_val, "_askiff_key", "")
                         askiff_key = askiff_key() if callable(askiff_key) else askiff_key
@@ -706,7 +710,6 @@ class AutoSerde:
 
     def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:
         type_hints, field_meta = preprocess_cls_fields(cls)
-        ser_order = resolve_serialization_order(cls, field_meta)
 
         for glob_name, glob_val in kwargs.items():
             for meta in field_meta.values():
@@ -718,6 +721,7 @@ class AutoSerde:
 
         cls = dataclass(cls)
 
+        ser_order = resolve_serialization_order(cls, field_meta)
         default_opts: dict[str, list | dict] = cls.__init_serializer(ser_order, type_hints, field_meta)  # type: ignore
         default_opts |= cls.__init_deserializer(ser_order, type_hints, field_meta)
         _askiff_opts_default[cls] = default_opts
@@ -733,6 +737,7 @@ class AutoSerde:
                     for opt_ver, opt in field_versions.items():
                         if opt_ver >= ver:
                             fmeta.update(opt)
+                ser_order = resolve_serialization_order(cls, _field_meta)
                 _askiff_opts_version_map[cls][ver] = cls.__init_serializer(ser_order, type_hints, _field_meta)
                 _askiff_opts_version_map[cls][ver] |= cls.__init_deserializer(ser_order, type_hints, _field_meta)
 
