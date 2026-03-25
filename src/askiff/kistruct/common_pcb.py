@@ -201,6 +201,8 @@ class LayerSet(Generic[TL], AutoSerde, MutableSet[TL]):
             self.append(v)
 
     def __contains__(self, x: object) -> bool:
+        if isinstance(x, Iterable):
+            return all(self.__contains__(v) for v in x)
         return (
             x in self._layers
             or (isinstance(x, LayerCopper) and Layer.CU_ALL in self._layers)
@@ -222,6 +224,23 @@ class LayerSet(Generic[TL], AutoSerde, MutableSet[TL]):
 
     def discard(self, value: TL) -> None:
         self._layers.discard(value)
+
+    def __eq__(self, other: Any) -> bool:  # noqa: ANN401
+        if isinstance(other, LayerSet):
+            return self._layers == other._layers
+        if isinstance(other, set):
+            return self._layers == other
+        if isinstance(other, Iterable):
+            other_len = 0
+            for o in other:
+                other_len += 1
+                if o not in self:
+                    return False
+            return other_len == len(self)
+        if len(self._layers) == 1:
+            # Note: here intently we do not consider cases CU_ALL (CU_F is in CU_ALL, but CU_F != CU_ALL)
+            return other in self._layers
+        return NotImplemented
 
     def _askiff_key(self, name: str | None = None) -> str:
         return (
