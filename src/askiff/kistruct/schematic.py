@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, ClassVar, Final, cast
 
-from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeFile, F
+from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
 from askiff.const import Version
 from askiff.kistruct.common import (
     BasePoly,
@@ -10,13 +10,14 @@ from askiff.kistruct.common import (
     Group,
     Paper,
     Position,
+    PropertyList,
     Size,
     Stroke,
     TitleBlock,
     Uuid,
 )
 from askiff.kistruct.gritems import GrItemSch, GrPolySch, GrTableSch
-from askiff.kistruct.symbol import LibSymbol, SymbolSchematic
+from askiff.kistruct.symbol import LibSymbol, SymbolSchematic, SymProperty
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore
@@ -26,10 +27,22 @@ class BusAlias(AutoSerde):
     pass
 
 
+class LabelShape(str, AutoSerdeEnum):
+    PASSIVE = "passive"
+    INPUT = "input"
+    OUTPUT = "output"
+    BIDIRECTIONAL = "bidirectional"
+    TRI_STATE = "tri_state"
+
+
 class LabelBase(AutoSerde):
     name: str = F(positional=True)
     position: Position = F(name="at")
+    fields_autoplaced: bool | None = None
     effects: Effects = F()
+    uuid: Uuid = F()
+    properties: PropertyList[SymProperty] = F(name="property", flatten=True).version(Version.K9.sch, skip=True)
+    """Additional properties of the label, such as net-class, intersheet-references ..."""
 
 
 class LabelLocal(LabelBase):
@@ -37,11 +50,11 @@ class LabelLocal(LabelBase):
 
 
 class LabelGlobal(LabelBase):
-    pass
+    shape: LabelShape = F(LabelShape.PASSIVE, after="name")
 
 
 class LabelHierarchical(LabelBase):
-    pass
+    shape: LabelShape = F(LabelShape.PASSIVE, after="name")
 
 
 class RuleArea(AutoSerde):

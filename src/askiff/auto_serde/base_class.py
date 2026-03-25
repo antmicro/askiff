@@ -400,7 +400,8 @@ class AutoSerde:
 
             serialize_override = fparam.fmeta.get("serialize", None)
             if callable(serialize_override):
-                fmode = SerMode.SERIALIZE_OVERRIDE, serialize_override
+                mode_extra = (SerMode.LIST_FLAT, serialize_override) if fparam.flatten else serialize_override
+                fmode = (SerMode.SERIALIZE_OVERRIDE, mode_extra)
             elif hasattr(fparam.typ, "serialize"):
                 if fparam.nested:
                     fmode = SerMode.SERIALIZE_NESTED, None
@@ -570,10 +571,10 @@ class AutoSerde:
                         # (note that _askiff_key string is ignored in this case)
                         append((fname, *field_val.serialize()))
                     case SerMode.SERIALIZE_OVERRIDE:
-                        if not mode_extra:  # mode_extra = name attribute from F(..)
-                            askiff_key = getattr(field_val, "_askiff_key", None)
-                            fname = askiff_key() if callable(askiff_key) else fname
-                        append((fname, *mode_extra(field_val)))  # mode_extra =  custom serialize function
+                        if isinstance(mode_extra, tuple) and mode_extra[0] == SerMode.LIST_FLAT:
+                            extend(mode_extra[1](field_val))
+                        else:
+                            append((fname, *mode_extra(field_val)))  # mode_extra =  custom serialize function
                     case SerMode.SERIALIZE_NESTED:
                         askiff_key = getattr(field_val, "_askiff_key", "")
                         askiff_key = askiff_key() if callable(askiff_key) else askiff_key

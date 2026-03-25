@@ -25,8 +25,7 @@ if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment
 
 
 class SymProperty(Property):
-    show_name: bool | None = F(after="position").version(Version.K9.sym, flag=True)
-    # show_name: bool | None = F(after="hide").version(Version.K9.sym, flag=True) # order in sym on sch is different
+    show_name: bool | None = F(after="hide").version(Version.K9.sym, flag=True)
     do_not_autoplace: bool | None = None
 
     def _askiff_post_deser(self) -> None:
@@ -40,6 +39,18 @@ class SymProperty(Property):
             _self.effects.hide = self.hide
             _self.hide = None
         return _self
+
+
+class _SymPropertyLibOrder(SymProperty):
+    # order in sym library definitions is different (than in eg. schematic instances)
+    show_name: bool | None = F(after="position").version(Version.K9.sym, flag=True)
+    _do_not_autoplace = F()
+
+    @staticmethod
+    def list_ser(val: PropertyList[SymProperty]) -> GeneralizedSexpr:
+        for v in val:
+            v._AutoSerde__ser_field = _SymPropertyLibOrder._AutoSerde__ser_field  # type: ignore # ty:ignore[unresolved-attribute]
+        return tuple(("property", *v.serialize()) for v in val)
 
 
 class PinShape(str, AutoSerdeEnum):
@@ -171,7 +182,7 @@ class LibSymbol(AutoSerde):
     jumper_pin_groups: list[list[str]] = F()
     """Pin numbers that shall be considered as internally connected"""
 
-    properties: PropertyList[SymProperty] = F(name="property", flatten=True)
+    properties: PropertyList[SymProperty] = F(name="property", flatten=True, serialize=_SymPropertyLibOrder.list_ser)
     """Properties of the symbol, such as reference, value, datasheet, ..."""
 
     symbols: list[SymbolPartial] = F(flatten=True, name="symbol")
@@ -182,6 +193,11 @@ class LibSymbol(AutoSerde):
 
     embedded_files: list[EmbeddedFile] = F()
     """Stores data of embedded files, eg. fonts, 3d-models"""
+
+
+class Mirror(str, AutoSerdeEnum):
+    X = "x"
+    Y = "y"
 
 
 class SymbolSchematic(AutoSerde):
@@ -196,6 +212,8 @@ class SymbolSchematic(AutoSerde):
     position: Position | None = F(name="at")
     """Defines the X and Y coordinates and rotation of the footprint"""
 
+    mirror: Mirror | None = None
+
     unit: int = 1
     body_style: int = 1
 
@@ -204,7 +222,7 @@ class SymbolSchematic(AutoSerde):
     on_board: bool = True
     in_pos_files: bool = True
     dnp: bool = False
-    fields_autoplaced: bool = True
+    fields_autoplaced: bool | None = None
 
     uuid: Uuid = F()
 
