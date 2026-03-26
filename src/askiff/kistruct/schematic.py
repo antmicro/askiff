@@ -256,3 +256,20 @@ class Schematic(AutoSerdeFile):
 
     embedded_files: list[EmbeddedFile] = F()
     """Stores data of embedded files, eg. fonts, datasheet"""
+
+    def add_symbol(
+        self, lib_sym: LibSymbol, reference: str | None = None, position: Position | None = None, unit: int = 1
+    ) -> None:
+
+        if not next((s for s in self.lib_symbols if lib_sym.lib_id == s.lib_id), None):
+            self.lib_symbols.append(lib_sym)
+        sym_instance = SymbolSchematic(
+            **{k: v for k, v in lib_sym.__dict__.items() if k in SymbolSchematic.__dataclass_fields__}
+        )
+
+        if reference:
+            sym_instance.properties.ref.value = reference
+        sym_instance.position = position or Position()
+        # sym_instance.pins
+        # sym_instance.instances
+        self.symbols.append(sym_instance)
