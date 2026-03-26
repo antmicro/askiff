@@ -201,7 +201,7 @@ class DrillPostMatching(AutoSerdeDownCasting):
 
 
 class DrillPostMatchingCounterbore(DrillPostMatching):
-    type: Final[str] = F("counterbore", positional=True, unquoted=True)   # type: ignore  # ty:ignore[override-of-final-variable]
+    type: Final[str] = F("counterbore", positional=True, unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
     _size = F()
     depth: float = F()
 
@@ -265,7 +265,7 @@ class Pad(AutoSerdeDownCasting):
         "padstack",
     ]
     number: str = F(positional=True)
-    type: Final[str] = F(positional=True, unquoted=True) # type: ignore  # ty:ignore[override-of-final-variable]
+    type: Final[str] = F(positional=True, unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
     shape: PadShape = F(inline=True, positional=True)
     padstack: PadStack | None = None
     position: Position = F(name="at")
@@ -291,7 +291,7 @@ class Pad(AutoSerdeDownCasting):
 
 
 class PadTHT(Pad):
-    type: Final[str] = F("thru_hole", positional=True, unquoted=True)   # type: ignore  # ty:ignore[override-of-final-variable]
+    type: Final[str] = F("thru_hole", positional=True, unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
     keep_end_layers: bool | None = None
     backdrill: AfterDrill | None = None
     tertiary_drill: AfterDrill | None = None
