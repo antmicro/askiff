@@ -30,7 +30,8 @@ class LayerFunction(str, AutoSerdeEnum):
 class BaseLayer:
     _value: str
     _order_id: int
-    all: ClassVar[dict[str, BaseLayer]] = {}
+    name_map: ClassVar[dict[str, BaseLayer]]
+    all: ClassVar[LayerSet[BaseLayer]]
 
     class __PrivateGuard(int):
         pass
@@ -45,16 +46,20 @@ class BaseLayer:
         return (Qstr(self._value),)
 
     def __init_subclass__(cls) -> None:
-        cls.all = {}
+        cls.name_map = {}
+        cls.all = LayerSet()
+        if not hasattr(BaseLayer, "all"):
+            BaseLayer.name_map = {}
+            BaseLayer.all = LayerSet()
 
     def __init__(self, value: str, order_id: int, _guard: __PrivateGuard) -> None:
         self._value = value
         self._order_id = order_id
         for parent in self.__class__.__mro__:
-            if parent is object:
+            if not issubclass(parent, BaseLayer):
                 continue
-            if hasattr(parent, "all"):
-                parent.all[value] = self  # ty:ignore[invalid-assignment]
+            parent.name_map[value] = self
+            parent.all._layers.add(self)
 
     def __str__(self) -> str:
         return self._value
@@ -64,14 +69,96 @@ class BaseLayer:
         val = sexp if isinstance(sexp, str) else sexp[0]
         if not isinstance(val, str):
             raise TypeError("Layer is expected to be represented by string")
-        if val not in BaseLayer.all:
+        if val not in BaseLayer.name_map:
             log.warning(
-                f" Downcast failed: `{val}` does not match child types ({BaseLayer.all.keys()})",
+                f" Downcast failed: `{val}` does not match child types ({BaseLayer.name_map.keys()})",
                 extra={"amodule": cls.__name__},
             )
             log.debug(sexp, extra={"amodule": cls.__name__})
             return BaseLayer(val, 999, BaseLayer.__PrivateGuard())
-        return BaseLayer.all[val]
+        return BaseLayer.name_map[val]
+
+
+TL = TypeVar("TL", bound=BaseLayer)
+
+
+class LayerSet(Generic[TL], AutoSerde, MutableSet[TL]):
+    __askiff_alias: ClassVar[set[str]] = {"layer", "layers"}
+    _layers: set[TL] = F(positional=True)
+    _knockout: bool = F(name="knockout", flag=True, bare=True)
+
+    def __init__(self, *args: TL) -> None:
+        self._layers = set(args)
+        self._knockout = False
+
+    def append(self, val: TL) -> None:
+        self.add(val)
+
+    def extend(self, val: Iterable[TL]) -> None:
+        for v in val:
+            self.append(v)
+
+    def __contains__(self, x: object) -> bool:
+        if isinstance(x, Iterable):
+            return all(self.__contains__(v) for v in x)
+        return (
+            x in self._layers
+            or (isinstance(x, LayerCopper) and Layer.CU_ALL in self._layers)
+            or (isinstance(x, LayerCopperOuter) and Layer.CU_FB in self._layers)
+            or (isinstance(x, LayerCopperInner) and Layer.CU_IN_ALL in self._layers)
+            or (isinstance(x, LayerMask) and Layer.MASK_ALL in self._layers)
+        )
+
+    def __iter__(self) -> Iterator[TL]:
+        return iter(self._layers)
+
+    def __len__(self) -> int:
+        return len(self._layers)
+
+    def add(self, value: TL) -> None:
+        if self.__contains__(value):  # ty:ignore[invalid-argument-type]
+            return
+        self._layers.add(value)
+
+    def discard(self, value: TL) -> None:
+        self._layers.discard(value)
+
+    def __eq__(self, other: Any) -> bool:  # noqa: ANN401
+        if isinstance(other, LayerSet):
+            return self._layers == other._layers
+        if isinstance(other, set):
+            return self._layers == other
+        if isinstance(other, Iterable):
+            other_len = 0
+            for o in other:
+                other_len += 1
+                if o not in self:
+                    return False
+            return other_len == len(self)
+        if len(self._layers) == 1:
+            # Note: here intently we do not consider cases CU_ALL (CU_F is in CU_ALL, but CU_F != CU_ALL)
+            return other in self._layers
+        return NotImplemented
+
+    def _askiff_key(self, name: str | None = None) -> str:
+        return (
+            name or "layer"
+            if len(self._layers) <= 1 and all(not isinstance(layer, LayerSpecial) for layer in self._layers)
+            else "layers"
+        )
+
+    def serialize(self) -> GeneralizedSexpr:
+        return (
+            *(Qstr(x._value) for x in sorted(self._layers, key=BaseLayer.order_id)),
+            *(("knockout",) if self._knockout else ()),
+        )
+
+    def serialize_nested(self) -> GeneralizedSexpr:
+        return tuple(("layer", Qstr(x._value)) for x in sorted(self._layers, key=BaseLayer.order_id))
+
+    @classmethod
+    def deserialize_nested(cls, sexp: GeneralizedSexpr) -> LayerSet:
+        return LayerSet(*(BaseLayer.deserialize_downcast(s[1]) for s in sexp))
 
 
 class LayerCopper(BaseLayer):
@@ -180,87 +267,6 @@ for i in range(1, KICAD_MAX_LAYER_CU + 1):
     Layer.CU_IN(i)
 for i in range(1, KICAD_MAX_LAYER_USER + 1):
     Layer.USER(i)
-
-TL = TypeVar("TL", bound=BaseLayer)
-
-
-class LayerSet(Generic[TL], AutoSerde, MutableSet[TL]):
-    __askiff_alias: ClassVar[set[str]] = {"layer", "layers"}
-    _layers: set[TL] = F(positional=True)
-    _knockout: bool = F(name="knockout", flag=True, bare=True)
-
-    def __init__(self, *args: TL) -> None:
-        self._layers = set(args)
-        self._knockout = False
-
-    def append(self, val: TL) -> None:
-        self.add(val)
-
-    def extend(self, val: Iterable[TL]) -> None:
-        for v in val:
-            self.append(v)
-
-    def __contains__(self, x: object) -> bool:
-        if isinstance(x, Iterable):
-            return all(self.__contains__(v) for v in x)
-        return (
-            x in self._layers
-            or (isinstance(x, LayerCopper) and Layer.CU_ALL in self._layers)
-            or (isinstance(x, LayerCopperOuter) and Layer.CU_FB in self._layers)
-            or (isinstance(x, LayerCopperInner) and Layer.CU_IN_ALL in self._layers)
-            or (isinstance(x, LayerMask) and Layer.MASK_ALL in self._layers)
-        )
-
-    def __iter__(self) -> Iterator[TL]:
-        return iter(self._layers)
-
-    def __len__(self) -> int:
-        return len(self._layers)
-
-    def add(self, value: TL) -> None:
-        if self.__contains__(value):  # ty:ignore[invalid-argument-type]
-            return
-        self._layers.add(value)
-
-    def discard(self, value: TL) -> None:
-        self._layers.discard(value)
-
-    def __eq__(self, other: Any) -> bool:  # noqa: ANN401
-        if isinstance(other, LayerSet):
-            return self._layers == other._layers
-        if isinstance(other, set):
-            return self._layers == other
-        if isinstance(other, Iterable):
-            other_len = 0
-            for o in other:
-                other_len += 1
-                if o not in self:
-                    return False
-            return other_len == len(self)
-        if len(self._layers) == 1:
-            # Note: here intently we do not consider cases CU_ALL (CU_F is in CU_ALL, but CU_F != CU_ALL)
-            return other in self._layers
-        return NotImplemented
-
-    def _askiff_key(self, name: str | None = None) -> str:
-        return (
-            name or "layer"
-            if len(self._layers) <= 1 and all(not isinstance(layer, LayerSpecial) for layer in self._layers)
-            else "layers"
-        )
-
-    def serialize(self) -> GeneralizedSexpr:
-        return (
-            *(Qstr(x._value) for x in sorted(self._layers, key=BaseLayer.order_id)),
-            *(("knockout",) if self._knockout else ()),
-        )
-
-    def serialize_nested(self) -> GeneralizedSexpr:
-        return tuple(("layer", Qstr(x._value)) for x in sorted(self._layers, key=BaseLayer.order_id))
-
-    @classmethod
-    def deserialize_nested(cls, sexp: GeneralizedSexpr) -> LayerSet:
-        return LayerSet(*(BaseLayer.deserialize_downcast(s[1]) for s in sexp))
 
 
 class BoardSide(Qstr, AutoSerdeEnum):
