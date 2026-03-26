@@ -140,6 +140,10 @@ class LayerSet(Generic[TL], AutoSerde, MutableSet[TL]):
             return other in self._layers
         return NotImplemented
 
+    def __str__(self) -> str:
+        ret = ",".join(str(layer) for layer in self._layers)
+        return ret if len(self._layers) == 1 else "{" + ret + "}"
+
     def _askiff_key(self, name: str | None = None) -> str:
         return (
             name or "layer"
