@@ -6,7 +6,7 @@ import uuid
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from math import atan2, cos, hypot, pi, radians, sin, sqrt
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, cast, overload
 
 from askiff.auto_serde import AutoSerde, AutoSerdeEnum, F
 from askiff.const import Version
@@ -191,6 +191,8 @@ class Property(AutoSerde):
 
 T = TypeVar("T", bound=Property)
 
+TD = TypeVar("TD")
+
 
 class PropertyList(Generic[T], list[T]):
     """Stores properties as list, offering convenient by-name access"""
@@ -199,8 +201,24 @@ class PropertyList(Generic[T], list[T]):
     def ref(self) -> T:
         return next(p for p in self if p.name == "Reference")
 
-    def get(self, name: str, default: T | None = None) -> T | None:
+    @overload
+    def get(self, name: str) -> T | None: ...
+
+    @overload
+    def get(self, name: str, default: TD) -> TD | T: ...
+
+    def get(self, name: str, default: TD | None = None) -> T | TD | None:
         return next((prop for prop in self if prop.name == name), default)
+
+    @overload
+    def get_value(self, name: str) -> str | None: ...
+
+    @overload
+    def get_value(self, name: str, default: str) -> str: ...
+
+    def get_value(self, name: str, default: str | None = None) -> str | None:
+        prop = next((prop for prop in self if prop.name == name), None)
+        return prop.value if prop else default
 
     def pop(self, name: str) -> T | None:  # type: ignore  # ty:ignore[invalid-method-override]
         idx = next((idx for idx, prop in enumerate(self) if prop.name == name), None)

@@ -66,8 +66,30 @@ class RuleArea(AutoSerde):
     shape: GrPolySch = F(name="polyline")
 
 
+class NetclassFlagShape(str, AutoSerdeEnum):
+    ROUND = "round"
+    DOT = "dot"
+    DIAMOND = "diamond"
+    RECT = "rectangle"
+
+
 class NetclassFlag(AutoSerde):
-    pass
+    _askiff_key: ClassVar[str] = "netclass_flag"
+    _positional: str | None = F(positional=True)
+    length: float = 1.27
+    shape: NetclassFlagShape = F(NetclassFlagShape.ROUND)
+    position: Position = F(name="at")
+    fields_autoplaced: bool | None = None
+    effects: Effects = F()
+    uuid: Uuid = F()
+    properties: PropertyList[SymProperty] = F(name="property", flatten=True).version(Version.K9.sch, skip=True)
+    """Additional properties of the label, such as net-class, component class ..."""
+
+    def component_class(self) -> str:
+        return self.properties.get_value("Component Class", "")
+
+    def net_class(self) -> str:
+        return self.properties.get_value("Net Class", "")
 
 
 class SheetFillStyle(AutoSerde):
