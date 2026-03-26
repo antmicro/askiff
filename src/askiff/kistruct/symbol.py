@@ -200,6 +200,55 @@ class Mirror(str, AutoSerdeEnum):
     Y = "y"
 
 
+class SchematicSheetPath(AutoSerde):
+    segments: list[Uuid] = F()
+
+    def serialize(self) -> GeneralizedSexpr:
+        return (Qstr("/" + "/".join(self.segments)),)
+
+    @classmethod
+    def deserialize(cls, sexp: GeneralizedSexpr) -> SchematicSheetPath:
+        sexp = sexp if isinstance(sexp, str) else sexp[0]
+        if not isinstance(sexp, str):
+            raise TypeError("Schematic Sheet Path expected to be a string")
+        spl = sexp.removeprefix("/").split("/")
+        return SchematicSheetPath([Uuid(s) for s in spl])
+
+
+class ObjectSchematicVariant(AutoSerde):
+    name: str = F()
+    dnp: bool | None = None
+    exclude_from_sim: bool | None = None
+    in_bom: bool | None = None
+    in_pos_files: bool | None = F(None).version(Version.K9.sch, skip=True)
+
+
+class ObjectSchematicInstance(AutoSerde):
+    _askiff_key: ClassVar[str] = "path"
+    path: SchematicSheetPath = F(positional=True)
+    variant: ObjectSchematicVariant | None = F()
+
+
+class SymbolSchematicInstance(ObjectSchematicInstance):
+    _askiff_key: ClassVar[str] = "path"
+    reference: str = F(after="path")
+    unit: int = F()
+
+
+class SymbolSchematicProject(AutoSerde):
+    _askiff_key: ClassVar[str] = "project"
+    project_name: str = F(positional=True)
+    instances: list[SymbolSchematicInstance] = F(flatten=True, name="path")
+
+
+class SymbolSchematicPin(AutoSerde):
+    _askiff_key: ClassVar[str] = "pin"
+    number: str = F(positional=True)
+    uuid: Uuid = F()
+    alternate: str | None = F()
+    """Alternate function enabled for instance pin"""
+
+
 class SymbolSchematic(AutoSerde):
     _askiff_key: ClassVar[str] = "symbol"
 
@@ -229,7 +278,9 @@ class SymbolSchematic(AutoSerde):
     properties: PropertyList[SymProperty] = F(name="property", flatten=True)
     """Properties of the symbol, such as reference, value, datasheet, ..."""
 
-    # instances: ? = F()
+    pins: list[SymbolSchematicPin] = F(flatten=True, name="pin")
+
+    instances: list[SymbolSchematicProject] = F()
 
 
 class SymbolFile(AutoSerdeFile):

@@ -17,14 +17,15 @@ from askiff.kistruct.common import (
     Uuid,
 )
 from askiff.kistruct.gritems import GrItemSch, GrPolySch, GrTableSch
-from askiff.kistruct.symbol import LibSymbol, SymbolSchematic, SymProperty
+from askiff.kistruct.symbol import LibSymbol, ObjectSchematicInstance, SymbolSchematic, SymProperty
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore
 
 
 class BusAlias(AutoSerde):
-    pass
+    name: str = F(positional=True)
+    members: list[str] = F(keep_empty=True)
 
 
 class LabelShape(str, AutoSerdeEnum):
@@ -82,7 +83,7 @@ class NetclassFlag(AutoSerde):
     fields_autoplaced: bool | None = None
     effects: Effects = F()
     uuid: Uuid = F()
-    properties: PropertyList[SymProperty] = F(name="property", flatten=True).version(Version.K9.sch, skip=True)
+    properties: PropertyList[SymProperty] = F(name="property", flatten=True)
     """Additional properties of the label, such as net-class, component class ..."""
 
     def component_class(self) -> str:
@@ -92,9 +93,35 @@ class NetclassFlag(AutoSerde):
         return self.properties.get_value("Net Class", "")
 
 
+class SheetFillStyleColor(Color, positional=True):  # type: ignore
+    R: int = 0
+    G: int = 0
+    B: int = 0
+    A: float = F(precision=4).version(Version.K9.sch, keep_trailing=True)
+
+
 class SheetFillStyle(AutoSerde):
-    # color: Color
-    pass
+    color: SheetFillStyleColor = F()
+
+
+class SheetInstance(ObjectSchematicInstance):
+    _askiff_key: ClassVar[str] = "path"
+    page: str = F(after="path")
+
+
+class SheetProject(AutoSerde):
+    _askiff_key: ClassVar[str] = "project"
+    project_name: str = F(positional=True)
+    instances: list[SheetInstance] = F(flatten=True, name="path")
+
+
+class SheetPin(AutoSerde):
+    _askiff_key: ClassVar[str] = "pin"
+    name: str = F(positional=True)
+    shape: LabelShape = F(LabelShape.PASSIVE, positional=True)
+    position: Position = F(name="at")
+    uuid: Uuid = F()
+    effects: Effects = F()
 
 
 class Sheet(AutoSerde):
@@ -112,6 +139,10 @@ class Sheet(AutoSerde):
 
     properties: PropertyList[SymProperty] = F(name="property", flatten=True)
     """Sheet properties such as file, name"""
+
+    pins: list[SheetPin] = F(flatten=True, name="pin")
+
+    instances: list[SheetProject] = F()
 
 
 class HierarchicalInstance(AutoSerde):
@@ -184,8 +215,8 @@ class Schematic(AutoSerdeFile):
     lib_symbols: list[LibSymbol] = F()
     """Definition of symbols used in sch (this is kind of cache of library symbols)"""
 
-    bus_aliases: list[BusAlias] = F(flatten=True, name="bus_alias")
-    """Definition of members assigned to bus aliases"""
+    bus_aliases: list[BusAlias] = F(flatten=True, name="bus_alias", skip=True).version(Version.K9.sch, skip=False)
+    """[Deprecated] Definition of members assigned to bus aliases (K10 defines this in kicad_pro)"""
 
     graphic_items: AutoSerdeAgg[GrItemSch] = F(flatten=True)
     """list of graphical objects (lines, circles, arcs, ...)"""
