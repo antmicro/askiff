@@ -260,7 +260,6 @@ class Schematic(AutoSerdeFile):
     def add_symbol(
         self, lib_sym: LibSymbol, reference: str | None = None, position: Position | None = None, unit: int = 1
     ) -> None:
-
         if not next((s for s in self.lib_symbols if lib_sym.lib_id == s.lib_id), None):
             self.lib_symbols.append(lib_sym)
         sym_instance = SymbolSchematic(

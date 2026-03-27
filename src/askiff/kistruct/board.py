@@ -252,18 +252,18 @@ class TraceBase(AutoSerde):
 
 class TraceCopper(TraceBase):
     _layers: LayerSet[BaseLayer] = F(after="locked")
-    primary_layer: LayerCopper = F(Layer.CU_F, skip=True)
+    layer: LayerCopper = F(Layer.CU_F, skip=True)
 
     def _askiff_post_deser(self) -> None:
-        self.primary_layer = next(x for x in self._layers if isinstance(x, LayerCopper))
+        self.layer = next(x for x in self._layers if isinstance(x, LayerCopper))
 
     def _askiff_pre_ser(self) -> Self:
-        self._layers = LayerSet(self.primary_layer)
+        self._layers = LayerSet(self.layer)
         if self.solder_mask_margin:
-            if self.primary_layer not in (Layer.CU_B, Layer.CU_F):
+            if self.layer not in (Layer.CU_B, Layer.CU_F):
                 self.solder_mask_margin = None
             else:
-                self._layers.add(Layer.MASK_F if self.primary_layer == Layer.CU_F else Layer.MASK_B)
+                self._layers.add(Layer.MASK_F if self.layer == Layer.CU_F else Layer.MASK_B)
         return self
 
 

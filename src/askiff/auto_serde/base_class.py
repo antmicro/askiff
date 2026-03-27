@@ -65,7 +65,7 @@ class AutoSerde:
         cls, ser_order: list[str], type_hints: dict[str, type], field_meta: dict[str, SerdeOpt]
     ) -> dict[str, list[DeserModWExtra] | dict[str, DeserModWExtra]]:
         deser_field, deser_field_positional, deser_field_bare_flags = {}, [], {}
-        names_kicad = {v.get("name", k).split(".")[-1] for k, v in field_meta.items()}
+        names_kicad = {v.get("name", k).split(".")[-1] for k, v in field_meta.items() if not v.get("skip", False)}
 
         def inline_wrap(field: str, mode: DeserMode, extra: Any) -> DeserModWExtra:  # noqa: ANN401
             if "." in field:

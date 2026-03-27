@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import Sequence
 from math import cos, sin
-from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Final, Self, Unpack, cast
 
 from askiff.auto_serde import AutoSerde, AutoSerdeDownCasting, AutoSerdeEnum, AutoSerdeFile, F, SerdeOpt
 from askiff.const import Version
@@ -23,7 +23,7 @@ from askiff.kistruct.common import (
     Stroke,
     Uuid,
 )
-from askiff.kistruct.common_pcb import BaseLayer, Layer, LayerSet, NetSimple
+from askiff.kistruct.common_pcb import BaseLayer, Layer, LayerCopperOuter, LayerSet, NetSimple
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore
@@ -45,7 +45,7 @@ class GrItem(AutoSerde):
         "stroke",
         "locked",
         "fill",
-        "layers",
+        "_layers",
         "solder_mask_margin",
         "net",
         "uuid",
@@ -96,8 +96,21 @@ class GrItemSym(GrItem):
 
 
 class _GrShapePCBFp(GrShape):
-    layers: LayerSet[BaseLayer] = F()
+    _layers: LayerSet[BaseLayer] = F()
     solder_mask_margin: float | None = None
+    layer: BaseLayer = F(Layer.CU_F, skip=True)
+
+    def _askiff_post_deser(self) -> None:
+        self.layer = next((x for x in self._layers if isinstance(x, LayerCopperOuter)), next(x for x in self._layers))
+
+    def _askiff_pre_ser(self) -> Self:
+        self._layers = LayerSet(self.layer)
+        if self.solder_mask_margin:
+            if self.layer not in (Layer.CU_B, Layer.CU_F):
+                self.solder_mask_margin = None
+            else:
+                self._layers.add(Layer.MASK_F if self.layer == Layer.CU_F else Layer.MASK_B)
+        return self
 
 
 class GrShapeFp(_GrShapePCBFp, GrItemFp):
@@ -260,10 +273,24 @@ class GrCurveFp(BaseBezier, GrShapeFp):
         ret.uuid = Uuid()
         return ret
 
+    def _askiff_post_deser(self) -> None:
+        _GrShapePCBFp._askiff_post_deser(self)
+        BaseBezier._askiff_post_deser(self)
+
+    def _askiff_pre_ser(self) -> Self:
+        return _GrShapePCBFp._askiff_pre_ser(BaseBezier._askiff_pre_ser(self))  # type: ignore # ty:ignore[invalid-argument-type]
+
 
 class GrCurvePCB(BaseBezier, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_curve"
     fill: FillStylePCBEnum | None = None
+
+    def _askiff_post_deser(self) -> None:
+        _GrShapePCBFp._askiff_post_deser(self)
+        BaseBezier._askiff_post_deser(self)
+
+    def _askiff_pre_ser(self) -> Self:
+        return _GrShapePCBFp._askiff_pre_ser(BaseBezier._askiff_pre_ser(self))  # type: ignore # ty:ignore[invalid-argument-type]
 
 
 class GrCurveSch(BaseBezier, GrShapeSch):
@@ -376,22 +403,24 @@ class GrTextPCBBase(GrText):
         "text",
         "locked",
         "position",
-        "layers",
+        "_layers",
         "uuid",
         "effects",
-        "solder_mask_margin",
         "net",
         "render_cache",
     ]
     knockout: bool = F(skip=True)
-    layers: LayerSet[BaseLayer] = F()
+    _layers: LayerSet[BaseLayer] = F()
     uuid: Uuid = F()
+    layer: BaseLayer = F(Layer.COMMENTS, skip=True)
 
     def _askiff_post_deser(self) -> None:
-        self.knockout = self.layers._knockout
+        self.layer = next(x for x in self._layers)
+        self.knockout = self._layers._knockout
 
     def _askiff_pre_ser(self) -> GrTextPCBBase:
-        self.layers._knockout = self.knockout
+        self._layers = LayerSet(self.layer)
+        self._layers._knockout = self.knockout
         return self
 
 
@@ -402,10 +431,9 @@ class GrTextFp(GrTextPCBBase, GrItemFp):
         "text",
         "position",
         "locked",
-        "layers",
+        "_layers",
         "uuid",
         "effects",
-        "solder_mask_margin",
         "render_cache",
     ]
     type: TextType = F(TextType.USER, positional=True)
