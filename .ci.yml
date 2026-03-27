@@ -1,3 +1,5 @@
+image: "astral/uv:python3.13-trixie-slim"
+
 variables:
   DEBIAN_FRONTEND: "noninteractive"
   GIT_DEPTH: 1
@@ -6,9 +8,11 @@ variables:
 stages:
   - code-check
   - test
+  - docs
+
+############ Code Checks #############
 
 .code-check-base:
-  image: "astral/uv:python3.13-trixie-slim"
   stage: code-check
   except:
     refs:
@@ -25,20 +29,21 @@ mypy:
 ty:
   extends: .code-check-base
   script:
-    - uv run ty check
+    - uv run ty check ./src
 
 format:
   extends: .code-check-base
   script:
-    - uv run ruff format --check
+    - uv run ruff format --check ./src
 
 lint:
   extends: .code-check-base
   script:
-    - uv run ruff check
+    - uv run ruff check ./src
+
+################ Tests ################
 
 .test-base:
-  image: "astral/uv:python3.13-trixie-slim"
   stage: test
   dependencies: []
   except:
@@ -46,7 +51,7 @@ lint:
       - merge_requests
   before_get_sources:
     - apt -qqy update > /dev/null
-    - apt -qqy --no-install-recommends install git > /dev/null
+    - apt -qqy --no-install-recommends install git make > /dev/null
   before_script:
     - uv venv
     - uv sync
@@ -69,3 +74,34 @@ test-thor:
   extends: .test-base
   variables:
     TEST_PROJECT: "jetson-agx-thor-baseboard"
+
+doc-test:
+  stage: test
+  dependencies: []
+  except:
+    refs:
+      - merge_requests
+  before_get_sources:
+    - apt -qqy update > /dev/null
+    - apt -qqy --no-install-recommends install git make > /dev/null
+  before_script:
+    - uv venv
+    - uv sync --extra dev --extra docs
+  script:
+    - cd docs
+    - uv run make doctest
+
+############ Documentation ############
+
+build-docs:
+  extends: doc-test
+  stage: docs
+  tags: ['docs']
+  script:
+    - cd docs
+    - uv run make html
+    - tar cf ../$CI_DOCS_ARCHIVE -C .build/html/ .
+  artifacts:
+    paths:
+      - $CI_DOCS_ARCHIVE
+

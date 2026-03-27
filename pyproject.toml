@@ -28,6 +28,11 @@ askiff = "askiff._cli:main"
 
 [project.optional-dependencies]
 dev = ["mypy==1.19.1", "ruff==0.15.4", "ty==0.0.23"]
+docs = [
+    "sphinx==8.2.3",
+    "antmicro-sphinx-utils @ https://github.com/antmicro/antmicro-sphinx-utils/archive/main.zip",
+    "sphinx-autodoc-typehints==3.5.2",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "N", "B", "A", "RET", "UP", "I", "RUF", "ANN"]
