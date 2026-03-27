@@ -545,8 +545,11 @@ class BaseRect(BaseShape):
 
 class BBox(BaseRect):
     @classmethod
-    def from_shapes(cls, shapes: Iterable[BaseShape]) -> BBox:
-        xs, ys = zip(*((p.x, p.y) for p in cls.extrema_from_shapes(shapes)), strict=True)
+    def from_shapes(cls, shapes: Iterable[BaseShape]) -> BBox | None:
+        extrema_points = cls.extrema_from_shapes(shapes)
+        if not extrema_points:
+            return None
+        xs, ys = zip(*((p.x, p.y) for p in extrema_points), strict=True)
         return BBox(Position(min(xs), min(ys)), Position(max(xs), max(ys)))
 
     @classmethod
