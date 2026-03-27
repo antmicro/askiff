@@ -6,11 +6,6 @@ from antmicro_sphinx_utils.defaults import extensions as default_extensions
 from antmicro_sphinx_utils.defaults import myst_enable_extensions as default_myst_enable_extensions
 from antmicro_sphinx_utils.defaults import myst_fence_as_directive as default_myst_fence_as_directive
 
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-# sys.path.insert(0, os.path.abspath('.'))
-
 # -- General configuration -----------------------------------------------------
 
 # General information about the project.
@@ -56,44 +51,26 @@ html_title = project
 
 (latex_elements, latex_documents, latex_logo, latex_additional_files) = antmicro_latex(basic_filename, authors, project)
 
-extensions.extend(
-    [
-        "sphinx.ext.autodoc",
-        # "sphinx.ext.autosummary",
-        "sphinx_immaterial.apidoc",
-        "sphinx.ext.napoleon",
-        "sphinx.ext.doctest",
-        "sphinx.ext.intersphinx",
-        # "sphinx_autodoc_typehints",
-    ]
-)
-
-
-# --- Autodoc ---
-autodoc_default_options = {
-    "members": True,
-    "undoc-members": False,
-    "show-inheritance": True,
-    "private-members": False,
-}
-# autosummary_imported_members = True
-# autosummary_generate = True
-
-# --- Type hints ---
-autodoc_typehints = "both"
-autodoc_typehints_format = "short"
-autodoc_preserve_defaults = True
-
-apidoc_modules = {
-    "askiff": "../../askiff",  # path to your package
-}
-
-
-# Avoid duplication with Google docstrings
-napoleon_use_rtype = False
+extensions.extend(["sphinx.ext.napoleon", "sphinx.ext.doctest", "sphinx.ext.intersphinx", "autoapi.extension"])
 
 doctest_default_flags = doctest.ELLIPSIS
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
 }  # type: ignore
+
+autodoc_typehints = "both"
+autodoc_typehints_format = "short"
+
+autoapi_dirs = ["../../src/askiff"]
+autoapi_options = [
+    "members",
+    "inherited-members",
+    "undoc-members",
+    "show-inheritance",
+    "show-inheritance-diagram",
+    "show-module-summary",
+    "special-members",
+    "imported-members",
+]
+autoapi_member_order="groupwise"

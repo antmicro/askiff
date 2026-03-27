@@ -64,7 +64,7 @@ dev = [
 docs = [
     { name = "antmicro-sphinx-utils" },
     { name = "sphinx" },
-    { name = "sphinx-autodoc-typehints" },
+    { name = "sphinx-autoapi" },
 ]
 
 [package.metadata]
@@ -73,10 +73,19 @@ requires-dist = [
     { name = "mypy", marker = "extra == 'dev'", specifier = "==1.19.1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = "==0.15.4" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = "==8.2.3" },
-    { name = "sphinx-autodoc-typehints", marker = "extra == 'docs'", specifier = "==3.5.2" },
+    { name = "sphinx-autoapi", marker = "extra == 'docs'" },
     { name = "ty", marker = "extra == 'dev'", specifier = "==0.0.23" },
 ]
 provides-extras = ["dev", "docs"]
+
+[[package]]
+name = "astroid"
+version = "4.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/da/fd/24475b7cfb70298e8921bc077adb46a3fe77887422545d8a061573e130ee/astroid-4.1.2.tar.gz", hash = "sha256:d6c4a52bfcda4bbeb7359dead642b0248b90f7d9a07e690230bd86fefd6d37f1", size = 414896, upload-time = "2026-03-22T19:16:42.075Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/97/4ee9b0438e85bf0a808a89ef0be357319252ab27e1b313ae0aef7aeaa5a6/astroid-4.1.2-py3-none-any.whl", hash = "sha256:21312e682c0866dc5a309ee57e4b88ea92751b9955a58b1c31371cbbeb088707", size = 279956, upload-time = "2026-03-22T19:16:40.062Z" },
+]
 
 [[package]]
 name = "babel"
@@ -774,15 +783,18 @@ wheels = [
 ]
 
 [[package]]
-name = "sphinx-autodoc-typehints"
-version = "3.5.2"
+name = "sphinx-autoapi"
+version = "3.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "astroid" },
+    { name = "jinja2" },
+    { name = "pyyaml" },
     { name = "sphinx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/34/4f/4fd5583678bb7dc8afa69e9b309e6a99ee8d79ad3a4728f4e52fd7cb37c7/sphinx_autodoc_typehints-3.5.2.tar.gz", hash = "sha256:5fcd4a3eb7aa89424c1e2e32bedca66edc38367569c9169a80f4b3e934171fdb", size = 37839, upload-time = "2025-10-16T00:50:15.743Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/25/386d851320bc306e9d7d41b8cecf113f638e205a99595c481c146622de94/sphinx_autoapi-3.8.0.tar.gz", hash = "sha256:9f8ac7d43baf28a0831ac0e392fab6a095b875af07e52d135a5f716cc3cf1142", size = 58418, upload-time = "2026-03-08T03:49:52.931Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/05/f2/9657c98a66973b7c35bfd48ba65d1922860de9598fbb535cd96e3f58a908/sphinx_autodoc_typehints-3.5.2-py3-none-any.whl", hash = "sha256:0accd043619f53c86705958e323b419e41667917045ac9215d7be1b493648d8c", size = 21184, upload-time = "2025-10-16T00:50:13.973Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/3a/8923a543fa2422d32be4c5311f488e4f275acde263c811e4d5d22bb544cb/sphinx_autoapi-3.8.0-py3-none-any.whl", hash = "sha256:245aefdeab85609ae4aa3576b0d99f69676aa6333dda438761bd125755b3c42d", size = 35994, upload-time = "2026-03-08T03:49:51.383Z" },
 ]
 
 [[package]]

@@ -6,5 +6,4 @@
 introduction
 quick-start
 philosophy
-reference
 ```
