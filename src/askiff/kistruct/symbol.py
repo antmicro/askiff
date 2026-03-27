@@ -42,7 +42,7 @@ class SymProperty(Property):
 
 
 class _SymPropertyLibOrder(SymProperty):
-    # order in sym library definitions is different (than in eg. schematic instances)
+    # order in sym library definitions is different than, e.g., schematic instances
     show_name: bool | None = F(after="position").version(Version.K9.sch, flag=True)
     _do_not_autoplace = F()
 
