@@ -5,5 +5,5 @@
 
 introduction
 quick-start
-philosophy
+usage-highlights
 ```
