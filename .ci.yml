@@ -83,7 +83,7 @@ doc-test:
       - merge_requests
   before_get_sources:
     - apt -qqy update > /dev/null
-    - apt -qqy --no-install-recommends install git make > /dev/null
+    - apt -qqy --no-install-recommends install git make graphviz> /dev/null
   before_script:
     - uv venv
     - uv sync --extra dev --extra docs
