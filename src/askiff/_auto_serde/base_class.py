@@ -8,8 +8,8 @@ from enum import Enum
 from pprint import pprint
 from typing import Any, Self, Unpack, cast, dataclass_transform
 
+from askiff._sexpr import GeneralizedSexpr, Qstr, Sexpr
 from askiff.const import TRACE, TRACE_DIS
-from askiff.sexpr import GeneralizedSexpr, Qstr, Sexpr
 
 from .helpers import (
     DeserMode,

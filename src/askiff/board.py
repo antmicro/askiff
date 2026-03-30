@@ -4,7 +4,7 @@ import logging
 from copy import copy, deepcopy
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Self, Unpack, cast
 
-from askiff.auto_serde import (
+from askiff._auto_serde import (
     AutoSerde,
     AutoSerdeAgg,
     AutoSerdeDownCasting,
@@ -14,9 +14,9 @@ from askiff.auto_serde import (
     SerdeOpt,
     SerMode,
 )
-from askiff.const import Version
-from askiff.kistruct.common import BaseArc, BaseLine, BasePoly, EmbeddedFile, Group, Paper, Position, TitleBlock, Uuid
-from askiff.kistruct.common_pcb import (
+from askiff._sexpr import GeneralizedSexpr, Qstr, Sexpr
+from askiff.common import BaseArc, BaseLine, BasePoly, EmbeddedFile, Group, Paper, Position, TitleBlock, Uuid
+from askiff.common_pcb import (
     BaseLayer,
     Layer,
     LayerCopper,
@@ -28,10 +28,10 @@ from askiff.kistruct.common_pcb import (
     Point,
     Zone,
 )
-from askiff.kistruct.footprint import Footprint, FootprintBoard
-from askiff.kistruct.fp_pad import AfterDrill, DrillPostMatching, PadStackMode, TeardropSettings
-from askiff.kistruct.gritems import Barcode, Dimension, GrItemPCB, GrTablePCB
-from askiff.sexpr import GeneralizedSexpr, Qstr, Sexpr
+from askiff.const import Version
+from askiff.footprint import Footprint, FootprintBoard
+from askiff.fp_pad import AfterDrill, DrillPostMatching, PadStackMode, TeardropSettings
+from askiff.gritems import Barcode, Dimension, GrItemPCB, GrTablePCB
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore

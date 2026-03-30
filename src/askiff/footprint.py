@@ -3,9 +3,8 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING, Any, ClassVar, Final, cast
 
-from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
-from askiff.const import Version
-from askiff.kistruct.common import (
+from askiff._auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
+from askiff.common import (
     ComponentClass,
     EmbeddedFile,
     Group,
@@ -16,9 +15,10 @@ from askiff.kistruct.common import (
     PropertyList,
     Uuid,
 )
-from askiff.kistruct.common_pcb import BaseLayer, BoardSide, Layer, LayerSet, LayerUser, Point, Zone
-from askiff.kistruct.fp_pad import Pad, ZoneConnect
-from askiff.kistruct.gritems import Barcode, Dimension, GrItemFp, GrTablePCB
+from askiff.common_pcb import BaseLayer, BoardSide, Layer, LayerSet, LayerUser, Point, Zone
+from askiff.const import Version
+from askiff.fp_pad import Pad, ZoneConnect
+from askiff.gritems import Barcode, Dimension, GrItemFp, GrTablePCB
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore

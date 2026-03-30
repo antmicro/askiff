@@ -24,7 +24,7 @@ license = { file = "LICENSE" }
 dependencies = []
 
 [project.scripts]
-askiff = "askiff.main:main"
+askiff = "askiff._cli:main"
 
 [project.optional-dependencies]
 dev = ["mypy==1.19.1", "ruff==0.15.4", "ty==0.0.23"]

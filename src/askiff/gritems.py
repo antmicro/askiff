@@ -5,9 +5,8 @@ from collections.abc import Sequence
 from math import cos, sin
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Self, Unpack, cast
 
-from askiff.auto_serde import AutoSerde, AutoSerdeDownCasting, AutoSerdeEnum, AutoSerdeFile, F, SerdeOpt
-from askiff.const import Version
-from askiff.kistruct.common import (
+from askiff._auto_serde import AutoSerde, AutoSerdeDownCasting, AutoSerdeEnum, AutoSerdeFile, F, SerdeOpt
+from askiff.common import (
     BaseArc,
     BaseBezier,
     BaseCircle,
@@ -23,7 +22,8 @@ from askiff.kistruct.common import (
     Stroke,
     Uuid,
 )
-from askiff.kistruct.common_pcb import BaseLayer, Layer, LayerCopperOuter, LayerSet, NetSimple
+from askiff.common_pcb import BaseLayer, Layer, LayerCopperOuter, LayerSet, NetSimple
+from askiff.const import Version
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore

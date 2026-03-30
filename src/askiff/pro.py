@@ -6,12 +6,12 @@ from pathlib import Path
 from threading import RLock
 from typing import Any, Generic, Self, TypeVar
 
-from .auto_serde import AutoSerdeFile
+from ._auto_serde import AutoSerdeFile
+from .board import Board
 from .const import TRACE, TRACE_DIS
-from .kistruct.board import Board
-from .kistruct.footprint import FootprintFile, LibTableFp
-from .kistruct.schematic import Schematic
-from .kistruct.symbol import LibSymbol, LibTableSym, SymbolFile
+from .footprint import FootprintFile, LibTableFp
+from .schematic import Schematic
+from .symbol import LibSymbol, LibTableSym, SymbolFile
 
 logging.addLevelName(TRACE_DIS, "TRACE_DIS")
 logging.addLevelName(TRACE, "TRACE")

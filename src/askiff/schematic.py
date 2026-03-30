@@ -1,8 +1,7 @@
 from typing import TYPE_CHECKING, Any, ClassVar, Final, cast
 
-from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
-from askiff.const import Version
-from askiff.kistruct.common import (
+from askiff._auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
+from askiff.common import (
     BasePoly,
     Color,
     Effects,
@@ -16,8 +15,9 @@ from askiff.kistruct.common import (
     TitleBlock,
     Uuid,
 )
-from askiff.kistruct.gritems import GrItemSch, GrPolySch, GrTableSch
-from askiff.kistruct.symbol import LibSymbol, ObjectSchematicInstance, SymbolSchematic, SymProperty
+from askiff.const import Version
+from askiff.gritems import GrItemSch, GrPolySch, GrTableSch
+from askiff.symbol import LibSymbol, ObjectSchematicInstance, SymbolSchematic, SymProperty
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack, cast
 
-from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeDownCasting, AutoSerdeEnum, F, SerdeOpt
-from askiff.kistruct.common import PinTypePCB, Position, Size, Uuid
-from askiff.kistruct.common_pcb import (
+from askiff._auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeDownCasting, AutoSerdeEnum, F, SerdeOpt
+from askiff._sexpr import GeneralizedSexpr
+from askiff.common import PinTypePCB, Position, Size, Uuid
+from askiff.common_pcb import (
     BaseLayer,
     BasePoly,
     BoardSide,
@@ -14,8 +15,7 @@ from askiff.kistruct.common_pcb import (
     Net,
     TeardropSettings,
 )
-from askiff.kistruct.gritems import BaseArc, BaseCircle, BaseLine
-from askiff.sexpr import GeneralizedSexpr
+from askiff.gritems import BaseArc, BaseCircle, BaseLine
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore

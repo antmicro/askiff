@@ -4,10 +4,10 @@ import logging
 from collections.abc import Iterable, Iterator, MutableSet
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Generic, TypeVar, cast
 
-from askiff.auto_serde import AutoSerde, AutoSerdeEnum, AutoSerdeFile, F
+from askiff._auto_serde import AutoSerde, AutoSerdeEnum, AutoSerdeFile, F
+from askiff._sexpr import GeneralizedSexpr, Qstr
+from askiff.common import BasePoly, Position, Uuid
 from askiff.const import KICAD_MAX_LAYER_CU, KICAD_MAX_LAYER_USER, Version
-from askiff.kistruct.common import BasePoly, Position, Uuid
-from askiff.sexpr import GeneralizedSexpr, Qstr
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore

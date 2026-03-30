@@ -10,8 +10,8 @@ from typing import (
     Self,
 )
 
+from askiff._sexpr import Sexpr
 from askiff.const import Version
-from askiff.sexpr import Sexpr
 
 from .base_class import AutoSerde, _askiff_opts_default, _askiff_opts_version_map
 from .helpers import F

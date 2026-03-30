@@ -8,9 +8,9 @@ from collections.abc import Iterable, Sequence
 from math import atan2, cos, hypot, pi, radians, sin, sqrt
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, cast, overload
 
-from askiff.auto_serde import AutoSerde, AutoSerdeEnum, F
+from askiff._auto_serde import AutoSerde, AutoSerdeEnum, F
+from askiff._sexpr import GeneralizedSexpr, Qstr
 from askiff.const import Version
-from askiff.sexpr import GeneralizedSexpr, Qstr
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore

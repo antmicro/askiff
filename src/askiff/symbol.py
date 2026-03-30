@@ -3,9 +3,9 @@ from __future__ import annotations
 from copy import copy
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
-from askiff.auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
-from askiff.const import Version
-from askiff.kistruct.common import (
+from askiff._auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
+from askiff._sexpr import GeneralizedSexpr, Qstr
+from askiff.common import (
     Effects,
     EmbeddedFile,
     Font,
@@ -17,8 +17,8 @@ from askiff.kistruct.common import (
     PropertyList,
     Uuid,
 )
-from askiff.kistruct.gritems import GrItemSym
-from askiff.sexpr import GeneralizedSexpr, Qstr
+from askiff.const import Version
+from askiff.gritems import GrItemSym
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore

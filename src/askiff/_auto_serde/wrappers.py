@@ -8,7 +8,7 @@ from enum import Enum
 from types import UnionType
 from typing import ClassVar, Final, Generic, Self, TypeVar, Unpack, get_args, get_origin
 
-from askiff.sexpr import GeneralizedSexpr, Sexpr
+from askiff._sexpr import GeneralizedSexpr, Sexpr
 
 from .base_class import AutoSerde
 from .helpers import F, SerdeOpt
