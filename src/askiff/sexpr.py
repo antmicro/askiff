@@ -105,6 +105,7 @@ class Sexpr(list[Union["GeneralizedSexpr", str]]):
 
     def to_file(self, path: Path) -> None:
         column_width = PCB_COLUMN_WIDTH if "pcb" in path.suffix else SCH_COLUMN_WIDTH
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(to_str(self, column_width=column_width) + "\n")
 
     def serialize(self) -> GeneralizedSexpr:
