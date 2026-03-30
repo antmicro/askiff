@@ -51,7 +51,9 @@ html_title = project
 
 (latex_elements, latex_documents, latex_logo, latex_additional_files) = antmicro_latex(basic_filename, authors, project)
 
-extensions.extend(["sphinx.ext.napoleon", "sphinx.ext.doctest", "sphinx.ext.intersphinx", "autoapi.extension"])
+extensions.extend(
+    ["sphinx_design", "sphinx.ext.napoleon", "sphinx.ext.doctest", "sphinx.ext.intersphinx", "autoapi.extension"]
+)
 
 doctest_default_flags = doctest.ELLIPSIS
 
@@ -73,4 +75,4 @@ autoapi_options = [
     "special-members",
     "imported-members",
 ]
-autoapi_member_order="groupwise"
+autoapi_member_order = "groupwise"

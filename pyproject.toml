@@ -31,7 +31,8 @@ dev = ["mypy==1.19.1", "ruff==0.15.4", "ty==0.0.23"]
 docs = [
     "sphinx==8.2.3",
     "antmicro-sphinx-utils @ https://github.com/antmicro/antmicro-sphinx-utils/archive/main.zip",
-    "sphinx-autoapi"
+    "sphinx-autoapi",
+    "sphinx-design"
 ]
 
 [tool.ruff.lint]
