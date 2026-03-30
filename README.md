@@ -4,44 +4,43 @@ Copyright (c) 2026 [Antmicro](https://www.antmicro.com)
 
 Python library for typed parsing, creation and modification of KiCad files.
 
-## Features
+A SKiff provides automatic serialization and deserialization (serde) functionality for KiCad project files, enabling seamless conversion between structured Python data and KiCad's native sexpr formats. It addresses the challenge of working with KiCad's complex, hierarchical file structures by offering typed, field-based (de)serialization that preserves file integrity and supports round-trip editing without unnecessary changes.
+
+The library is designed to handle KiCad 8+ formats, with full support for KiCad 10. It ensures that even unsupported sections of KiCad files remain untouched during processing, maintaining zero git diff for unchanged content. This makes it ideal for automated workflows, file validation, and safe modification of KiCad projects.
+
+## Feature Highlights
 
 * Deserialize KiCad files into Python structures and back
 * Library aims to introduce zero git diff to untouched file sections
-* Even if part of KiCad file is not explicitly supported it should never be dropped from file
+* Even if part of KiCad file is not explicitly supported, attempts to preserve it, preventing data loss
 * Targets KiCad 10 (backward compatibility with KiCad 8+)
+* Simple python abstractions, hiding quirks of KiCad file formats
 
-## Dev guide
+## Installation
 
-### Installation
-
-1. Clone repository
-2. Install dependencies & package
-
-```sh
-# Inside project repository
-uv venv
-uv sync --extra dev
+```bash
+pip install 'git+https://github.com/antmicro/askiff.git'
 ```
 
-### Repository structure
+## Quick Start
 
-* `src/askiff/` - library sourcecode
-  * `auto_serde/` - offers constructs for automated (de)serialization of structures:
-    * `AutoSerde` - base class that offers default, field based (de)serialize function
-    * `F` - construct that allows to pass additional data for AutoSerde, usage is similar to dataclasses.field
-  * `kistruct/` - store definitions of classes matching objects from KiCad files
-  * `main.py` - CLI command for library testing
-    * run via `uv run askiff -i ${TEST_PROJECT_DIR}`
-    * loads all project files and saves them with no changes
-    * useful for:
-      * identification of file parts that are not yet supported
-      * checking execution time
-      * checking formatting correctness (together with `git diff`)
-  * `pro.py` - entry point for library usage
-    * exposes `AskiffPro` that handles loading and saving of all files in project
-  * `sexpr.py` - handles parsing file to AST (nested list of lists and strings) and writing AST to file
-* `test_projects/` - directory for projects used for library testing
-  * `kicad9/` - synthetic project that aims to include all KiCad features up to version 9
-  * `kicad10/` - synthetic project that aims to include all KiCad features up to version 10
-  * `jetson-agx-thor-baseboard` - large project, mostly useful for performance testing
+Typical entry point for operating on a project is `AskiffPro`, which handles file discovery, lazy loading necessary files as they are used.
+
+```python
+from askiff import AskiffPro
+
+# Load a KiCad project
+project = AskiffPro("path/to/project").load()
+
+# Modify a schematic
+project.sch[0].title_block.title = "Modified Title"
+
+# Save the project
+project.save()
+```
+
+See [documentation]( https://antmicro.github.io/askiff/) for further examples.
+
+## Licensing
+
+TBD
