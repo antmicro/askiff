@@ -64,6 +64,15 @@ intersphinx_mapping = {
 autodoc_typehints = "both"
 autodoc_typehints_format = "short"
 
+toc_object_entries = False
+toc_depth = 2
+napoleon_use_param = False
+napoleon_use_rtype = False
+
+object_description_options = [
+    ("py:.*", dict(include_fields_in_toc=False)),
+]
+
 autoapi_dirs = ["../../src/askiff"]
 autoapi_options = [
     "members",
@@ -76,3 +85,15 @@ autoapi_options = [
     "imported-members",
 ]
 autoapi_member_order = "groupwise"
+
+
+def skip_undoc_dunder(app, what, name, obj, skip, options) -> bool:  # type: ignore  # noqa: ANN001
+    if "__" in name:
+        doc = getattr(obj, "__doc__", None)
+        if not doc or doc in ("The representation of a method.", "An object/class level attribute."):
+            return True
+    return skip
+
+
+def setup(app) -> None:  # type: ignore  # noqa: ANN001
+    app.connect("autoapi-skip-member", skip_undoc_dunder)
