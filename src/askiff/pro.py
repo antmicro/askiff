@@ -28,12 +28,12 @@ class _LazyFile(Generic[T]):
     _lock: RLock
     _inner_cls: type[T]
 
-    def __init__(self, inner_cls: type[T], value: Path, force_load: bool = False) -> None:
+    def __init__(self, inner_cls: type[T], path: Path, force_load: bool = False, value: T | None = None) -> None:
         object.__setattr__(self, "_inner_cls", inner_cls)
-        if not value.exists():
+        if not path.exists() and value is None:
             raise FileNotFoundError(value)
-        object.__setattr__(self, "__LazyFile__path", value)
-        object.__setattr__(self, "_value", value)
+        object.__setattr__(self, "__LazyFile__path", path)
+        object.__setattr__(self, "_value", path if value is None else value)
         object.__setattr__(self, "_lock", RLock())
         if force_load:
             self._load()
@@ -87,13 +87,13 @@ class AskiffLibSym:
         self.path = path
         self.name = path.stem
         self.__initial_path = path
+        self.objects = []
 
     def load(self, force: bool = False) -> Self:
         if self.path.suffix == ".kicad_sym" and self.path.exists():
             self.objects = [_LazyFile(SymbolFile, self.path, force)]
             return self
 
-        self.objects = []
         for path in self.path.glob("*.kicad_sym"):
             self.objects.append(_LazyFile(SymbolFile, path, force))
         return self
@@ -106,6 +106,32 @@ class AskiffLibSym:
         for o in self.objects:
             o.save(path, self.__initial_path)
 
+    def __getitem__(self, index: str) -> LibSymbol:
+        return next(sym for sym in self.symbols() if sym.lib_id.name == index)
+
+    def __setitem__(self, index: str, value: LibSymbol) -> None:
+        value.lib_id.name = index
+        for sym in self.symbols():
+            if sym.lib_id.name == index:
+                sym = value
+                return
+
+        # Add footprint to library
+        if self.path.suffix == ".kicad_sym":
+            # Multiple symbols per file library style
+            if self.objects:
+                self.objects[0].symbols.append(value)
+            else:
+                sym_file = SymbolFile(_fs_path=self.path)
+                sym_file.symbols.append(value)
+                self.objects.append(_LazyFile(SymbolFile, path=self.path, value=sym_file))
+        else:
+            # Symbol per file library style
+            path = self.path / f"{index}.kicad_sym"
+            sym_file = SymbolFile(_fs_path=path)
+            sym_file.symbols.append(value)
+            self.objects.append(_LazyFile(SymbolFile, path=path, value=sym_file))
+
 
 class AskiffLibFp:
     path: Path
@@ -117,9 +143,9 @@ class AskiffLibFp:
         self.path = path
         self.name = path.stem
         self.__initial_path = path
+        self.objects = []
 
     def load(self, force: bool = False) -> Self:
-        self.objects = []
         for path in self.path.glob("*.kicad_mod"):
             self.objects.append(_LazyFile(FootprintFile, path, force))
         return self
@@ -127,6 +153,19 @@ class AskiffLibFp:
     def save(self, path: Path | None = None) -> None:
         for o in self.objects:
             o.save(path, self.__initial_path)
+
+    def __getitem__(self, index: str) -> FootprintFile:
+        return next(fp for fp in self.objects if fp.lib_id.name == index)._load()
+
+    def __setitem__(self, index: str, value: FootprintFile) -> None:
+        value.lib_id.name = index
+        for fp in self.objects:
+            if fp.lib_id.name == index:
+                fp._value = value
+                return
+
+        # Add footprint to library
+        self.objects.append(_LazyFile(FootprintFile, path=self.path / f"{index}.kicad_mod", value=value))
 
 
 class AskiffPro:
