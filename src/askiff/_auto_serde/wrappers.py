@@ -17,9 +17,16 @@ log = logging.getLogger()
 
 
 class AutoSerdeEnum(Enum):
-    """Class for definition of enums, comparing to `enum.Enum` class it allows storing arbitrary values
-    (to allow new options that KiCad may add in future)
-    Inherit also from sexpr.Qstr to serialize as quoted string
+    """
+    AutoSerdeEnum is an enhanced enum implementation that extends standard Enum behavior to support arbitrary values,
+    enabling graceful handling of unknown or future KiCad enum options during deserialization.
+
+    It automatically creates pseudo-members for unrecognized values while maintaining type safety for known options.
+    The class overrides `_missing_` to log warnings and dynamically instantiate unknown enum values as members.
+
+    Child classes should inherit also from
+    * `_sexpr.Qstr` - to serialize as quoted strings
+    * `str` - to serialize as unquoted strings
     """
 
     @classmethod
@@ -37,18 +44,25 @@ T = TypeVar("T")
 
 
 class AutoSerdeAgg(Generic[T], list[T]):
-    """Wrapper around list, used to aggregate few types in one list
-
-    Generic can be either:
-    * Union of classes with `_askiff_key: ClassVar[str]`
-    * Class with `__askiff_childs: ClassVar[dict[str, type]]`
-
-    It handles unrecognized variants transparently
-    (they are skipped during iteration but serialized back during serialization)
+    """Wrapper around list, used to aggregate multiple types (with different serialization identifiers) in one list.
+    Generic can be either a class with `__askiff_childs` or a Union of classes with `_askiff_key`.
     """
 
     @classmethod
     def __askiff_aggregator(cls, inner: type) -> dict[str, type]:
+        """Returns a mapping of askiff keys to types for aggregation handling in AutoSerde classes.
+        Used internally to resolve polymorphic field types during serialization/deserialization.
+
+        Args:
+            inner: The type to analyze for aggregation mapping.
+
+        Returns:
+            A dictionary mapping askiff keys (str) to their corresponding types.
+
+        Raises:
+            Exception: If `inner` is a Union type without `_askiff_key` on all members,
+                or if `inner` has no `__askiff_childs` attribute.
+        """
         inner_origin, inner_args = get_origin(inner), get_args(inner)
         if inner_origin is UnionType:
             ret = {}
@@ -74,13 +88,20 @@ class AutoSerdeAgg(Generic[T], list[T]):
 
 
 class AutoSerdeDownCasting(AutoSerde):
+    """Base class for types that support downcasting during deserialization,
+    allowing a single class to represent multiple related subtypes based on a designated field.
+    """
+
     __askiff_childs: ClassVar[dict[str, builtins.type[Self]]]
+    """Child class type lookup for automatic downcasting during deserialization."""
 
     type: Final[str] = F()
+    """Keyword for to identify this specific subclass during downcasting"""
 
     @property
     @abstractmethod
     def __downcast_field(self) -> str | int:
+        """Keyword or position (if `type` is positional), to find `type` in unparsed sexpr"""
         pass
 
     @classmethod
@@ -94,6 +115,7 @@ class AutoSerdeDownCasting(AutoSerde):
 
     @classmethod
     def deserialize_downcast(cls, sexp: GeneralizedSexpr) -> Self:
+        """Deserializes a sexpr into an instance of the class or one of its downcast subclasses"""
         dcf = cls.__downcast_field
         if isinstance(dcf, int):
             deserialized_type = sexp[dcf]

@@ -22,7 +22,14 @@ _file_serde_lock = threading.Lock()
 
 
 class _Timer:
+    """Context manager for measuring execution duration with customizable message."""
+
     def __init__(self, message: str = "Execution time") -> None:
+        """Initializes the timer with an optional message prefix.
+
+        Args:
+            message: Prefix for timer output message. Defaults to "Execution time".
+        """
         self.message = message
 
     def __enter__(self) -> _Timer:
@@ -38,11 +45,19 @@ class _Timer:
 
 
 def _setup_versioned_serde_environment(version: int, latest_version: int) -> None:
+    """Configures globally serialization/deserialization behavior for a KiCad file version.
+    Sets version-specific field options on classes in `_askiff_opts_version_map`
+    to ensure correct handling of versioned data during (de)serialization.
+
+    Args:
+        version: The KiCad file version being processed.
+        latest_version: The latest supported version for determining default options.
+    """
     AutoSerdeFile._version = version
 
     for cls, versioned in _askiff_opts_version_map.items():
         params = None
-        for ver, _params in sorted(versioned.items(), reverse=True):
+        for ver, _params in versioned.items():
             matching = ver >= version
             if matching:
                 params = _params
@@ -53,13 +68,21 @@ def _setup_versioned_serde_environment(version: int, latest_version: int) -> Non
 
 
 class AutoSerdeFile(AutoSerde):
-    """`AutoSerde` wrapper that targets top (file) level structures"""
+    """Base class for loading and saving KiCad project files with version validation and automatic file path handling.
+    Subclasses define specific KiCad file types such as schematics, PCBs, and footprints.
+    """
 
     _askiff_key: ClassVar[str]
     version: int
+    """KiCad file format revision number. See also :class:`askiff.const.Version`"""
     _version: int = 0
     _post_final_deser_objects: list = F(list, skip=True)
-    """This version field is set on (global) class level, and used for simple access to version in any place"""
+    """
+    # Dev notes:
+    This version field is set on (global) class level.
+    Objects can register themselves for additional processing after whole deserialization is completed
+    Allowing field deserialization to access data from other file parts
+    """
     _fs_path: Path | None = None
     __version_map: ClassVar[dict[str, str]] = {
         "kicad_pcb": "pcb",
@@ -69,9 +92,20 @@ class AutoSerdeFile(AutoSerde):
         "sym_lib_table": "lib_table",
         "fp_lib_table": "lib_table",
     }
+    """Map between file identifier (first token in file) and corresponding field in :class:`askiff.const.Version`"""
 
     @classmethod
     def from_file(cls, path: PathLike) -> Self:
+        """Load a KiCad file from the given path and deserialize it into a structured Python object.
+
+        Examples:
+            >>> from askiff import Board
+            >>> from pathlib import Path
+            >>> Board.from_file(Path.cwd() / "test.kicad_pcb")  # doctest: +SKIP
+
+        # Dev notes:
+        Validates the file type using the class's `_askiff_key` and ensures the file version is supported.
+        Handles version-specific deserialization logic and performs post-deserialization setup."""
         path = Path(path)
         with _Timer(f"Load `{path}`"):
             sexp = Sexpr.from_file(path)
@@ -100,6 +134,16 @@ class AutoSerdeFile(AutoSerde):
             )
 
     def to_file(self, path: PathLike | None = None) -> None:
+        """Save the current object to a KiCad file at the specified path.
+        If no path is given, uses path from which file was loaded.
+        Ensures correct serialization for the object's version and writes data in KiCad's sexpr format.
+
+        Examples:
+            >>> from askiff import Board
+            >>> from pathlib import Path
+            >>> board = Board.from_file(Path.cwd() / "test.kicad_pcb")  # doctest: +SKIP
+            >>> board.to_file()  # doctest: +SKIP
+        """
         path = Path(path) if path else self._fs_path
         with _Timer(f"Save `{path}`"):
             ver_key = self.__version_map[self._askiff_key]
