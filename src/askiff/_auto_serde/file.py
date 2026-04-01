@@ -42,7 +42,7 @@ def _setup_versioned_serde_environment(version: int, latest_version: int) -> Non
 
     for cls, versioned in _askiff_opts_version_map.items():
         params = None
-        for ver, _params in versioned.items():
+        for ver, _params in sorted(versioned.items(), reverse=True):
             matching = ver >= version
             if matching:
                 params = _params
