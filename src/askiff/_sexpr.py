@@ -11,12 +11,15 @@ MAX_PTS_LINE_LENGTH = 98
 
 
 class Qstr(str):
-    """Class for strings that should be quoted after serialization"""
+    """Class for strings that should be quoted after serialization."""
 
     pass
 
 
 class Sexpr(list[Union["GeneralizedSexpr", str]]):
+    """Sexpr represents a KiCad sexpr (symbolic expression) structure as a nested list.
+    Supports parsing sexpr strings or files, serializing to sexpr format & writing to files with appropriate formatting
+    """
     __re_pattern: ClassVar = r"""
         # This `()` creates matching group it will match one of contained sub groups
         # retrieve matched string with match.group(1)
@@ -67,9 +70,13 @@ class Sexpr(list[Union["GeneralizedSexpr", str]]):
             )
         )
     """
+    """Regular expression pattern for parsing sexpr elements."""
 
     @staticmethod
     def from_str(txt: str) -> Sexpr:
+        """Parse a KiCad sexpr string into a Sexpr object. 
+        Handles nested lists, quoted strings, identifiers/numerics (unquoted strings).
+        Raises AssertionError on malformed input or mismatched brackets."""
         stack = []
         out = Sexpr()
         # Iter over all regex pattern matches
@@ -101,19 +108,24 @@ class Sexpr(list[Union["GeneralizedSexpr", str]]):
 
     @staticmethod
     def from_file(path: Path) -> Sexpr:
+        """Parse a KiCad sexpr file into a Sexpr object.
+        Raises AssertionError on malformed input or mismatched brackets."""
         return Sexpr.from_str(path.read_text())
 
     def to_file(self, path: Path) -> None:
+        """Writes the S-expression structure to a file at the specified path,
+        formatting it with appropriate column width based on the file type. 
+        Creates parent directories if needed."""
         column_width = PCB_COLUMN_WIDTH if "pcb" in path.suffix else SCH_COLUMN_WIDTH
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(to_str(self, column_width=column_width) + "\n")
 
     def serialize(self) -> GeneralizedSexpr:
-        # This is stub for usage of Sexpr as fallback for unknown nodes
+        """This is stub for usage of Sexpr as fallback for unknown nodes in AutoSerde"""
         return self
 
     def deserialize(self) -> GeneralizedSexpr:
-        # This is stub for usage of Sexpr as fallback for unknown nodes
+        """This is stub for usage of Sexpr as fallback for unknown nodes in AutoSerde"""
         return Sexpr(self)
 
 
@@ -121,6 +133,25 @@ GeneralizedSexpr = Sequence[Union["GeneralizedSexpr", str]]
 
 
 def to_str(sexpr: GeneralizedSexpr, indent: int = 0, column_width: int = SCH_COLUMN_WIDTH) -> str:
+    """Convert a generalized S-expression structure into a formatted string representation.
+
+    Args:
+        sexpr: The S-expression to convert, typically a list starting with a string identifier followed by arguments.
+        indent: The base indentation level for the output string.
+        column_width: Maximum line length before wrapping, used for formatting long expressions.
+
+    Returns:
+        A formatted string representation of the S-expression with proper indentation and line wrapping.
+
+    Example:
+        >>> from askiff.sexpr import to_str
+        >>> expr = ["module", "example", ["layer", "F.Cu"], ["at", 0, 0]]
+        >>> print(to_str(expr))
+        (module example
+            (layer F.Cu)
+            (at 0 0)
+        )
+    """
     se0, *se1 = sexpr  # unload for perf
 
     inline = True

@@ -7,6 +7,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def config_logs(verbosity: int, time_print: bool) -> None:
+    """Configure library logging with colored output and optional timing.
+
+    Args:
+        verbosity: Logging level (e.g., `logging.DEBUG`, `logging.INFO`).
+        time_print: Whether to log execution times.
+    """
+
     class ColorFormatter(logging.Formatter):
         COLORS = {  # noqa: RUF012
             logging.DEBUG: "\033[36m",  # Cyan
@@ -51,10 +58,14 @@ def config_logs(verbosity: int, time_print: bool) -> None:
 
 
 def main() -> None:
+    """Command-line interface for validating and round-trip processing of KiCad project files.
+    Loads all project files from the specified directory, saves them without modifications, and reports processing time.
+    Reports any unknown fields that are encountered during deserialization.
+    Used to verify askiff's (de)serialization accuracy and coverage."""
     parser = argparse.ArgumentParser(
         prog="askiff-cli",
-        description="""This is simple cli that loads and saves with no changes all files in current kicad project
-                        and fails if there are fields unknown by askiff""",
+        description="""This is simple cli that loads and saves with no changes all files in current kicad project,
+            checking field/object coverage in askiff""",
     )
     parser.add_argument(
         "-i",
@@ -70,7 +81,11 @@ def main() -> None:
         const=5,
         type=int,
         nargs="?",
-        help="Verbosity, 20- info msg, 10- (default) debug, 5- when `-v`, print AutoSerde src, 4- print assembly",
+        help="""Controls verbosity: 
+            * 20 - info msg
+            * 10- (default) debug
+            * 5- when `-v`, print AutoSerde field serde modes map
+            * 4- print assembly""",
     )
     parser.add_argument(
         "--time-print",
