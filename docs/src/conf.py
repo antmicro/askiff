@@ -68,6 +68,7 @@ toc_object_entries = False
 toc_depth = 2
 napoleon_use_param = False
 napoleon_use_rtype = False
+autoapi_own_page_level = "class"
 
 object_description_options = [
     ("py:.*", dict(include_fields_in_toc=False)),

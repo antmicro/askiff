@@ -88,8 +88,7 @@ doc-test:
     - uv venv
     - uv sync --extra dev --extra docs
   script:
-    - cd docs
-    - uv run make doctest
+    - make -f Docs.Makefile doctest > docs.log
 
 ############ Documentation ############
 
@@ -98,9 +97,8 @@ build-docs:
   stage: docs
   tags: ['docs']
   script:
-    - cd docs
-    - uv run make html
-    - tar cf ../$CI_DOCS_ARCHIVE -C .build/html/ .
+    - make -f Docs.Makefile html > docs.log
+    - tar cf $CI_DOCS_ARCHIVE -C .build/html/ .  
   artifacts:
     paths:
       - $CI_DOCS_ARCHIVE
