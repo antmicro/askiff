@@ -77,7 +77,7 @@ class Position(AutoSerde):
             >>> p2 = Position(1, 1)
             >>> angle = p1.vector_angle(p2)
             >>> print(f"{angle:.4f}")
-            0.7853
+            0.7854
         """
         angle = atan2(to.y - self.y, to.x - self.x)
         angle %= 2 * pi
