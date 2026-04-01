@@ -89,6 +89,10 @@ doc-test:
     - uv sync --extra dev --extra docs
   script:
     - make -f Docs.Makefile doctest > docs.log
+  artifacts:
+    when: always
+    paths:
+      - docs.log
 
 ############ Documentation ############
 
@@ -100,6 +104,8 @@ build-docs:
     - make -f Docs.Makefile html > docs.log
     - tar cf $CI_DOCS_ARCHIVE -C .build/html/ .  
   artifacts:
+    when: always
     paths:
+      - docs.log
       - $CI_DOCS_ARCHIVE
 

@@ -86,6 +86,7 @@ autoapi_options = [
     "imported-members",
 ]
 autoapi_member_order = "groupwise"
+autoapi_keep_files = True
 
 
 def skip_undoc_dunder(app, what, name, obj, skip, options) -> bool:  # type: ignore  # noqa: ANN001
