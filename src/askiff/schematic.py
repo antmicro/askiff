@@ -251,10 +251,10 @@ class Schematic(AutoSerdeFile):
     sheet_instances: list[HierarchicalInstance] = F()
     """Stores information where in schematic hierarchy sheet has been used"""
 
-    embedded_fonts: bool | None = None
+    embedded_fonts: bool | None = F().version(Version.K8.pcb, skip=True)
     """Indicates whether there are fonts embedded into this component"""
 
-    embedded_files: list[EmbeddedFile] = F()
+    embedded_files: list[EmbeddedFile] = F().version(Version.K8.pcb, skip=True)
     """Stores data of embedded files, eg. fonts, datasheet"""
 
     def add_symbol(

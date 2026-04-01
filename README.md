@@ -11,7 +11,7 @@ The library is designed to handle KiCad 8+ formats, with full support for KiCad 
 ## Feature Highlights
 
 * Deserialize KiCad files into Python structures and back
-* Library aims to introduce zero git diff to untouched file sections
+* Library aims to introduce zero git diff to untouched file sections (for KiCad 9 & 10)
 * Even if part of KiCad file is not explicitly supported, attempts to preserve it, preventing data loss
 * Targets KiCad 10 (backward compatibility with KiCad 8+)
 * Simple python abstractions, hiding quirks of KiCad file formats

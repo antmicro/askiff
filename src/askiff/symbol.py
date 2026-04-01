@@ -188,10 +188,10 @@ class LibSymbol(AutoSerde):
     symbols: list[SymbolPartial] = F(flatten=True, name="symbol")
     """Symbol components: symbol units * symbol styles (+ common elements)"""
 
-    embedded_fonts: bool | None = None
+    embedded_fonts: bool | None = F().version(Version.K8.pcb, skip=True)
     """Indicates whether there are fonts embedded into this component"""
 
-    embedded_files: list[EmbeddedFile] = F()
+    embedded_files: list[EmbeddedFile] = F().version(Version.K8.pcb, skip=True)
     """Stores data of embedded files, eg. fonts, 3d-models"""
 
 
@@ -281,6 +281,8 @@ class SymbolSchematic(AutoSerde):
     pins: list[SymbolSchematicPin] = F(flatten=True, name="pin")
 
     instances: list[SymbolSchematicProject] = F()
+
+    _lib_name: str | None = F(skip=True).version(Version.K8.sch, skip=False)
 
 
 class SymbolFile(AutoSerdeFile):

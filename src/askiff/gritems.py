@@ -6,6 +6,7 @@ from math import cos, sin
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Self, Unpack, cast
 
 from askiff._auto_serde import AutoSerde, AutoSerdeDownCasting, AutoSerdeEnum, AutoSerdeFile, F, SerdeOpt
+from askiff._sexpr import GeneralizedSexpr
 from askiff.common import (
     BaseArc,
     BaseBezier,
@@ -139,6 +140,34 @@ class FillStylePCBEnum(str, AutoSerdeEnum):
     HATCH_CROSS = "cross_hatch"
     SOLID = "yes"
 
+    def ser_k8(self) -> GeneralizedSexpr:
+        match self:
+            case FillStylePCBEnum.NONE:
+                return ("none",)
+            case (
+                FillStylePCBEnum.SOLID
+                | FillStylePCBEnum.HATCH
+                | FillStylePCBEnum.HATCH_REVERSE
+                | FillStylePCBEnum.HATCH_CROSS
+            ):
+                return ("solid",)
+            case _:
+                return (self.value,)
+
+    @classmethod
+    def deser_k8(cls, sexp: GeneralizedSexpr) -> FillStylePCBEnum:
+        sexp = sexp if isinstance(sexp, str) else sexp[0]
+        if not isinstance(sexp, str):
+            raise TypeError("PCB fill style in K8 expected be a string")
+
+        match sexp:
+            case "none":
+                return FillStylePCBEnum.NONE
+            case "solid":
+                return FillStylePCBEnum.SOLID
+            case _:
+                return FillStylePCBEnum(sexp)
+
 
 class FillStyleSchEnum(str, AutoSerdeEnum):
     NONE = "none"
@@ -225,7 +254,9 @@ class GrLinePCB(BaseLine, GrShapePCB):
 
 class GrPolyFp(BasePoly, GrShapeFp):
     _askiff_key: ClassVar[str] = "fp_poly"
-    fill: FillStylePCBEnum | None = None
+    fill: FillStylePCBEnum | None = F().version(
+        Version.K8.pcb, serialize=FillStylePCBEnum.ser_k8, deserialize=FillStylePCBEnum.deser_k8
+    )
 
     def to_shape_pcb(self, fp_position: Position | None = None) -> GrPolyPCB:
         ret = GrPolyPCB(**{k: v for k, v in self.__dict__.items() if k in self._GrItem__askiff_order})  # type: ignore  # ty:ignore[unresolved-attribute]
@@ -236,7 +267,9 @@ class GrPolyFp(BasePoly, GrShapeFp):
 
 class GrPolyPCB(BasePoly, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_poly"
-    fill: FillStylePCBEnum | None = None
+    fill: FillStylePCBEnum | None = F().version(
+        Version.K8.pcb, serialize=FillStylePCBEnum.ser_k8, deserialize=FillStylePCBEnum.deser_k8
+    )
 
 
 class GrPolySch(BasePoly, GrShapeSch):
@@ -265,7 +298,9 @@ class GrPolySym(BasePoly, GrShapeSym):
 
 class GrCurveFp(BaseBezier, GrShapeFp):
     _askiff_key: ClassVar[str] = "fp_curve"
-    fill: FillStylePCBEnum | None = None
+    fill: FillStylePCBEnum | None = F().version(
+        Version.K8.pcb, serialize=FillStylePCBEnum.ser_k8, deserialize=FillStylePCBEnum.deser_k8
+    )
 
     def to_shape_pcb(self, fp_position: Position | None = None) -> GrCurvePCB:
         ret = GrCurvePCB(**{k: v for k, v in self.__dict__.items() if k in self._GrItem__askiff_order})  # type: ignore  # ty:ignore[unresolved-attribute]
@@ -283,7 +318,9 @@ class GrCurveFp(BaseBezier, GrShapeFp):
 
 class GrCurvePCB(BaseBezier, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_curve"
-    fill: FillStylePCBEnum | None = None
+    fill: FillStylePCBEnum | None = F().version(
+        Version.K8.pcb, serialize=FillStylePCBEnum.ser_k8, deserialize=FillStylePCBEnum.deser_k8
+    )
 
     def _askiff_post_deser(self) -> None:
         _GrShapePCBFp._askiff_post_deser(self)
@@ -309,7 +346,9 @@ class GrCurveSym(BaseBezier, GrShapeSym):
 
 class GrCircleFp(BaseCircle, GrShapeFp):
     _askiff_key: ClassVar[str] = "fp_circle"
-    fill: FillStylePCBEnum | None = F(FillStylePCBEnum.NONE)
+    fill: FillStylePCBEnum | None = F(FillStylePCBEnum.NONE).version(
+        Version.K8.pcb, serialize=FillStylePCBEnum.ser_k8, deserialize=FillStylePCBEnum.deser_k8
+    )
 
     def to_shape_pcb(self, fp_position: Position | None = None) -> GrCirclePCB:
         ret = GrCirclePCB(**{k: v for k, v in self.__dict__.items() if k in self._GrItem__askiff_order})  # type: ignore  # ty:ignore[unresolved-attribute]
@@ -320,7 +359,9 @@ class GrCircleFp(BaseCircle, GrShapeFp):
 
 class GrCirclePCB(BaseCircle, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_circle"
-    fill: FillStylePCBEnum | None = F(FillStylePCBEnum.NONE)
+    fill: FillStylePCBEnum | None = F(FillStylePCBEnum.NONE).version(
+        Version.K8.pcb, serialize=FillStylePCBEnum.ser_k8, deserialize=FillStylePCBEnum.deser_k8
+    )
 
 
 class GrCircleSch(GrShapeSch):
@@ -354,7 +395,9 @@ class GrCircleSym(GrShapeSym):
 
 class GrRectFp(BaseRect, GrShapeFp):
     _askiff_key: ClassVar[str] = "fp_rect"
-    fill: FillStylePCBEnum | None = F(FillStylePCBEnum.NONE)
+    fill: FillStylePCBEnum | None = F(FillStylePCBEnum.NONE).version(
+        Version.K8.pcb, serialize=FillStylePCBEnum.ser_k8, deserialize=FillStylePCBEnum.deser_k8
+    )
 
     def to_shape_pcb(self, fp_position: Position | None = None) -> GrLinePCB:
         ret = GrLinePCB(**{k: v for k, v in self.__dict__.items() if k in self._GrItem__askiff_order})  # type: ignore  # ty:ignore[unresolved-attribute]
@@ -365,7 +408,9 @@ class GrRectFp(BaseRect, GrShapeFp):
 
 class GrRectPCB(BaseRect, GrShapePCB):
     _askiff_key: ClassVar[str] = "gr_rect"
-    fill: FillStylePCBEnum | None = F(FillStylePCBEnum.NONE)
+    fill: FillStylePCBEnum | None = F(FillStylePCBEnum.NONE).version(
+        Version.K8.pcb, serialize=FillStylePCBEnum.ser_k8, deserialize=FillStylePCBEnum.deser_k8
+    )
 
 
 class GrRectSch(BaseRect, GrShapeSch):
@@ -435,10 +480,13 @@ class GrTextFp(GrTextPCBBase, GrItemFp):
         "uuid",
         "effects",
         "render_cache",
+        "_hide",
     ]
     type: TextType = F(TextType.USER, positional=True)
     render_cache: RenderCache | None = None
     locked: bool | None = F.unlocked()
+    _hide: bool | None = F(skip=True).version(Version.K8.fp, skip=False)
+    """[K9: Deprecated] K9 largely replaced text usage with properties"""
 
 
 class GrTextPCB(GrTextPCBBase, GrItemPCB):

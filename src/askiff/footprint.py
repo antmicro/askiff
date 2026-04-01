@@ -168,10 +168,10 @@ class Footprint(AutoSerde):
     groups: list[Group] = F(flatten=True, name="group")
     """List of object groups in the footprint"""
 
-    embedded_fonts: bool = F()
+    embedded_fonts: bool = F().version(Version.K8.pcb, skip=True)
     """Indicates whether there are fonts embedded into this component"""
 
-    embedded_files: list[EmbeddedFile] = F()
+    embedded_files: list[EmbeddedFile] = F().version(Version.K8.pcb, skip=True)
     """Stores data of embedded files, eg. fonts, 3d-models"""
 
     models: list[Model3D] = F(flatten=True, name="model")

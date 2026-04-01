@@ -711,10 +711,10 @@ class Board(AutoSerdeFile):
     generated: list[Generated] = F(flatten=True)
     """List of generated objects (eg. tuning patterns) in the footprint"""
 
-    embedded_fonts: bool = F()
+    embedded_fonts: bool = F().version(Version.K8.pcb, skip=True)
     """Indicates whether there are fonts embedded into this component"""
 
-    embedded_files: list[EmbeddedFile] = F()
+    embedded_files: list[EmbeddedFile] = F().version(Version.K8.pcb, skip=True)
     """Stores data of embedded files, eg. fonts, 3d-models"""
 
     def add_footprint(self, fp: Footprint, reference: str | None = None, position: Position | None = None) -> None:
