@@ -778,7 +778,7 @@ class DimensionStyle(AutoSerde):
     extension_offset: float | None = None
     """Distance between feature point & extension line"""
 
-    keep_text_aligned: bool | None = None
+    keep_text_aligned: bool | None = F().version(Version.K8.pcb, bare=True, flag=True, after="__begin__")
     """If true dimension text will always be left2right or bottom2top"""
 
 

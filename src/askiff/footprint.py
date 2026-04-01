@@ -105,7 +105,7 @@ class Footprint(AutoSerde):
     """Difference between pad size and solder paste size for all pads in the footprint. 
     If not set, the board level setting is used."""
 
-    solder_paste_margin_ratio: float | None = None
+    solder_paste_margin_ratio: float | None = F().version(Version.K8.fp, name="solder_paste_ratio")
     """Percentage of the pad size used for solder paste for all pads in the footprint. 
     If not set, the board level setting is used."""
 

@@ -607,6 +607,8 @@ class PCBExportSettings(AutoSerde, name_case="lower"):  # type: ignore
     plot_fp_text: bool | None = None
     """Whether to print footprint text in output"""
 
+    viasonmask: bool | None = F(skip=True).version(Version.K8.pcb, name="viasonmask", skip=False)
+
 
 class BoardSetupZoneDefault(AutoSerde):
     _askiff_key: ClassVar[str] = "property"

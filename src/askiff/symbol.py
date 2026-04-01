@@ -110,7 +110,7 @@ class Pin(AutoSerde):
     shape: PinShape = F(PinShape.LINE, positional=True)
     position: Position = F(name="at")
     length: float = 1.27
-    hide: bool | None = None
+    hide: bool | None = F().version(Version.K8.sch, bare=True, flag=True, after="length")
     name: PinName = F()
     number: PinNumber = F()
     alternative_functions: list[PinAlternative] = F(flatten=True, name="alternate")
@@ -145,14 +145,14 @@ class SymbolPower(str, AutoSerdeEnum):
 
 class LibSymbolPinNames(AutoSerde):
     offset: float | None = None
-    hide: bool | None = None
+    hide: bool | None = F().version(Version.K8.sch, bare=True, flag=True, after="__begin__")
 
     def __bool__(self) -> bool:
         return self.hide or self.offset is not None
 
 
 class LibSymbolPinNumbers(AutoSerde):
-    hide: bool = False
+    hide: bool = F().version(Version.K8.sch, bare=True, flag=True, after="__begin__")
 
     def __bool__(self) -> bool:
         return self.hide
