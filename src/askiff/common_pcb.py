@@ -19,6 +19,7 @@ log = logging.getLogger()
 
 class LayerFunction(str, AutoSerdeEnum):
     """Layer function types used in PCB design. Represents the functional purpose of a PCB layer."""
+
     SIGNAL = "signal"
     JUMPER = "jumper"
     POWER = "power"
@@ -32,7 +33,7 @@ class BaseLayer:
     """`BaseLayer` abstracts layer keywords used in KiCad files.
 
     Typical usage: Library users should use pre-instantiated values from :class:`askiff.common_pcb.Layer`
-    
+
     Inheritance is used to differentiate between layer types, eg. all cooper layers are inherited from LayerCopper.
     During deserialization there is automatic down casting to most specific subclass
 
@@ -48,10 +49,12 @@ class BaseLayer:
         False
 
         # Iterate layers of specific type:
-        >>> for layer in LayerCopperOuter.all: print(type(layer), layer)
+        >>> for layer in LayerCopperOuter.all:
+        ...     print(type(layer), layer)
         <class 'askiff.common_pcb.LayerCopperOuter'> B.Cu
         <class 'askiff.common_pcb.LayerCopperOuter'> F.Cu
     """
+
     _value: str
     _order_id: int
     name_map: ClassVar[dict[str, BaseLayer]]
@@ -62,6 +65,7 @@ class BaseLayer:
     class __PrivateGuard(int):
         """Private sentinel type for validating BaseLayer constructor calls.
         Prevents external code from directly instantiating BaseLayer subclasses."""
+
         pass
 
     def order_id(self) -> int:
@@ -85,7 +89,7 @@ class BaseLayer:
 
     def __init__(self, value: str, order_id: int, _guard: __PrivateGuard) -> None:
         """Library users should use pre-instantiated values from :class:`askiff.common_pcb.Layer`
-        
+
         # Dev notes:
         * Initialize a BaseLayer instance with a unique value and order ID.
         * _guard uses private type __PrivateGuard to prevent instantiation by user
@@ -129,7 +133,7 @@ class LayerSet(Generic[TL], AutoSerde, MutableSet[TL]):
     _knockout: bool = F(name="knockout", flag=True, bare=True)
     """Internal use only, use text level setting.
     
-    KiCad stores text knockout token inside layer set, defined here so that AutoSerde can handle it"""
+    KiCad stores text knockout token inside layer set, defined here to simplify serde"""
 
     def __init__(self, *args: TL) -> None:
         """Initialize a LayerSet with optional initial layers."""
@@ -157,7 +161,7 @@ class LayerSet(Generic[TL], AutoSerde, MutableSet[TL]):
             True
             >>> LayerSet(Layer.CU_F) in LayerSet(Layer.CU_F, Layer.B_CU)
             True
-            >>> LayerSet(Layer.CU_F) in LayerCopperOuter.all # same as above
+            >>> LayerSet(Layer.CU_F) in LayerCopperOuter.all  # same as above
             True
             >>> LayerSet(Layer.CU_F, Layer.MASK_F) in LayerCopperOuter.all
             False
@@ -190,7 +194,7 @@ class LayerSet(Generic[TL], AutoSerde, MutableSet[TL]):
 
     def __eq__(self, other: Any) -> bool:  # noqa: ANN401
         """Supports equation checks with:
-        * LayerSet/generic set/BaseLayer iterable 
+        * LayerSet/generic set/BaseLayer iterable
         * BaseLayer - True if set has exactly this one and only one layer
         """
         if isinstance(other, LayerSet):
@@ -222,7 +226,7 @@ class LayerSet(Generic[TL], AutoSerde, MutableSet[TL]):
         )
 
     def serialize(self) -> GeneralizedSexpr:
-        """Serialize the layer set into a generalized sexpr tuple with quoted layer values and optional knockout marker."""
+        """Serialize the layer set into a generalized sexpr tuple with quoted layer values and knockout marker."""
         return (
             *(Qstr(x._value) for x in sorted(self._layers, key=BaseLayer.order_id)),
             *(("knockout",) if self._knockout else ()),
@@ -239,166 +243,139 @@ class LayerSet(Generic[TL], AutoSerde, MutableSet[TL]):
 
 
 class LayerCopper(BaseLayer):
-    """LayerCopper represents a specialized layer type for copper components in a layered trace system. It inherits from BaseLayer and provides validation for layer functions specific to copper, ensuring only valid function types are accepted."""
     def validate_function(self, function: LayerFunction | None) -> LayerFunction:
-        """Validates that the provided function is one of the allowed layer functions. Returns the function if valid, otherwise defaults to LayerFunction.SIGNAL."""
+        """Validates that the provided function is allowed for cooper layers"""
         valid_functions = [LayerFunction.SIGNAL, LayerFunction.JUMPER, LayerFunction.POWER, LayerFunction.MIXED]
         return function if function in valid_functions else LayerFunction.SIGNAL
 
 
 class LayerCopperOuter(LayerCopper):
-    """Layer representing an outer copper layer in a multi-layered PCB design. Inherits all functionality from LayerCopper and maintains validation for copper-specific layer functions."""
     pass
 
 
 class LayerCopperInner(LayerCopper):
-    """Layer representing inner copper layers in a PCB design. Used for layers between the outer copper layers."""
     pass
 
 
 class LayerTech(BaseLayer):
-    """Specialized layer in a trace system for technical operations with restricted function types. Inherits from BaseLayer and enforces validation of layer functions to ensure only allowed types are used."""
+    """Fabrication, non-cooper layers."""
+
     def validate_function(self, function: LayerFunction | None) -> LayerFunction:
-        """Validates that the provided function is one of the allowed layer functions. Returns the function if it is valid, otherwise defaults to LayerFunction.AUX."""
+        """Validates that the provided function is allowed for these layer."""
         valid_functions = [LayerFunction.AUX, LayerFunction.AUX_B, LayerFunction.AUX_F]
 
         return function if function in valid_functions else LayerFunction.AUX
 
 
 class LayerPaste(LayerTech):
-    """LayerPaste represents a specialized layer type for paste operations within trace systems. Inherits validation rules from LayerTech and enforces restricted function types suitable for paste operations."""
     pass
 
 
 class LayerSilkS(LayerTech):
-    """Layer representing the Silk Screen layer for technical trace operations. Used for defining silkscreen features in PCB design. Inherits validation rules from LayerTech."""
     pass
 
 
 class LayerMask(LayerTech):
-    """LayerMask represents a specialized layer type for masking operations in trace systems. Inherits from LayerTech and enforces validation of layer functions for masking workflows."""
     pass
 
 
 class LayerAdhesive(LayerTech):
-    """LayerAdhesive represents a specialized layer type for adhesive operations in trace systems. Inherits validation rules from LayerTech while enforcing specific constraints for adhesive layer functions."""
     pass
 
 
 class LayerCourtyard(LayerTech):
-    """LayerCourtyard represents a specialized layer type for defining physical boundaries and constraints in technical trace systems. Inherits validation rules from LayerTech and enforces restrictions suitable for courtyard definitions."""
     pass
 
 
 class LayerFab(LayerTech):
-    """LayerFab represents a fabrication layer in a trace system, inheriting from LayerTech. Used to define technical operations with restricted function types for manufacturing processes."""
     pass
 
 
 class LayerUser(BaseLayer):
-    """LayerUser represents a user-defined layer in a layered trace system. Supports type-safe instantiation and serialization to/from generalized sexpr formats. Identified by name and numeric identifier. Valid functions are AUX, AUX_B, and AUX_F."""
     def validate_function(self, function: LayerFunction | None) -> LayerFunction:
-        """Validates that the provided function is one of the allowed layer functions. Returns the function if valid, otherwise defaults to LayerFunction.AUX."""
+        """Validates that the provided function is one of the allowed layer functions."""
         valid_functions = [LayerFunction.AUX, LayerFunction.AUX_B, LayerFunction.AUX_F]
 
         return function if function in valid_functions else LayerFunction.AUX
 
 
 class LayerSpecial(BaseLayer):
-    """Specialized layer type for marking nodes requiring special handling during serialization or processing. Acts as a semantic marker inheriting all functionality from BaseLayer."""
+    """Specialized layer type for marking nodes requiring special handling during serialization or processing.
+    Acts as a semantic marker inheriting all functionality from BaseLayer.
+
+    Purpose of this class is mainly to handle serde of Compound layers (eg. `*.Cu` keyword)"""
+
     pass
 
 
 class Layer:
-    """Class representing KiCad layer definitions. Provides access to standard layers and methods to construct inner copper and user-defined layers.
+    """Enum-like class with PCB layer definitions
 
-    Layers are organized by function:
-    - Copper layers: F.Cu, B.Cu, and inner layers InN.Cu
-    - Adhesive layers: F.Adhes, B.Adhes
-    - Paste layers: F.Paste, B.Paste
-    - Silk screen layers: F.SilkS, B.SilkS
-    - Mask layers: F.Mask, B.Mask
-    - Technical layers: Edge.Cuts, Margin
-    - Courtyard layers: F.CrtYd, B.CrtYd
-    - Fabrication layers: F.Fab, B.Fab
-    - User layers: Dwgs.User, Cmts.User, Eco1.User, Eco2.User
+    Use static methods CU_IN() and USER() to get inner copper and user-defined layers.
 
-    Special layers:
-    - *.Cu: All copper layers
-    - F&B.Cu: Top and bottom copper layers only
-    - Inner: All inner copper layers
-    - *.Mask: All mask layers
-
-    Use static methods CU_IN() and USER() to create inner copper and user-defined layers.
+    See also: :class:`askiff.common_pcb.BaseLayer`
 
     Example:
-    ```python
-    from kicad_layer import Layer
-
-    # Access predefined layers
-    top_copper = Layer.CU_F
-    bottom_copper = Layer.CU_B
-
-    # Create inner copper layer
-    inner_layer = Layer.CU_IN(3)
-
-    # Create user layer
-    user_layer = Layer.USER(5)
-    ```
+        >>> from askiff.common_pcb import Layer
+        >>> top_copper = Layer.CU_F
+        >>> bottom_copper = Layer.CU_B
+        >>> inner_layer = Layer.CU_IN(3)
+        >>> user_layer = Layer.USER(5)
     """
+
     __PrivateGuard = BaseLayer._BaseLayer__PrivateGuard  # type: ignore  # ty:ignore[unresolved-attribute]
     CU_F: Final[LayerCopperOuter] = LayerCopperOuter("F.Cu", 0, __PrivateGuard())
-    """Front copper layer definition"""
+    """Front outer copper layer"""
     CU_B: Final[LayerCopperOuter] = LayerCopperOuter("B.Cu", 2, __PrivateGuard())
-    """Bottom outer copper layer definition"""
+    """Bottom outer copper layer"""
     ADHESIVE_F: Final[LayerAdhesive] = LayerAdhesive("F.Adhes", 9, __PrivateGuard())
-    """Front adhesive layer definition"""
+    """Front adhesive layer"""
     ADHESIVE_B: Final[LayerAdhesive] = LayerAdhesive("B.Adhes", 11, __PrivateGuard())
-    """Bottom adhesive layer definition"""
+    """Bottom adhesive layer"""
     PASTE_F: Final[LayerPaste] = LayerPaste("F.Paste", 13, __PrivateGuard())
-    """Front paste layer definition"""
+    """Front paste layer"""
     PASTE_B: Final[LayerPaste] = LayerPaste("B.Paste", 15, __PrivateGuard())
-    """Bottom paste layer definition"""
+    """Bottom paste layer"""
     SILKS_F: Final[LayerSilkS] = LayerSilkS("F.SilkS", 5, __PrivateGuard())
-    """Front silk screen layer definition"""
+    """Front silk screen layer"""
     SILKS_B: Final[LayerSilkS] = LayerSilkS("B.SilkS", 7, __PrivateGuard())
-    """Silk screen layer for bottom technical trace operations."""
+    """Bottom silk screen layer"""
     MASK_F: Final[LayerMask] = LayerMask("F.Mask", 1, __PrivateGuard())
-    """Front layer mask definition"""
+    """Front mask layer"""
     MASK_B: Final[LayerMask] = LayerMask("B.Mask", 3, __PrivateGuard())
-    """Bottom layer mask definition"""
+    """Bottom mask layer"""
     EDGE_CUTS: Final[LayerTech] = LayerTech("Edge.Cuts", 25, __PrivateGuard())
     """Layer for board outline and cutting paths."""
     MARGIN: Final[LayerTech] = LayerTech("Margin", 27, __PrivateGuard())
     """Layer for margin definitions used in PCB design"""
     COURTYARD_F: Final[LayerCourtyard] = LayerCourtyard("F.CrtYd", 31, __PrivateGuard())
-    """Front courtyard layer definition"""
+    """Front courtyard layer"""
     COURTYARD_B: Final[LayerCourtyard] = LayerCourtyard("B.CrtYd", 29, __PrivateGuard())
-    """Back courtyard layer definition"""
+    """Back courtyard layer"""
     FAB_F: Final[LayerFab] = LayerFab("F.Fab", 35, __PrivateGuard())
-    """Front fabrication layer definition."""
+    """Front fabrication layer."""
     FAB_B: Final[LayerFab] = LayerFab("B.Fab", 33, __PrivateGuard())
-    """Bottom fabrication layer definition"""
+    """Bottom fabrication layer"""
     DRAWINGS: Final[LayerUser] = LayerUser("Dwgs.User", 17, __PrivateGuard())
-    """User-defined drawings layer for custom graphics and annotations."""
+    """User-defined drawings layer"""
     COMMENTS: Final[LayerUser] = LayerUser("Cmts.User", 19, __PrivateGuard())
-    """User-defined comments layer for schematic annotations"""
+    """User-defined comments layer"""
     ECO1: Final[LayerUser] = LayerUser("Eco1.User", 21, __PrivateGuard())
-    """User-defined layer ECO1 for custom annotations and notes."""
+    """User-defined layer ECO1"""
     ECO2: Final[LayerUser] = LayerUser("Eco2.User", 23, __PrivateGuard())
-    """User-defined layer ECO2 with index 23."""
+    """User-defined layer ECO2"""
 
     CU_ALL: Final[LayerSpecial] = LayerSpecial("*.Cu", 0, __PrivateGuard())
-    """All copper layers marker"""
-    CU_FB: Final[LayerSpecial] = LayerSpecial(
-    """Front and back copper layer identifier"""
-        "F&B.Cu", 0, __PrivateGuard()
-    )  # used in tht pads that are top&bottom only
+    """All copper layers marker. Prefer using :attr:`LayerCopper.all`"""
+    CU_FB: Final[LayerSpecial] = LayerSpecial("F&B.Cu", 0, __PrivateGuard())
+    """Front and back copper layer identifier. Prefer using :attr:`LayerCopperOuter.all`
+    
+    Used in tht pads that are top&bottom only"""
     CU_IN_ALL: Final[LayerSpecial] = LayerSpecial("Inner", 1, __PrivateGuard())
-    """All inner copper layers in the pad stack"""
+    """All inner copper layers in the pad stack. Prefer using :attr:`LayerCopperInner.all`"""
 
     MASK_ALL: Final[LayerSpecial] = LayerSpecial("*.Mask", 1, __PrivateGuard())
-    """All mask layers combination"""
+    """All mask layers combination. Prefer using :attr:`LayerMask.all`"""
 
     @staticmethod
     def CU_IN(number: int) -> LayerCopperInner:  # noqa: N802
@@ -417,8 +394,9 @@ class Layer:
             ValueError: If number is outside the valid range [1, KICAD_MAX_LAYER_CU]
 
         Example:
+            >>> from askiff.common_pcb import Layer
             >>> layer = Layer.CU_IN(3)
-            >>> print(layer.name)
+            >>> print(layer)
             In3.Cu
         """
         if 1 <= number <= KICAD_MAX_LAYER_CU:
@@ -439,11 +417,10 @@ class Layer:
             ValueError: If the layer number is outside the supported range.
 
         Example:
+            >>> from askiff.common_pcb import Layer
             >>> layer = Layer.USER(5)
-            >>> print(layer.name)
+            >>> print(layer)
             User.5
-            >>> print(layer.index)
-            47
         """
         if 1 <= number <= KICAD_MAX_LAYER_USER:
             return LayerUser(f"User.{number}", 37 + 2 * number, Layer.__PrivateGuard())
@@ -466,12 +443,12 @@ class BoardSide(Qstr, AutoSerdeEnum):
 
 class NetBase:
     """Base class for network-related objects. Provides common functionality and attributes for network components."""
+
     name: str
     """Network component name identifier."""
 
 
 class Net(NetBase, AutoSerde):
-    """Net represents a network connection in a PCB design, identified by a number and name. The number field is deprecated in K10 and should not be used. The name field is required and positional."""
     _number: int | None = F(positional=True, skip=True).version(Version.K9.pcb, skip=False)
     """Net identifier eg. `0` [Deprecated in K10]"""
 
@@ -480,22 +457,18 @@ class Net(NetBase, AutoSerde):
 
 
 class NetSimple(NetBase, AutoSerde):
-    """Simple network representation with identifier and name. Used in PCB designs to map connections between components."""
     _number: int | None = F(positional=True, skip=True).version(Version.K9.pcb, skip=False)
     """Net identifier eg. `0` [Deprecated in K10]"""
     name: str = F(positional=True).version(Version.K9.pcb, skip=True)  # type: ignore
     """Net name, e.g., "GND"."""
 
     def _askiff_post_deser(self) -> None:
-        """Registers this instance for post-processing after deserialization is complete. Called automatically during deserialization."""
+        """Registers this instance for post-processing after deserialization is complete.
+        Called automatically during deserialization."""
         AutoSerdeFile._post_final_deser_objects.append(self)
 
     def _post_final_deser(self, root_object) -> None:  # type: ignore # noqa: ANN001
-        """Populates net name from board-level net map after deserialization.
-
-        # Dev notes:
-        Summary: Post-process deserialized object to populate net name from board-level net map.
-        """
+        """Populates net name from board-level net map. Called just after board deserialization is complete"""
         # Note: annotation skipped to prevent circular imports
         if self.name is not None or not hasattr(root_object, "nets"):
             return
@@ -507,22 +480,24 @@ class NetSimple(NetBase, AutoSerde):
 
 
 class SimplePolyFilled(BasePoly):
-    """Represents a filled polygon shape defined by a list of points. Inherits from BasePoly and provides methods to compute extreme points and convert point coordinates to global space. The polygon is rendered on the top copper layer by default."""
+    """Represents a filled polygon shape defined by a list of points."""
+
     _askiff_key: ClassVar[str] = "filled_polygon"
-    layer: LayerCopper = F(Layer.CU_F)
+    layer: LayerCopper = F(Layer.CU_F, after="__begin__")
     """Copper layer where the polygon is placed"""
-    _pts = F()
 
 
 class ZoneOutlineHatchStyle(str, AutoSerdeEnum):
     """Enumeration representing the hatch style for zone outline rendering."""
+
     NONE = "none"
     HATCH_EDGE = "edge"
     HATCH_FULL = "full"
 
 
 class ZoneHatch(AutoSerde, positional=True):  # type: ignore
-    """Configuration for zone hatch patterns used in drawing outlines."""
+    """Configuration for hatch patterns used in drawing zone outlines."""
+
     style: ZoneOutlineHatchStyle = F(ZoneOutlineHatchStyle.HATCH_EDGE)
     """Hatch style for zone outline rendering."""
     pitch: float = 0.5
@@ -530,14 +505,17 @@ class ZoneHatch(AutoSerde, positional=True):  # type: ignore
 
 
 class ZoneTeardrop(AutoSerde):
-    """Class representing a teardrop zone in a PCB design, used for defining curved or rounded shapes in zone definitions."""
+    """Class representing a teardrop zone in a PCB, used for defining curved or rounded shapes in zone definitions."""
+
     _askiff_key: ClassVar[str] = "teardrop"
     type: str = F(unquoted=True)
     """Type of teardrop shape used in PCB zone definitions."""
 
 
 class ZoneKeepout(AutoSerde):
-    """Class representing a zone keepout configuration for PCB design. Defines which types of elements are allowed or not allowed in a keepout zone."""
+    """Class representing a  keepout zone configuration for PCB design.
+    Defines which types of elements are allowed or not allowed in a keepout zone."""
+
     tracks: bool = F(true_val="allowed", false_val="not_allowed")
     """Whether tracks are allowed in the keepout zone."""
     vias: bool = F(true_val="allowed", false_val="not_allowed")
@@ -551,7 +529,9 @@ class ZoneKeepout(AutoSerde):
 
 
 class ZonePlacement(AutoSerde):
-    """Configuration for zone placement in a layout. Controls whether a zone is enabled and specifies its placement details."""
+    """Configuration for automated footprint placement in zone.
+    Controls whether a zone is enabled and specifies its placement details."""
+
     enabled: bool = False
     """Whether the zone placement is enabled."""
     sheetname: str | None = None
@@ -561,19 +541,22 @@ class ZonePlacement(AutoSerde):
 
 
 class ZoneFillMode(str, AutoSerdeEnum):
-    """Enumeration of zone fill modes for graphical elements. Used to specify how areas within a zone should be filled when rendered."""
+    """Enumeration of fill modes for zones, specifies how areas within a zone should be filled."""
+
     HATCH = "hatch"
     SOLID = ""
 
 
 class ZoneSmoothing(str, AutoSerdeEnum):
-    """Enumeration for defining zone smoothing types used in geometric operations. Supports serialization and deserialization through AutoSerdeEnum mixin."""
+    """Enumeration for defining zone smoothing types."""
+
     CHAMFER = "chamfer"
     FILLET = "fillet"
 
 
 class ZoneHatchSmoothing(str, AutoSerdeEnum):
-    """Enumeration for defining hatch smoothing styles in Zone entities. Supports serialization and deserialization."""
+    """Enumeration for defining hatch smoothing styles in Zone."""
+
     NONE = "0"
     CHAMFER = "1"
     ROUND = "2"
@@ -581,7 +564,7 @@ class ZoneHatchSmoothing(str, AutoSerdeEnum):
 
 
 class ZoneIslandRemoval(str, AutoSerdeEnum):
-    """Defines zone island removal rules for polygon processing. Controls when islands (holes) within zones are removed during serialization."""
+    """Defines zone island removal rules when filling zones"""
 
     ALWAYS = "0"
     """Always remove islands"""
@@ -592,22 +575,19 @@ class ZoneIslandRemoval(str, AutoSerdeEnum):
 
 
 class ZoneHatchBorderAlg(str, AutoSerdeEnum):
-    """Indicates how zone border is handled with hatch fill. Controls the algorithm for processing zone boundaries when applying hatch patterns."""
+    """Controls the algorithm for processing zone boundaries when applying hatch patterns."""
 
     HATCH_THICKNESS = "hatch_thickness"
 
 
 class ZoneFill(AutoSerde):
-    """Configuration for zone filling operations.
+    """Configuration of zone filling."""
 
-    # Dev notes:
-    Summary: ZoneFill configures how a zone is filled and its thermal properties. It accepts filled status, fill mode, and thermal connection parameters including gap distance and bridge width. The class inherits serialization behavior from AutoSerde and supports various zone filling configurations.
-    """
     filled: bool = F(name="yes", flag=True, bare=True)
     """Whether the zone has been filled."""
 
     mode: ZoneFillMode = F(ZoneFillMode.SOLID)
-    """How the zone is filled graphically"""
+    """How the zone shall be filled"""
 
     thermal_gap: float | None = None
     """Distance from zone to pad thermal relief connection"""
@@ -651,6 +631,7 @@ class ZoneFill(AutoSerde):
 
 class ZonePadConnectionStyle(str, AutoSerdeEnum):
     """Enumeration defining styles for connecting pads to zones in PCB design."""
+
     NO_CONNECT = "no"
     """Pads are not connect to zone"""
 
@@ -665,7 +646,8 @@ class ZonePadConnectionStyle(str, AutoSerdeEnum):
 
 
 class ZonePadConnection(AutoSerde):
-    """Class representing a zone pad connection configuration for PCB design. Defines how pads are connected to zones, including thermal relief style and clearance settings."""
+    """Defines how pads are connected to zones, including thermal relief style and clearance settings."""
+
     style: ZonePadConnectionStyle = F(ZonePadConnectionStyle.THERMAL_RELIEF, positional=True)
     """Pad connection style to copper zones."""
     clearance: float | None = None
@@ -673,7 +655,6 @@ class ZonePadConnection(AutoSerde):
 
 
 class Zone(AutoSerde):
-    """A zone represents a defined area on a PCB, typically used for copper pours, keepouts, or other design rules. Supports configuration of net connections, layers, clearance, teardrops, and fill properties."""
     net: NetSimple | None = None
     """Net connection associated with the zone."""
     net_name: str | None = None
@@ -685,21 +666,20 @@ class Zone(AutoSerde):
     uuid: Uuid | None = None
     """Unique identifier for the zone object"""
     name: str | None = None
-    """Zone identifier name."""
+    """Zone user name."""
     hatch: ZoneHatch = F()
     """Whether hatch patterns are enabled for zone outlines."""
     priority: int | None = None
     """Zone priority for copper pour ordering and connection handling"""
     teardrop: ZoneTeardrop | None = F(name="attr", nested=True)
-    """Whether teardrop shaping is enabled for the zone."""
+    """Whether this is teardrop zone."""
     connect_pads: ZonePadConnection = F()
     """Pad connection style for the zone."""
     clearance: float = F(0.25, skip=True)
     """Distance between zone and other copper elements."""
     min_thickness: float = 0.25
-    """Minimum thickness of the zone outline"""
+    """Minimum thickness of the zone patterns"""
     filled_areas_thickness: bool | None = None
-    """Whether filled areas have a specified thickness setting."""
     keepout: ZoneKeepout | None = None
     """Whether keepout rules are applied to the zone."""
     placement: ZonePlacement | None = None
@@ -709,10 +689,12 @@ class Zone(AutoSerde):
     polygons: list[BasePoly] = F(name="polygon", flatten=True)
     """Polygon shapes defining the zone area"""
     filled_polygons: list[SimplePolyFilled] = F(name="filled_polygon", flatten=True)
-    """Filled polygon shapes defining the zone area"""
+    """Polygon shapes defining the zone fill"""
 
     def _askiff_post_deser(self) -> None:
-        """Handle post-deserialization clearance assignment for connect pads. If the connect pads have a clearance value set, assign it to the zone's clearance attribute. This ensures proper clearance handling after object reconstruction from serialized data."""
+        """Handle post-deserialization clearance assignment for connect pads.
+        If the connect pads have a clearance value set, assign it to the zone's clearance attribute.
+        This ensures proper clearance handling after object reconstruction from serialized data."""
         if self.connect_pads.clearance:
             self.clearance = self.connect_pads.clearance
 
@@ -727,10 +709,11 @@ class Zone(AutoSerde):
 
 
 class Point(AutoSerde):
-    """Point represents a geometric point with position, size, layer, and unique identifier. Supports automatic serialization and deserialization with field ordering preservation."""
+    """Point represents a geometric point with position, size, layer, and unique identifier."""
+
     _askiff_key: ClassVar[str] = "point"
     position: Position = F(name="at")
-    """Point position in 2D space with optional angle."""
+    """Point position in board/footprint space."""
     size: float = 1
     """Point size for rendering and display purposes."""
     layer: BaseLayer = F(Layer.DRAWINGS)
@@ -740,7 +723,8 @@ class Point(AutoSerde):
 
 
 class TeardropSettings(AutoSerde):
-    """Settings for configuring teardrop shapes in PCB design. Controls dimensions, edge curvature, filtering, and connection preferences."""
+    """Settings for configuring teardrop creation."""
+
     best_length_ratio: float | None = None
     """Ratio of teardrop length to width for optimal shape definition."""
     max_length: float | None = None
@@ -754,8 +738,8 @@ class TeardropSettings(AutoSerde):
     filter_ratio: float | None = None
     """Ratio threshold for filtering teardrops based on size."""
     enabled: bool | None = None
-    """Whether teardrop processing is enabled."""
+    """Whether teardrops should be created."""
     allow_two_segments: bool | None = None
-    """Whether to allow teardrops with two segments instead of one."""
+    """Whether to allow teardrops spanning two trace segment."""
     prefer_zone_connections: bool | None = None
     """Whether to prefer zone connections for teardrops."""

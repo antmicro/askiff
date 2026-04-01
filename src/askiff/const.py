@@ -30,6 +30,7 @@ class Version:
 
     class K8(BaseVer):
         """Version constants for KiCad 8 files"""
+
         sch = 20231120
         pcb = 20240108
         sym = sch
@@ -38,6 +39,7 @@ class Version:
 
     class K9(BaseVer):
         """Version constants for KiCad 9 files"""
+
         sym = 20241209
         sch = 20250114
         pcb = 20241229
@@ -46,6 +48,7 @@ class Version:
 
     class K10(BaseVer):
         """Version constants for KiCad 10 files"""
+
         sym = 20251024
         sch = 20260306
         pcb = 20260206
