@@ -58,18 +58,17 @@ class BaseLayer:
     _value: str
     _order_id: int
     name_map: ClassVar[dict[str, BaseLayer]]
-    """Mapping of names (serialization keywords) to layer instances for efficient lookup."""
+    """Mapping of layer names (serialization keywords) to their corresponding BaseLayer instances."""
     all: ClassVar[LayerSet[BaseLayer]]
     """All registered layers of specific type."""
 
     class __PrivateGuard(int):
-        """Private sentinel type for validating BaseLayer constructor calls.
-        Prevents external code from directly instantiating BaseLayer subclasses."""
-
+        """Private sentinel type used internally by AutoSerde to validate object construction.
+        Prevents accidental instantiation from user code."""
         pass
 
     def order_id(self) -> int:
-        """Returns the layer identifier, used for ordering during serialization."""
+        """Returns the layer's order identifier. Determines the layer's position in the KiCad layer stack."""
         return self._order_id
 
     def validate_function(self, function: LayerFunction | None) -> LayerFunction:
@@ -189,7 +188,7 @@ class LayerSet(Generic[TL], AutoSerde, MutableSet[TL]):
         self._layers.add(value)
 
     def discard(self, value: TL) -> None:
-        """Remove the specified layer from the set if present."""
+        """Remove a value from a layer set if it is present. Does nothing if the value is not in the set."""
         self._layers.discard(value)
 
     def __eq__(self, other: Any) -> bool:  # noqa: ANN401
@@ -238,22 +237,26 @@ class LayerSet(Generic[TL], AutoSerde, MutableSet[TL]):
 
     @classmethod
     def deserialize_nested(cls, sexp: GeneralizedSexpr) -> LayerSet:
-        """Deserialize a LayerSet from a nested sexpression structure."""
+        """Deserialize a LayerSet from a nested sexpr structure."""
         return LayerSet(*(BaseLayer.deserialize_downcast(s[1]) for s in sexp))
 
 
 class LayerCopper(BaseLayer):
+    """Layer representing a KiCad copper layer"""
     def validate_function(self, function: LayerFunction | None) -> LayerFunction:
-        """Validates that the provided function is allowed for cooper layers"""
+        """Validates that the given layer function is one of the supported copper layer functions.
+        Defaults to LayerFunction.SIGNAL if invalid."""
         valid_functions = [LayerFunction.SIGNAL, LayerFunction.JUMPER, LayerFunction.POWER, LayerFunction.MIXED]
         return function if function in valid_functions else LayerFunction.SIGNAL
 
 
 class LayerCopperOuter(LayerCopper):
+    """Layer representing a KiCad outer copper layer"""
     pass
 
 
 class LayerCopperInner(LayerCopper):
+    """Layer representing a KiCad inner copper layer (e.g., In1.Cu, In2.Cu)"""
     pass
 
 
@@ -261,39 +264,49 @@ class LayerTech(BaseLayer):
     """Fabrication, non-cooper layers."""
 
     def validate_function(self, function: LayerFunction | None) -> LayerFunction:
-        """Validates that the provided function is allowed for these layer."""
+        """Validates that the given layer function is one of the supported auxiliary functions. 
+        Returns LayerFunction.AUX if invalid."""
         valid_functions = [LayerFunction.AUX, LayerFunction.AUX_B, LayerFunction.AUX_F]
 
         return function if function in valid_functions else LayerFunction.AUX
 
 
 class LayerPaste(LayerTech):
+    """Layer representing the Solder Paste layer (top or bottom) in KiCad"""
     pass
 
 
 class LayerSilkS(LayerTech):
+    """Layer representing the Silk Screen layer (top or bottom) in KiCad"""
     pass
 
 
 class LayerMask(LayerTech):
+    """Layer representing the Solder Mask layer (top or bottom) in KiCad"""
     pass
 
 
 class LayerAdhesive(LayerTech):
+    """Layer representing the Adhesives layer (top or bottom) in KiCad"""
     pass
 
 
 class LayerCourtyard(LayerTech):
+    """Represents a KiCad layer for courtyard definitions (top or bottom).
+    Used to specify the outline of a component's physical footprint for placement and clearance checks."""
     pass
 
 
 class LayerFab(LayerTech):
+    """Represents a KiCad `*.Fab` layer"""
     pass
 
 
 class LayerUser(BaseLayer):
+    """Represents a user-defined KiCad layer"""
     def validate_function(self, function: LayerFunction | None) -> LayerFunction:
-        """Validates that the provided function is one of the allowed layer functions."""
+        """Validates that the layer function is one of the supported auxiliary types.
+        Returns LayerFunction.AUX if invalid."""
         valid_functions = [LayerFunction.AUX, LayerFunction.AUX_B, LayerFunction.AUX_F]
 
         return function if function in valid_functions else LayerFunction.AUX
@@ -341,13 +354,13 @@ class Layer:
     SILKS_B: Final[LayerSilkS] = LayerSilkS("B.SilkS", 7, __PrivateGuard())
     """Bottom silk screen layer"""
     MASK_F: Final[LayerMask] = LayerMask("F.Mask", 1, __PrivateGuard())
-    """Front mask layer"""
+    """Front solder mask layer"""
     MASK_B: Final[LayerMask] = LayerMask("B.Mask", 3, __PrivateGuard())
-    """Bottom mask layer"""
+    """Bottom solder mask layer"""
     EDGE_CUTS: Final[LayerTech] = LayerTech("Edge.Cuts", 25, __PrivateGuard())
     """Layer for board outline and cutting paths."""
     MARGIN: Final[LayerTech] = LayerTech("Margin", 27, __PrivateGuard())
-    """Layer for margin definitions used in PCB design"""
+    """Auxiliary layer for board margin definition."""
     COURTYARD_F: Final[LayerCourtyard] = LayerCourtyard("F.CrtYd", 31, __PrivateGuard())
     """Front courtyard layer"""
     COURTYARD_B: Final[LayerCourtyard] = LayerCourtyard("B.CrtYd", 29, __PrivateGuard())
@@ -357,9 +370,9 @@ class Layer:
     FAB_B: Final[LayerFab] = LayerFab("B.Fab", 33, __PrivateGuard())
     """Bottom fabrication layer"""
     DRAWINGS: Final[LayerUser] = LayerUser("Dwgs.User", 17, __PrivateGuard())
-    """User-defined drawings layer"""
+    """User-defined layer for drawings and notes."""
     COMMENTS: Final[LayerUser] = LayerUser("Cmts.User", 19, __PrivateGuard())
-    """User-defined comments layer"""
+    """User-defined layer for comments and notes."""
     ECO1: Final[LayerUser] = LayerUser("Eco1.User", 21, __PrivateGuard())
     """User-defined layer ECO1"""
     ECO2: Final[LayerUser] = LayerUser("Eco2.User", 23, __PrivateGuard())
