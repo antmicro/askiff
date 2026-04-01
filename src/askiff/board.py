@@ -24,9 +24,9 @@ from askiff.common_pcb import (
     LayerSet,
     LayerTech,
     Net,
-    NetSimple,
     Point,
     Zone,
+    _NetK9Simple,
 )
 from askiff.const import Version
 from askiff.footprint import Footprint, FootprintBoard
@@ -237,7 +237,7 @@ class TraceBase(AutoSerde):
     __askiff_childs: ClassVar[dict[str, type]] = {}
     locked: bool | None = None
     solder_mask_margin: float | None = None
-    net: NetSimple = F()
+    net: Net = F(serialize=_NetK9Simple._ser, deserialize=_NetK9Simple.deserialize)
     uuid: Uuid = F()
 
     @classmethod

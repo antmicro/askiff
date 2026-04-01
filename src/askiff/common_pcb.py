@@ -441,22 +441,19 @@ class BoardSide(Qstr, AutoSerdeEnum):
     BACK = "B.Cu"
 
 
-class NetBase:
-    """Base class for network-related objects. Provides common functionality and attributes for network components."""
+class Net(AutoSerde):
+    """Net represents a signal net in a PCB design, identified by name"""
 
-    name: str
-    """Network component name identifier."""
-
-
-class Net(NetBase, AutoSerde):
     _number: int | None = F(positional=True, skip=True).version(Version.K9.pcb, skip=False)
-    """Net identifier eg. `0` [Deprecated in K10]"""
+    """Net identifier eg. `0`, Used to handle K9 style"""
 
     name: str = F(positional=True)
     """Net name eg. `GND`"""
 
 
-class NetSimple(NetBase, AutoSerde):
+class _NetK9Simple(Net):
+    """Used internally to ensure correct K9 serde for simple net without name string"""
+
     _number: int | None = F(positional=True, skip=True).version(Version.K9.pcb, skip=False)
     """Net identifier eg. `0` [Deprecated in K10]"""
     name: str = F(positional=True).version(Version.K9.pcb, skip=True)  # type: ignore
@@ -474,6 +471,10 @@ class NetSimple(NetBase, AutoSerde):
             return
         nr = self._number
         self.name = next((net.name for net in root_object.nets or () if net._number == nr), "Unknown")
+
+    def _ser(self) -> GeneralizedSexpr:
+        self._AutoSerde__ser_field_positional = _NetK9Simple._AutoSerde__ser_field_positional  # type: ignore # ty:ignore[unresolved-attribute]
+        return self.serialize()
 
 
 ###########################Zone############################
@@ -655,10 +656,13 @@ class ZonePadConnection(AutoSerde):
 
 
 class Zone(AutoSerde):
-    net: NetSimple | None = None
-    """Net connection associated with the zone."""
+    """A zone represents a defined area on a PCB, typically used for copper pours, keepouts, or other design rules.
+    Supports configuration of net connections, layers, clearance, teardrops, and fill properties."""
+
+    net: Net | None = F(serialize=_NetK9Simple._ser, deserialize=_NetK9Simple.deserialize)
+    """Signal net associated with the zone."""
     net_name: str | None = None
-    """Net name associated with the zone."""
+    """[K10: Deprecated] Signal Net name associated with the zone."""
     locked: bool | None = None
     """Whether the zone is locked against modifications."""
     layers: LayerSet[BaseLayer] = F()

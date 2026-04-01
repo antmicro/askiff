@@ -42,7 +42,7 @@ class LabelBase(AutoSerde):
     fields_autoplaced: bool | None = None
     effects: Effects = F()
     uuid: Uuid = F()
-    properties: PropertyList[SymProperty] = F(name="property", flatten=True).version(Version.K9.sch, skip=True)
+    properties: PropertyList[SymProperty] = F(name="property", flatten=True)
     """Additional properties of the label, such as net-class, intersheet-references ..."""
 
 

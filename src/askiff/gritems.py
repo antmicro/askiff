@@ -22,7 +22,7 @@ from askiff.common import (
     Stroke,
     Uuid,
 )
-from askiff.common_pcb import BaseLayer, Layer, LayerCopperOuter, LayerSet, NetSimple
+from askiff.common_pcb import BaseLayer, Layer, LayerCopperOuter, LayerSet, Net, _NetK9Simple
 from askiff.const import Version
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
@@ -119,7 +119,7 @@ class GrShapeFp(_GrShapePCBFp, GrItemFp):
 
 
 class GrShapePCB(_GrShapePCBFp, GrItemPCB):
-    net: NetSimple | None = None
+    net: Net | None = F(serialize=_NetK9Simple._ser, deserialize=_NetK9Simple.deserialize)
     locked: bool | None = None
 
 
