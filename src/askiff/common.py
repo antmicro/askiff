@@ -266,18 +266,16 @@ class DataBlock(bytearray):
         chunks[-1] = chunks[-1] + "|"
         return chunks
 
-
-class DataBlockQuoted(bytearray):
     @classmethod
-    def deserialize(cls, sexp: GeneralizedSexpr) -> DataBlockQuoted:
-        ret = DataBlockQuoted()
+    def deserialize_quoted(cls, sexp: GeneralizedSexpr) -> DataBlock:
+        ret = DataBlock()
         for s in sexp:
             if not isinstance(s, str):
                 raise TypeError("Elements of data block are expected to be strings")
             ret.extend(base64.b64decode(s))
         return ret
 
-    def serialize(self) -> GeneralizedSexpr:
+    def serialize_quoted(self) -> GeneralizedSexpr:
         b64 = base64.b64encode(self).decode("ascii")
         chunks = textwrap.wrap(b64, DEFAULT_DATA_CHUNK_LENGTH)
         return [Qstr(chunk) for chunk in chunks]

@@ -15,7 +15,7 @@ from askiff.common import (
     BaseRect,
     BaseShape,
     Color,
-    DataBlockQuoted,
+    DataBlock,
     Effects,
     Position,
     Size,
@@ -581,7 +581,7 @@ class ImagePCB(GrItemFp, GrItemPCB):
     position: Position = F(name="at")
     scale: float | None = None
     layer: BaseLayer | None = None
-    data: DataBlockQuoted = F()
+    data: DataBlock = F(serialize=DataBlock.serialize_quoted, deserialize=DataBlock.deserialize_quoted)
     _uuid = F()
 
 
@@ -591,7 +591,7 @@ class ImageSch(GrItemSch):
     position: Position = F(name="at")
     scale: float | None = None
     _uuid = F()
-    data: DataBlockQuoted = F()
+    data: DataBlock = F(serialize=DataBlock.serialize_quoted, deserialize=DataBlock.deserialize_quoted)
 
 
 ##########################Barcode##########################
