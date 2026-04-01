@@ -20,6 +20,7 @@ class Sexpr(list[Union["GeneralizedSexpr", str]]):
     """Sexpr represents a KiCad sexpr (symbolic expression) structure as a nested list.
     Supports parsing sexpr strings or files, serializing to sexpr format & writing to files with appropriate formatting
     """
+
     __re_pattern: ClassVar = r"""
         # This `()` creates matching group it will match one of contained sub groups
         # retrieve matched string with match.group(1)
@@ -74,7 +75,7 @@ class Sexpr(list[Union["GeneralizedSexpr", str]]):
 
     @staticmethod
     def from_str(txt: str) -> Sexpr:
-        """Parse a KiCad sexpr string into a Sexpr object. 
+        """Parse a KiCad sexpr string into a Sexpr object.
         Handles nested lists, quoted strings, identifiers/numerics (unquoted strings).
         Raises AssertionError on malformed input or mismatched brackets."""
         stack = []
@@ -114,7 +115,7 @@ class Sexpr(list[Union["GeneralizedSexpr", str]]):
 
     def to_file(self, path: Path) -> None:
         """Writes the S-expression structure to a file at the specified path,
-        formatting it with appropriate column width based on the file type. 
+        formatting it with appropriate column width based on the file type.
         Creates parent directories if needed."""
         column_width = PCB_COLUMN_WIDTH if "pcb" in path.suffix else SCH_COLUMN_WIDTH
         path.parent.mkdir(parents=True, exist_ok=True)

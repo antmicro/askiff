@@ -518,7 +518,7 @@ class PinTypePCB(AutoSerde):
     """Whether the pin is connected to a net (on schematic)"""
 
     def serialize(self) -> GeneralizedSexpr:
-        """Serializes the pin type, 
+        """Serializes the pin type,
         appending "+no_connect" to the base value if the pin is not connected and is not already a no-connect pin."""
         return (
             self.base.value
@@ -599,7 +599,7 @@ class BaseBezier(BaseShape):
         return self
 
     def extrema_points(self) -> Sequence[Position]:
-        """Returns the list of extremal points on the Bézier curve, 
+        """Returns the list of extremal points on the Bézier curve,
         That is start and end points, local maxima or minima in either x or y direction."""
         start, start_handle, end_handle, end = self.start, self.start_handle, self.end_handle, self.end
 
@@ -655,7 +655,7 @@ class BaseCircle(BaseShape):
     """Point on the circle's circumference."""
 
     def extrema_points(self) -> Sequence[Position]:
-        """Returns the four extreme points of the circle: right, top, left, and bottom. 
+        """Returns the four extreme points of the circle: right, top, left, and bottom.
         Calculated from center and radius derived from the distance between center and end positions."""
         center = self.center
         r = center.distance(self.end)

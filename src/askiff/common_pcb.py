@@ -65,6 +65,7 @@ class BaseLayer:
     class __PrivateGuard(int):
         """Private sentinel type used internally by AutoSerde to validate object construction.
         Prevents accidental instantiation from user code."""
+
         pass
 
     def order_id(self) -> int:
@@ -243,6 +244,7 @@ class LayerSet(Generic[TL], AutoSerde, MutableSet[TL]):
 
 class LayerCopper(BaseLayer):
     """Layer representing a KiCad copper layer"""
+
     def validate_function(self, function: LayerFunction | None) -> LayerFunction:
         """Validates that the given layer function is one of the supported copper layer functions.
         Defaults to LayerFunction.SIGNAL if invalid."""
@@ -252,11 +254,13 @@ class LayerCopper(BaseLayer):
 
 class LayerCopperOuter(LayerCopper):
     """Layer representing a KiCad outer copper layer"""
+
     pass
 
 
 class LayerCopperInner(LayerCopper):
     """Layer representing a KiCad inner copper layer (e.g., In1.Cu, In2.Cu)"""
+
     pass
 
 
@@ -264,7 +268,7 @@ class LayerTech(BaseLayer):
     """Fabrication, non-cooper layers."""
 
     def validate_function(self, function: LayerFunction | None) -> LayerFunction:
-        """Validates that the given layer function is one of the supported auxiliary functions. 
+        """Validates that the given layer function is one of the supported auxiliary functions.
         Returns LayerFunction.AUX if invalid."""
         valid_functions = [LayerFunction.AUX, LayerFunction.AUX_B, LayerFunction.AUX_F]
 
@@ -273,37 +277,44 @@ class LayerTech(BaseLayer):
 
 class LayerPaste(LayerTech):
     """Layer representing the Solder Paste layer (top or bottom) in KiCad"""
+
     pass
 
 
 class LayerSilkS(LayerTech):
     """Layer representing the Silk Screen layer (top or bottom) in KiCad"""
+
     pass
 
 
 class LayerMask(LayerTech):
     """Layer representing the Solder Mask layer (top or bottom) in KiCad"""
+
     pass
 
 
 class LayerAdhesive(LayerTech):
     """Layer representing the Adhesives layer (top or bottom) in KiCad"""
+
     pass
 
 
 class LayerCourtyard(LayerTech):
     """Represents a KiCad layer for courtyard definitions (top or bottom).
     Used to specify the outline of a component's physical footprint for placement and clearance checks."""
+
     pass
 
 
 class LayerFab(LayerTech):
     """Represents a KiCad `*.Fab` layer"""
+
     pass
 
 
 class LayerUser(BaseLayer):
     """Represents a user-defined KiCad layer"""
+
     def validate_function(self, function: LayerFunction | None) -> LayerFunction:
         """Validates that the layer function is one of the supported auxiliary types.
         Returns LayerFunction.AUX if invalid."""
