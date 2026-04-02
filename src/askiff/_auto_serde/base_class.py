@@ -30,17 +30,23 @@ log = logging.getLogger()
 @dataclass_transform()
 class AutoSerde:
     """
-    Base class that adds serialize/deserialize functions based on field typing and F() objects passed as field defaults
-    Field will be serialized in same order as defined
+    AutoSerde is a base class enabling automatic serialization and deserialization of Python objects
+    to/from KiCad's sexpr format based on field typing and fine tuned with F() hints.
+
+    It manages field ordering, positional and named serialization,
+    and handles complex deserialization logic including type coercion and extra field preservation.
+    The class operates internally through precomputed (de)serialization maps stored in class-level private attributes.
+
+    Nominally fields are processed in same order as defined
 
     Class level implementation tunning:
-    * field name prefixed `_` - indicated that matching field from parent struct shall be serialized in this place
+    * field name prefixed `_` - indicates that matching field from parent struct shall be serialized in this place
     * `__askiff_order: ClassVar[list[str]]` - allows to force fully arbitrary field reorder
     * `_askiff_key: ClassVar[str]` - default struct `name` after serialization
         (struct is serialized as `($name ..struct_fields..)`)
         in most cases default name is overridden by serialize(name=..) (typically set to field name or value from `F()`)
         except for usage inside aggregator classes or union
-    * `__askiff_alias: ClassVar[set[str]]` - Additional struct `name` that may occur in serialized file
+    * `__askiff_alias: ClassVar[set[str]]` - Additional struct `name` that may be encountered during deserialization
     * `__askiff_aggregator(inner: type) -> dict[str, type]` - indicates that class is an aggregator
         = either itself or inner type can be deserialized into different classes depending on serialized name
         should return {serialized_name: type_to_deserialize_into}
@@ -52,18 +58,28 @@ class AutoSerde:
     """
 
     __extra: Sexpr | None = None
+    """Additional sexpr data that doesn't map to defined fields"""
     __extra_positional: Sexpr | None = None
+    """Extra positional sexpr data not part of the standard field definitions"""
     __ser_field_positional: dict[str, SerModWExtra]
+    """Positional serialization metadata for fields."""
     __ser_field: dict[str, tuple[str, SerModWExtra]]
-    """class_field: (serialized name, SerModWExtra)"""
+    """Serialized field mapping for each class field name"""
     __deser_field_positional: list[DeserModWExtra]
+    """Positional deserialization modification entries for fields."""
     __deser_field: dict[str, DeserModWExtra]
+    """Deserialization configuration mapping field names to their processing instructions and extra data handlers."""
     __deser_field_bare_flags: dict[str, DeserModWExtra]
+    """Deserialization configuration mapping field names to their processing rules and extra data handling."""
 
     @classmethod
     def __init_deserializer(
         cls, ser_order: list[str], type_hints: dict[str, type], field_meta: dict[str, SerdeOpt]
     ) -> dict[str, list[DeserModWExtra] | dict[str, DeserModWExtra]]:
+        """Initializes deserialization configuration based on field metadata.
+        Processes class fields to determine how each should be deserialized from KiCad sexpr format.
+        Returns mapping tables used during deserialization.
+        """
         deser_field, deser_field_positional, deser_field_bare_flags = {}, [], {}
         names_kicad = {v.get("name", k).split(".")[-1] for k, v in field_meta.items() if not v.get("skip", False)}
 
@@ -166,6 +182,17 @@ class AutoSerde:
 
     @classmethod
     def deserialize(cls, sexp: GeneralizedSexpr) -> Self:
+        """Deserializes a KiCad sexpr representation into an object instance.
+        Args:
+            sexp: pre-parsed S-Expression AST
+        Returns:
+            Deserialzied structure
+        Notes:
+            * Uses `_AutoSerde__deser_field*` tables for efficient lookup how to deserialize encountered objects
+            * Places unrecognized field in `__extra`/`__extra_positional` and issues warning
+            * Encountered `str` objects are processed as positional or bare-flag components
+            * Tuples are processed as normal args treating first object as keyword indentifying target field
+        """
         ret: Self = cls()
         deser_map = cls.__deser_field
         deser_map_pos = cls.__deser_field_positional
@@ -388,6 +415,9 @@ class AutoSerde:
     def __init_serializer(
         cls, ser_order: list[str], type_hints: dict[str, type], field_meta: dict[str, SerdeOpt]
     ) -> dict[str, dict[str, SerModWExtra] | dict[str, tuple[str, SerModWExtra]]]:
+        """Initializes serialization configuration for fields in a subclass.
+        Returns mapping tables used during serialization.
+        """
         ser_field, ser_field_positional = {}, {}
         for field in ser_order:
             typ = type_hints[field]
@@ -461,8 +491,10 @@ class AutoSerde:
         return {"_AutoSerde__ser_field": ser_field, "_AutoSerde__ser_field_positional": ser_field_positional}
 
     def serialize(self) -> GeneralizedSexpr:
-        # asserts in this function are just to keep mypy happy, __init_serializer ensures correct types
+        """Serializes the object into a S-Expression AST
 
+        Fields are processed in order: `__ser_field_positional`, `__extra_positional`, `__ser_field` & `__extra`"""
+        # asserts in this function are just to keep mypy happy, __init_serializer ensures correct types
         ret: GeneralizedSexpr = []
         askiff_pre_ser = getattr(self, "_askiff_pre_ser", None)
         _self = askiff_pre_ser() if askiff_pre_ser else self
@@ -709,6 +741,12 @@ class AutoSerde:
         return ret
 
     def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:
+        """Initialize class
+
+        * Extract (de)serialziation hints from F(), replace them with dataclass field
+        * Prepare (de)serialzation maps for all file version variants
+        """
+
         type_hints, field_meta = preprocess_cls_fields(cls)
 
         for glob_name, glob_val in kwargs.items():
