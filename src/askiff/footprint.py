@@ -25,17 +25,22 @@ if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment
 
 
 class Coordinate(AutoSerde):
+    """Represents a 3D point in space with X, Y, and Z components"""
+
     _askiff_key: ClassVar[str] = "xyz"
     x: float = F(positional=True)
+    """X coordinate value in millimeters."""
     y: float = F(positional=True)
+    """Y coordinate value in millimeters."""
     z: float = F(positional=True)
+    """Z-axis coordinate value"""
 
 
 class FpProperty(Property):
-    """Stores footprint metadata such as Reference, Value, Datasheet, .."""
+    """Stores footprint metadata such as Reference, Value, Datasheet, ..."""
 
     locked: bool | None = F.unlocked()
-    """Defines if the property can be edited"""
+    """Whether the property is locked against edits."""
 
     layer: BaseLayer = Layer.FAB_F
     """Layer the text resides on"""
@@ -43,24 +48,36 @@ class FpProperty(Property):
     _hide = F()
 
     uuid: Uuid = F()
+    """Unique identifier"""
 
     _effects = F()
 
 
 class FootprintType(str, AutoSerdeEnum):
+    """Enumeration of footprint types used in KiCad"""
+
     SMD = "smd"
     THT = "through_hole"
     UNSPECIFIED = ""
 
 
 class Attributes(AutoSerde, flag=True, bare=True):  # type: ignore
+    """Attributes of a footprint, controlling assembly and export behavior."""
+
     fp_type: FootprintType = F(FootprintType.UNSPECIFIED)
+    """Footprint type"""
     board_only: bool = F()
+    """Whether the footprint is excluded from board assembly"""
     exclude_from_pos_files: bool = F()
+    """Whether the footprint is excluded from position files"""
     exclude_from_bom: bool = F()
+    """Whether the footprint is excluded from the bill of materials"""
     allow_missing_courtyard: bool = F()
+    """Whether missing courtyard is allowed in footprint"""
     dnp: bool = F()
+    """Whether the footprint is marked as do-not-place"""
     allow_soldermask_bridges: bool = F()
+    """Whether solder mask bridges are allowed between footprint pads"""
 
     def __bool__(self) -> bool:
         return (
@@ -71,22 +88,38 @@ class Attributes(AutoSerde, flag=True, bare=True):  # type: ignore
 
 
 class Model3D(AutoSerde):
+    """3D model definition for KiCad footprints, including path, visibility, opacity, and transformation data."""
+
     path: str = F(positional=True)
+    """File path to the 3D model."""
     hide: bool | None = None
+    """Whether the model is hidden."""
     opacity: float | None = F(precision=4, keep_trailing=True)
+    """Opacity level of the model, from 0.0 (transparent) to 1.0 (opaque)."""
     offset: Coordinate = F(nested=True)
+    """3D offset coordinates (x, y, z)."""
     scale: Coordinate = F(nested=True)
+    """3D scale factor (x, y, z)."""
     rotate: Coordinate = F(nested=True)
+    """3D rotation angle (x, y, z) in degrees."""
 
 
 class Footprint(AutoSerde):
+    """Base class for KiCad footprint
+
+    Typically one of subclasses shall be used:
+
+    * :class:`askiff.footprint.FootprintFile` - for standalone footprint files
+    * :class:`askiff.footprint.FootprintBoard` - for footprint on PCB
+    """
+
     _askiff_key: ClassVar[str] = "footprint"
 
     lib_id: LibId = F(positional=True)
-    """Defines footprint name and library link"""
+    """Library identifier defining library and footprint name"""
 
     side: BoardSide = F(BoardSide.FRONT, name="layer")
-    """Describes on which board side footprint lies"""
+    """Board side where footprint is placed"""
 
     description: str | None = F(name="descr")
     """Allows to add additional text description to the footprint"""
@@ -95,7 +128,7 @@ class Footprint(AutoSerde):
     """Defines search tags"""
 
     properties: PropertyList[FpProperty] = F(name="property", flatten=True)
-    """Properties of the footprint, such as reference, value, datasheet, ..."""
+    """Footprint properties like reference, value and datasheet."""
 
     solder_mask_margin: float | None = None
     """Solder mask expansion for all pads in the footprint. 
@@ -105,9 +138,8 @@ class Footprint(AutoSerde):
     """Difference between pad size and solder paste size for all pads in the footprint. 
     If not set, the board level setting is used."""
 
-    solder_paste_margin_ratio: float | None = F().version(Version.K8.fp, name="solder_paste_ratio")
-    """Percentage of the pad size used for solder paste for all pads in the footprint. 
-    If not set, the board level setting is used."""
+    solder_paste_margin_ratio: float | None = None
+    """Percentage of pad size used for solder paste margin."""
 
     clearance: float | None = None
     """Clearance to all board copper objects for all pads in the footprint.
@@ -128,33 +160,34 @@ class Footprint(AutoSerde):
     If not defined, then the zone level setting is used"""
 
     attributes: Attributes = F(name="attr")
-    """Attributes of the footprint, such as smd/tht, dnp, ..."""
+    """Footprint attributes controlling assembly and export behavior"""
 
     stackup: LayerSet[BaseLayer] = F(serialize=LayerSet.serialize_nested, deserialize=LayerSet.deserialize_nested)
+    """Stackup configuration defining the layers used in footprint."""
 
     private_layers: LayerSet[LayerUser] = F(name="private_layers")
-    """Defines a list of private layers assigned to the footprint"""
+    """Assigned private layers for the footprint"""
 
     net_tie_pad_groups: list[str] = F()
-    """Defines list of net tie groups assigned to the footprint"""
+    """Net tie groups assigned to the footprint."""
 
     duplicate_pad_numbers_are_jumpers: bool | None = F()
-    """If true DRC will consider pads with the same number as electrically connected"""
+    """Whether duplicate pad numbers are considered electrically connected."""
 
     jumper_pad_groups: list[list[str]] = F()
-    """Pad numbers that shall be considered as internally connected"""
+    """Pad numbers considered internally connected"""
 
     graphic_items: AutoSerdeAgg[GrItemFp] = F(flatten=True)
-    """List of graphical objects (lines, circles, arcs, texts, ...) in the footprint"""
+    """Graphic items in the footprint such as lines, circles, and texts"""
 
     tables: list[GrTablePCB] = F(name="table", flatten=True)
-    """Defines list of tables and their contents"""
+    """Tables defined in the footprint"""
 
     barcodes: list[Barcode] = F(name="barcode", flatten=True)
     """List of barcodes in the footprint"""
 
     dimensions: list[Dimension] = F(name="dimension", flatten=True)
-    """List of dimensions in the footprint"""
+    """List of dimension objects in the footprint"""
 
     points: list[Point] = F(name="point", flatten=True)
     """List of points (these are empty/non-physical reference points) in the footprint"""
@@ -168,31 +201,43 @@ class Footprint(AutoSerde):
     groups: list[Group] = F(flatten=True, name="group")
     """List of object groups in the footprint"""
 
-    embedded_fonts: bool = F().version(Version.K8.pcb, skip=True)
-    """Indicates whether there are fonts embedded into this component"""
+    embedded_fonts: bool = F()
+    """Whether there are fonts embedded into this footprint."""
 
-    embedded_files: list[EmbeddedFile] = F().version(Version.K8.pcb, skip=True)
-    """Stores data of embedded files, eg. fonts, 3d-models"""
+    embedded_files: list[EmbeddedFile] = F()
+    """Embedded files data including fonts and 3D models."""
 
     models: list[Model3D] = F(flatten=True, name="model")
     """List of 3D models associated with the footprint"""
 
 
 class FpPropertyKiFpFilters(AutoSerde):
+    """Represents KiCad footprint property filters for filtering footprint files based on patterns
+
+    This is inherited property from schematic for baord footprints
+    """
+
     ki_fp_filters: Final[str] = F("ki_fp_filters", unquoted=True, positional=True)
+    """KiCad keyword for the property, always set to 'ki_fp_filters'."""
     patterns: str = F(positional=True)
+    """Pattern string used for filtering footprint files."""
 
 
 class FootprintBoard(Footprint):
+    """FootprintBoard represents a KiCad footprint as it appears in a board file,
+    extending the base Footprint class with board-specific attributes such as placement, locking, and schematic link"""
+
     locked: bool | None = F(after="lib_id")
-    """Flag to indicate the footprint cannot be edited"""
+    """Whether the footprint is locked against editing."""
 
     placed: bool | None = None
+    """Whether the footprint is placed on the board."""
 
     uuid: Uuid = F(after="side")
+    """Unique identifier"""
 
     position: Position = F(name="at")
-    """Defines the X and Y coordinates and rotation of the footprint"""
+    """Footprint position and rotation on the board"""
 
     autoplace_cost90: int | None = F(after="tags")
     """Defines the vertical cost of when using the automatic footprint placement tool. 
@@ -206,6 +251,7 @@ class FootprintBoard(Footprint):
     """Component classes assigned to associated symbol"""
 
     ki_fp_filters: FpPropertyKiFpFilters | None = F(name="property", skip_deser=True)
+    """KiCad footprint property filters for pattern-based footprint file filtering"""
 
     path: str | None = None
     """Hierarchical path (sheet uuid's) of the schematic symbol linked to the footprint"""
@@ -217,14 +263,30 @@ class FootprintBoard(Footprint):
     """Indicates in which schematic file was linked symbol added"""
 
     def _askiff_post_deser(self) -> None:
+        """Post-deserialization handler for FootprintBoard.
+        Extracts and processes the `ki_fp_filters` property"""
         ki_fp_filters = self.properties.pop("ki_fp_filters")
         if ki_fp_filters:
             self.ki_fp_filters = FpPropertyKiFpFilters(patterns=ki_fp_filters.value)
 
 
 class FootprintFile(Footprint, AutoSerdeFile):
+    """Represents a KiCad footprint file (.kicad_mod).
+
+    Examples:
+        Add footprint from file to board (See also :ref:`add-footprint-to-pcb` for way using askiff's library discovery)
+        >>> from askiff import Board, FootprintFile
+        >>> from askiff.common import Position
+        >>> board = Board()
+        >>> # Load footprint (from file)
+        >>> # footprint = FootprintFile.from_file("path/to/footprint.kicad_mod")
+        >>> # Or use already loaded footprint
+        >>> footprint = FootprintFile()
+        >>> board.add_footprint(footprint, reference="R1", position=Position(15, 20))
+    """
+
     version: int = F(Version.DEFAULT.fp, after="lib_id")
-    """Defines the file format version"""
+    """Defines the file format revision"""
 
     generator: str = Version.generator
     """Defines the program used to write the file"""
@@ -234,4 +296,6 @@ class FootprintFile(Footprint, AutoSerdeFile):
 
 
 class LibTableFp(LibTable, AutoSerdeFile):
+    """Represents KiCad's footprint library table (fp-lib-table) file"""
+
     _askiff_key: ClassVar[str] = "fp_lib_table"
