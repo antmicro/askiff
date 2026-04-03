@@ -42,35 +42,38 @@ class AutoSerde:
     Class level implementation tunning:
     * field name prefixed `_` - indicates that matching field from parent struct shall be serialized in this place
     * `__askiff_order: ClassVar[list[str]]` - allows to force fully arbitrary field reorder
-    * `_askiff_key: ClassVar[str]` - default struct `name` after serialization
+    * `_askiff_key: ClassVar[str]` - default struct `name`/keyword after serialization
         (struct is serialized as `($name ..struct_fields..)`)
         in most cases default name is overridden by serialize(name=..) (typically set to field name or value from `F()`)
         except for usage inside aggregator classes or union
     * `__askiff_alias: ClassVar[set[str]]` - Additional struct `name` that may be encountered during deserialization
     * `__askiff_aggregator(inner: type) -> dict[str, type]` - indicates that class is an aggregator
-        = either itself or inner type can be deserialized into different classes depending on serialized name
+        = either itself or inner type can be deserialized into different classes depending on first keyword in sexpr
         should return {serialized_name: type_to_deserialize_into}
     * `_askiff_pre_ser(self) -> Self` - pre processing before serialization
     * `_askiff_post_deser(self) -> None` - post processing after deserialization
     * `SerdeOpt` keywords passed with base class (`class SomeClass(AutoSerde, flag=True)`) are applied to all fields
+    * If struct requires other data from file register current object for additional pass with
+        `AutoSerdeFile._post_final_deser_objects.append(self)`, and define `_post_final_deser(self, root_object)`
+        that will be called on object after whole file deser is complete and will receive full deserialzied file
 
     Handling of each field can be modified by passing F(**kwargs) as field default, see `SerdeOpt` for available options
     """
 
     __extra: Sexpr | None = None
-    """Additional sexpr data that doesn't map to defined fields"""
+    """Extra, unrecognized non-positional sexpr data"""
     __extra_positional: Sexpr | None = None
-    """Extra positional sexpr data not part of the standard field definitions"""
+    """Extra, unrecognized positional sexpr data"""
     __ser_field_positional: dict[str, SerModWExtra]
-    """Positional serialization metadata for fields."""
+    """Serialization config mapping positional fields to their processing instructions."""
     __ser_field: dict[str, tuple[str, SerModWExtra]]
-    """Serialized field mapping for each class field name"""
+    """Serialization config mapping fields to their processing instructions."""
     __deser_field_positional: list[DeserModWExtra]
-    """Positional deserialization modification entries for fields."""
+    """Deserialization config mapping positional field positions to their processing instructions"""
     __deser_field: dict[str, DeserModWExtra]
-    """Deserialization configuration mapping field names to their processing instructions and extra data handlers."""
+    """Deserialization config mapping field names to their processing instructions"""
     __deser_field_bare_flags: dict[str, DeserModWExtra]
-    """Deserialization configuration mapping field names to their processing rules and extra data handling."""
+    """Deserialization config mapping flag field keywords to their processing instructions"""
 
     @classmethod
     def __init_deserializer(
