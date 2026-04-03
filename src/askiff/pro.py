@@ -169,8 +169,20 @@ class AskiffLibFp:
 
 
 class AskiffPro:
+    """Manage KiCad project files in a directory
+
+    Automatically discovers and lazy loads found schematics, PCBs, footprints, and symbols.
+    """
+
     path: Path
+    """Path to project's folder"""
+
     __initial_path: Path
+    """Path from which the project was loaded"""
+
+    project_name: str | None = None
+    """Project name - retrieved from kicad_pro file name"""
+
     # pro: dict[Path, Sexpr] # Note: kicad_pro seems to be json
     pcb: list[_LazyFile[Board]]
     sch: list[_LazyFile[Schematic]]
@@ -206,6 +218,8 @@ class AskiffPro:
 
     def load(self, force: bool = False) -> Self:
         pro_path = next((p for p in self.path.glob("*.kicad_pro")), None)
+        if pro_path:
+            self.project_name = pro_path.stem
 
         self.sch = []
         if pro_path:
