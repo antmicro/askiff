@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Generator
+from os import PathLike
 from pathlib import Path
 from threading import RLock
 from typing import Any, Generic, Self, TypeVar
@@ -28,7 +29,8 @@ class _LazyFile(Generic[T]):
     _lock: RLock
     _inner_cls: type[T]
 
-    def __init__(self, inner_cls: type[T], path: Path, force_load: bool = False, value: T | None = None) -> None:
+    def __init__(self, inner_cls: type[T], path: PathLike, force_load: bool = False, value: T | None = None) -> None:
+        path = Path(path)
         object.__setattr__(self, "_inner_cls", inner_cls)
         if not path.exists() and value is None:
             raise FileNotFoundError(value)
@@ -63,7 +65,8 @@ class _LazyFile(Generic[T]):
             return f"<LazyFile unloaded path={self._value}>"
         return repr(self._value)
 
-    def save(self, path: Path | None, initial_root_path: Path) -> None:
+    def save(self, path: PathLike | None, initial_root_path: Path) -> None:
+        path = Path(path) if path else None
         if not self.is_loaded():
             return
 
@@ -83,7 +86,8 @@ class AskiffLibSym:
     objects: list[_LazyFile[SymbolFile]]
     name: str
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: PathLike) -> None:
+        path = Path(path)
         self.path = path
         self.name = path.stem
         self.__initial_path = path
@@ -102,7 +106,8 @@ class AskiffLibSym:
         for o in self.objects:
             yield from o.symbols
 
-    def save(self, path: Path | None = None) -> None:
+    def save(self, path: PathLike | None = None) -> None:
+        path = Path(path) if path else None
         for o in self.objects:
             o.save(path, self.__initial_path)
 
@@ -139,7 +144,8 @@ class AskiffLibFp:
     objects: list[_LazyFile[FootprintFile]]
     name: str
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: PathLike) -> None:
+        path = Path(path)
         self.path = path
         self.name = path.stem
         self.__initial_path = path
@@ -150,7 +156,8 @@ class AskiffLibFp:
             self.objects.append(_LazyFile(FootprintFile, path, force))
         return self
 
-    def save(self, path: Path | None = None) -> None:
+    def save(self, path: PathLike | None = None) -> None:
+        path = Path(path) if path else None
         for o in self.objects:
             o.save(path, self.__initial_path)
 
@@ -195,7 +202,8 @@ class AskiffPro:
 
     variables: dict[str, str]
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: PathLike) -> None:
+        path = Path(path)
         self.path = path
         self.__initial_path = path
         self.variables = {"KIPRJMOD": str(path)}
@@ -246,7 +254,8 @@ class AskiffPro:
 
         return self
 
-    def save(self, path: Path | None = None) -> None:
+    def save(self, path: PathLike | None = None) -> None:
+        path = Path(path) if path else None
         # for p, sexpr in self.pro.items():
         #     sexpr.to_file(p)
 
