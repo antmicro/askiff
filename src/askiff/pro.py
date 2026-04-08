@@ -10,9 +10,9 @@ from typing import Any, Generic, Self, TypeVar
 from ._auto_serde import AutoSerdeFile
 from .board import Board
 from .const import TRACE, TRACE_DIS
-from .footprint import FootprintFile, LibTableFp
+from .footprint import FootprintFile, FootprintLibraryTable
 from .schematic import Schematic
-from .symbol import LibSymbol, LibTableSym, SymbolFile
+from .symbol import SymbolDefinition, SymbolFile, SymbolLibraryTable
 
 logging.addLevelName(TRACE_DIS, "TRACE_DIS")
 logging.addLevelName(TRACE, "TRACE")
@@ -96,18 +96,18 @@ class _LazyFile(Generic[T]):
         return not isinstance(self._value, Path)
 
 
-class AskiffLibSym:
-    """Manage a KiCad symbol library, loading and saving LibSymbol objects from .kicad_sym files.
+class SymbolLibrary:
+    """Manage a KiCad symbol library, loading and saving SymbolDefinition objects from .kicad_sym files.
         Transparently handles both library-per-file and library-per-directory styles
 
     Examples:
         Create new library & Add new symbol to library
-        >>> from askiff.symbol import LibSymbol
-        >>> from askiff.pro import AskiffLibSym
+        >>> from askiff.symbol import SymbolDefinition
+        >>> from askiff.pro import SymbolLibrary
         >>> new_lib_path = Path("test.kicad_sym")  # library-per-file structure
         >>> # new_lib_path = Path("test") # library-per-folder structure
-        >>> lib = AskiffLibSym(new_lib_path)  # Create new library
-        >>> new_symbol = LibSymbol()  # Create new symbol
+        >>> lib = SymbolLibrary(new_lib_path)  # Create new library
+        >>> new_symbol = SymbolDefinition()  # Create new symbol
         >>> lib["symbol_name"] = new_symbol  # Add new symbol (or modify existing) to library
         >>> lib.save()  # save library changes to disk
         >>> print(new_lib_path.exists())
@@ -115,15 +115,15 @@ class AskiffLibSym:
 
         Iterate over symbols in library
         >>> # doctest: +SKIP
-        >>> from askiff.pro import AskiffLibSym
-        >>> lib = AskiffLibSym("path/to/library")  # Load library
+        >>> from askiff.pro import SymbolLibrary
+        >>> lib = SymbolLibrary("path/to/library")  # Load library
         >>> for sym in lib.symbols:
         >>>     print(sym.lib_id)
 
         Get symbol by name & modify it in library
         >>> # doctest: +SKIP
-        >>> from askiff.pro import AskiffLibSym
-        >>> lib = AskiffLibSym("path/to/library")  # Load library
+        >>> from askiff.pro import SymbolLibrary
+        >>> lib = SymbolLibrary("path/to/library")  # Load library
         >>> sym = lib["symbol_name"]
         >>> sym.in_bom = False
         >>> lib.save()
@@ -139,7 +139,7 @@ class AskiffLibSym:
     """Library name"""
 
     def __init__(self, path: PathLike) -> None:
-        """Initialize an AskiffLibSym instance.
+        """Initialize an SymbolLibrary instance.
 
         Args:
             path: Path to the library directory or library file (`kicad_sym`).
@@ -171,7 +171,7 @@ class AskiffLibSym:
             self.objects.append(_LazyFile(SymbolFile, path, force))
         return self
 
-    def symbols(self) -> Generator[LibSymbol]:
+    def symbols(self) -> Generator[SymbolDefinition]:
         """Returns a generator yielding all symbols contained within the library."""
         for o in self.objects:
             yield from o.symbols
@@ -186,10 +186,10 @@ class AskiffLibSym:
         for o in self.objects:
             o.save(path, self.__initial_path)
 
-    def __getitem__(self, index: str) -> LibSymbol:
+    def __getitem__(self, index: str) -> SymbolDefinition:
         return next(sym for sym in self.symbols() if sym.lib_id.name == index)
 
-    def __setitem__(self, index: str, value: LibSymbol) -> None:
+    def __setitem__(self, index: str, value: SymbolDefinition) -> None:
         value.lib_id.name = index
         for sym in self.symbols():
             if sym.lib_id.name == index:
@@ -213,15 +213,15 @@ class AskiffLibSym:
             self.objects.append(_LazyFile(SymbolFile, path=path, value=sym_file))
 
 
-class AskiffLibFp:
+class FootprintLibrary:
     """Manage a KiCad footprint library, loading and saving FootprintFile objects from .kicad_mod files.
 
     Examples:
         Create new library & Add new footprint to library
         >>> from askiff.footprint import FootprintFile
-        >>> from askiff.pro import AskiffLibFp
+        >>> from askiff.pro import FootprintLibrary
         >>> new_lib_path = Path("path/to/library/folder")
-        >>> lib = AskiffLibFp(new_lib_path)  # Create new library
+        >>> lib = FootprintLibrary(new_lib_path)  # Create new library
         >>> new_fp = FootprintFile()  # Create new footprint
         >>> lib["footprint_name"] = new_fp  # Add new footprint (or modify existing) to library
         >>> lib.save()  # save library changes to disk
@@ -230,15 +230,15 @@ class AskiffLibFp:
 
         Iterate over footprints in library
         >>> # doctest: +SKIP
-        >>> from askiff.pro import AskiffLibFp
-        >>> lib = AskiffLibFp("path/to/library")  # Load library
+        >>> from askiff.pro import FootprintLibrary
+        >>> lib = FootprintLibrary("path/to/library")  # Load library
         >>> for fp in lib.objects:
         >>>     print(fp.lib_id)
 
         Get footprint by name & modify it in library
         >>> # doctest: +SKIP
-        >>> from askiff.pro import AskiffLibFp
-        >>> lib = AskiffLibFp("path/to/library")  # Load library
+        >>> from askiff.pro import FootprintLibrary
+        >>> lib = FootprintLibrary("path/to/library")  # Load library
         >>> fp = lib["footprint_name"]
         >>> fp.attributes.board_only = False
         >>> lib.save()
@@ -254,7 +254,7 @@ class AskiffLibFp:
     """Library name"""
 
     def __init__(self, path: PathLike) -> None:
-        """Initialize an AskiffLibFp instance
+        """Initialize an FootprintLibrary instance
 
         Args:
             path: Path to library folder
@@ -305,7 +305,7 @@ class AskiffLibFp:
         self.objects.append(_LazyFile(FootprintFile, path=self.path / f"{index}.kicad_mod", value=value))
 
 
-class AskiffPro:
+class Project:
     """Manage KiCad project files in a directory
 
     Automatically discovers and lazy loads found schematics, PCBs, footprints, and symbols.
@@ -313,10 +313,10 @@ class AskiffPro:
     Examples:
 
         >>> # doctest: +SKIP
-        >>> from askiff import AskiffPro
+        >>> from askiff import Project
         >>>
         >>> # Load a KiCad project
-        >>> project = AskiffPro("path/to/project").load()
+        >>> project = Project("path/to/project").load()
         >>>
         >>> # Load footprint (from project library)
         >>> footprint = project.fp["ResistorLib"]["Resistor0402"]
@@ -343,21 +343,21 @@ class AskiffPro:
     sch: list[_LazyFile[Schematic]]
     """Schematic files in the KiCad project"""
 
-    fp: dict[str, AskiffLibFp]
+    fp: dict[str, FootprintLibrary]
     """Lazy loaded footprint libraries"""
-    fp_lib_table: LibTableFp
+    fp_lib_table: FootprintLibraryTable
     """Footprint library table file contents"""
 
-    sym: dict[str, AskiffLibSym]
+    sym: dict[str, SymbolLibrary]
     """Lazy loaded symbol libraries"""
-    sym_lib_table: LibTableSym
+    sym_lib_table: SymbolLibraryTable
     """Symbol library table file contents"""
 
     variables: dict[str, str]
-    """KiCad variables AskiffPro is able to resolve"""
+    """KiCad variables Project is able to resolve"""
 
     def __init__(self, path: PathLike) -> None:
-        """Initialize an AskiffPro instance for managing KiCad project files in the given directory path.
+        """Initialize an Project instance for managing KiCad project files in the given directory path.
         Sets up internal state including the project directory, initial path, and default project variables.
 
         Args:
@@ -389,7 +389,7 @@ class AskiffPro:
                 self.__discover_child_sch(child_sch_path, force)
 
     def load(self, force: bool = False) -> Self:
-        """Discover project relevant files in `AskiffPro.path` directory.
+        """Discover project relevant files in `Project.path` directory.
 
         Loads schematics (to discover hierarchy) and library tables.
         Initializes lazy-loaders for PCB & library files
@@ -415,13 +415,21 @@ class AskiffPro:
             self.pcb.append(_LazyFile(Board, path, force))
 
         fp_lib_table_path = self.path / "fp-lib-table"
-        self.fp_lib_table = LibTableFp.from_file(fp_lib_table_path) if fp_lib_table_path.exists() else LibTableFp()
-        self.fp = {lib.name: AskiffLibFp(Path(self.resolve_var(lib.uri))).load(force) for lib in self.fp_lib_table.lib}
+        self.fp_lib_table = (
+            FootprintLibraryTable.from_file(fp_lib_table_path)
+            if fp_lib_table_path.exists()
+            else FootprintLibraryTable()
+        )
+        self.fp = {
+            lib.name: FootprintLibrary(Path(self.resolve_var(lib.uri))).load(force) for lib in self.fp_lib_table.lib
+        }
 
         sym_lib_table_path = self.path / "sym-lib-table"
-        self.sym_lib_table = LibTableSym.from_file(sym_lib_table_path) if sym_lib_table_path.exists() else LibTableSym()
+        self.sym_lib_table = (
+            SymbolLibraryTable.from_file(sym_lib_table_path) if sym_lib_table_path.exists() else SymbolLibraryTable()
+        )
         self.sym = {
-            lib.name: AskiffLibSym(Path(self.resolve_var(lib.uri))).load(force) for lib in self.sym_lib_table.lib
+            lib.name: SymbolLibrary(Path(self.resolve_var(lib.uri))).load(force) for lib in self.sym_lib_table.lib
         }
 
         return self
@@ -441,14 +449,14 @@ class AskiffPro:
             sch.save(path, self.__initial_path)
 
         for fp_lib in self.fp.values():
-            if path and fp_lib._AskiffLibFp__initial_path.is_relative_to(self.__initial_path):  # type: ignore # ty:ignore[unresolved-attribute]
-                file = fp_lib._AskiffLibFp__initial_path.relative_to(self.__initial_path)  # type: ignore  # ty:ignore[unresolved-attribute]
+            if path and fp_lib._FootprintLibrary__initial_path.is_relative_to(self.__initial_path):  # type: ignore # ty:ignore[unresolved-attribute]
+                file = fp_lib._FootprintLibrary__initial_path.relative_to(self.__initial_path)  # type: ignore  # ty:ignore[unresolved-attribute]
                 fp_lib.save(path / file)
             else:
                 fp_lib.save()
         for sch_lib in self.sym.values():
-            if path and sch_lib._AskiffLibSym__initial_path.is_relative_to(self.__initial_path):  # type: ignore # ty:ignore[unresolved-attribute]
-                file = sch_lib._AskiffLibSym__initial_path.relative_to(self.__initial_path)  # type: ignore  # ty:ignore[unresolved-attribute]
+            if path and sch_lib._SymbolLibrary__initial_path.is_relative_to(self.__initial_path):  # type: ignore # ty:ignore[unresolved-attribute]
+                file = sch_lib._SymbolLibrary__initial_path.relative_to(self.__initial_path)  # type: ignore  # ty:ignore[unresolved-attribute]
                 sch_lib.save(path / file)
             else:
                 sch_lib.save()

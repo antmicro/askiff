@@ -10,13 +10,13 @@ pip install 'git+https://github.com/antmicro/askiff.git'
 
 ## Load project from path
 
-Typical entry point for operating on a project is `AskiffPro`, which handles file discovery, lazy loading necessary files as they are used.
+Typical entry point for operating on a project is `Project`, which handles file discovery, lazy loading necessary files as they are used.
 
 ```python
-from askiff import AskiffPro
+from askiff import Project
 
 # Load a KiCad project
-project = AskiffPro("path/to/project").load()
+project = Project("path/to/project").load()
 
 # Modify a schematic
 project.sch[0].title_block.title = "Modified Title"
@@ -44,11 +44,11 @@ board.to_file("path/to/pcb.kicad_pcb")
 Load an existing PCB, add a footprint, and save the updated PCB.
 
 ```python
-from askiff import AskiffPro
+from askiff import Project
 from askiff.footprint import FootprintFile
 
 # Load a KiCad project
-project = AskiffPro("path/to/project").load()
+project = Project("path/to/project").load()
 
 # Load footprint (from project library)
 footprint = project.fp["ResistorLib"]["Resistor0402"]
@@ -65,7 +65,7 @@ project.save()
 
 ## Get Bounding box of all shapes on Silkscreen layers
 
-Askiff allows also to operate directly on specific KiCad file only (without AskiffPro).
+Askiff allows also to operate directly on specific KiCad file only (without Project).
 
 ```python
 from askiff.board import Board

@@ -183,7 +183,7 @@ See {py:class}`askiff.common_pcb.Layer`
 
 Few classes worth noticing as they extend slightly beyond simple resembling of KiCad structures, see their documentation
 
-* {py:class}`askiff.AskiffPro` - Unified entry point for project
+* {py:class}`askiff.Project` - Unified entry point for project
 * {py:class}`askiff.common_pcb.BaseLayer` - Base class for all layers, describes how to use layer types inheritance
 * {py:class}`askiff.common_pcb.LayerSet` - Set of layers that hides few gimmicks of managing layers in PCB/footprint files
 * {py:class}`askiff.common.PropertyList` - Accessing symbol/footprint properties
@@ -193,22 +193,22 @@ Few classes worth noticing as they extend slightly beyond simple resembling of K
 
 ## Symbol types disambiguation
 
-* {py:class}`askiff.symbol.SymbolPartial`
-  * Represents part of {py:class}`askiff.symbol.LibSymbol` graphics/pins
+* {py:class}`askiff.symbol.SymbolAspect`
+  * Represents part of {py:class}`askiff.symbol.SymbolDefinition` graphics/pins
   * Each instance corresponds to single symbol unit, alternative style or common part between them
-* {py:class}`askiff.symbol.LibSymbol`
+* {py:class}`askiff.symbol.SymbolDefinition`
   * Represents symbol's description in library (graphics and pins)
   * Also used in schematic file as kind of library cache
 * {py:class}`askiff.symbol.SymbolFile`
   * Represents `kicad_sym` file
-  * May contain one or more {py:class}`askiff.symbol.LibSymbol`
+  * May contain one or more {py:class}`askiff.symbol.SymbolDefinition`
 * {py:class}`askiff.symbol.SymbolSchematic`
   * Instance of symbol on schematic
-  * Does not define graphics (refers to {py:class}`askiff.symbol.LibSymbol` for that)
+  * Does not define graphics (refers to {py:class}`askiff.symbol.SymbolDefinition` for that)
   * Stores symbol position, unit, properties
-* {py:class}`askiff.symbol.LibTableSym`
+* {py:class}`askiff.symbol.SymbolLibraryTable`
   * Represents `sym-lib-table`
   * Collection of library paths
-* {py:class}`askiff.pro.AskiffLibSym`
+* {py:class}`askiff.pro.SymbolLibrary`
   * Lazy loaded symbols from single library
   * Handles both library-per-file & library-per-directory formats via `symbols()` methods

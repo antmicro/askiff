@@ -339,7 +339,7 @@ class LibEntry(AutoSerde):
     """Library description"""
 
 
-class LibTable(AutoSerde):
+class LibraryTable(AutoSerde):
     """Library table, defining version and list of available libraries."""
 
     version: int = Version.DEFAULT.lib_table

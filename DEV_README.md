@@ -26,7 +26,7 @@ uv sync --extra dev
       * checking execution time
       * checking kicad file formatting correctness (together with `git diff`)
   * `pro.py` - entry point for library usage
-    * exposes `AskiffPro` that handles loading and saving of all files in project
+    * exposes `Project` that handles loading and saving of all files in project
   * `_sexpr.py` - handles parsing file to AST (nested list of lists and strings) and writing AST to file
   * `board.py, common.py, ...` - store definitions of classes matching objects from KiCad files
 * `test_projects/` - directory for projects used for library testing

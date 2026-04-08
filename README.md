@@ -24,13 +24,13 @@ pip install 'git+https://github.com/antmicro/askiff.git'
 
 ## Quick Start
 
-Typical entry point for operating on a project is `AskiffPro`, which handles file discovery, lazy loading necessary files as they are used.
+Typical entry point for operating on a project is `Project`, which handles file discovery, lazy loading necessary files as they are used.
 
 ```python
-from askiff import AskiffPro
+from askiff import Project
 
 # Load a KiCad project
-project = AskiffPro("path/to/project").load()
+project = Project("path/to/project").load()
 
 # Modify a schematic
 project.sch[0].title_block.title = "Modified Title"

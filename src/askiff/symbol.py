@@ -10,7 +10,7 @@ from askiff.common import (
     EmbeddedFile,
     Font,
     LibId,
-    LibTable,
+    LibraryTable,
     PinType,
     Position,
     Property,
@@ -156,10 +156,10 @@ class Pin(AutoSerde):
     """Alternative pin configurations/functions for the symbol pin."""
 
 
-class SymbolPartial(AutoSerde):
+class SymbolAspect(AutoSerde):
     """Represents part of graphic representation of symbol.
 
-    Each `SymbolPartial` instance corresponds to single symbol unit, alternative style or common part between them
+    Each `SymbolAspect` instance corresponds to single symbol unit, alternative style or common part between them
     """
 
     _askiff_key: ClassVar[str] = "symbol"
@@ -191,7 +191,7 @@ class SymbolPower(str, AutoSerdeEnum):
         return SymbolPower.GLOBAL  # type: ignore
 
 
-class LibSymbolPinNames(AutoSerde):
+class SymbolDefinitionPinNames(AutoSerde):
     """Controls pin names of a KiCad symbol library entry, handling their visibility and offset"""
 
     offset: float | None = None
@@ -203,7 +203,7 @@ class LibSymbolPinNames(AutoSerde):
         return self.hide or self.offset is not None
 
 
-class LibSymbolPinNumbers(AutoSerde):
+class SymbolDefinitionPinNumbers(AutoSerde):
     """Controls pin numbers of a KiCad symbol library entry, handling their visibility"""
 
     hide: bool = F().version(Version.K8.sch, bare=True, flag=True, after="__begin__")
@@ -213,7 +213,7 @@ class LibSymbolPinNumbers(AutoSerde):
         return self.hide
 
 
-class LibSymbol(AutoSerde):
+class SymbolDefinition(AutoSerde):
     """A library symbol definition, representing a component symbol with associated metadata, pins, and properties"""
 
     _askiff_key: ClassVar[str] = "symbol"
@@ -229,9 +229,9 @@ class LibSymbol(AutoSerde):
         Version.K9.sch, serialize=SymbolPower.serialize_k9, deserialize=SymbolPower.deserialize_k9, keep_empty=True
     )
     """Whether the symbol is a global or local power symbol."""
-    pin_numbers: LibSymbolPinNumbers = F()
+    pin_numbers: SymbolDefinitionPinNumbers = F()
     """Whether pin numbers are shown in the schematic symbol."""
-    pin_names: LibSymbolPinNames = F()
+    pin_names: SymbolDefinitionPinNames = F()
     """Pin names configuration including visibility and offset settings."""
     exclude_from_sim: bool | None = None
     """Whether component is excluded from simulation"""
@@ -251,7 +251,7 @@ class LibSymbol(AutoSerde):
     properties: PropertyList[SymProperty] = F(name="property", flatten=True, serialize=_SymPropertyLibOrder.list_ser)
     """Symbol properties including reference, value, and datasheet information"""
 
-    symbols: list[SymbolPartial] = F(flatten=True, name="symbol")
+    aspects: list[SymbolAspect] = F(flatten=True, name="symbol")
     """Symbol graphical parts: symbol units * symbol styles (+ common elements)"""
 
     embedded_fonts: bool | None = F().version(Version.K8.pcb, skip=True)
@@ -354,7 +354,7 @@ class SymbolSchematic(AutoSerde):
     lib_id: LibId = F()
     """Defines symbol name and library link
     
-    References :class:`askiff.symbol.LibSymbol` that defines graphic representation"""
+    References :class:`askiff.symbol.SymbolDefinition` that defines graphic representation"""
 
     locked: bool | None = F(after="lib_id")
     """Whether the symbol is locked against modifications."""
@@ -412,11 +412,11 @@ class SymbolFile(AutoSerdeFile):
     generator_version: str = Version.generator_ver
     """Version of program that generated the file."""
 
-    symbols: list[LibSymbol] = F(flatten=True, name="symbol")
+    symbols: list[SymbolDefinition] = F(flatten=True, name="symbol")
     """Symbols stored in this file (one, when in symbol-per-file library)."""
 
 
-class LibTableSym(LibTable, AutoSerdeFile):
+class SymbolLibraryTable(LibraryTable, AutoSerdeFile):
     """Symbol library table file handler.
     Provides typed access to library definitions and their properties"""
 

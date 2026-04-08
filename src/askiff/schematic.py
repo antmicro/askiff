@@ -17,7 +17,7 @@ from askiff.common import (
 )
 from askiff.const import Version
 from askiff.gritems import GrItemSch, GrPolySch, GrTableSch
-from askiff.symbol import LibSymbol, ObjectSchematicInstance, SymbolSchematic, SymProperty
+from askiff.symbol import ObjectSchematicInstance, SymbolDefinition, SymbolSchematic, SymProperty
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
     F = cast(Any, F)  # type: ignore
@@ -325,7 +325,7 @@ class Schematic(AutoSerdeFile):
     title_block: TitleBlock = F()
     """Title block metadata for the schematic."""
 
-    lib_symbols: list[LibSymbol] = F()
+    lib_symbols: list[SymbolDefinition] = F()
     """Definition of symbols used in sch (this is kind of cache of library symbols)"""
 
     bus_aliases: list[BusAlias] = F(flatten=True, name="bus_alias", skip=True).version(Version.K9.sch, skip=False)
@@ -372,7 +372,7 @@ class Schematic(AutoSerdeFile):
     """Embedded files data including fonts and datasheets"""
 
     def add_symbol(
-        self, lib_sym: LibSymbol, reference: str | None = None, position: Position | None = None, unit: int = 1
+        self, lib_sym: SymbolDefinition, reference: str | None = None, position: Position | None = None, unit: int = 1
     ) -> None:
         """Add a symbol instance to the schematic, optionally setting its reference, position, and unit.
 

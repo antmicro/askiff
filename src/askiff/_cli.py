@@ -96,11 +96,11 @@ def main() -> None:
     config_logs(args.verbose, args.time_print)
 
     # Set logging level before importing, to enable debug printing during class initialization
-    from .pro import AskiffPro
+    from .pro import Project
 
     print(
         "Total processing time : ",
-        timeit.timeit(lambda: AskiffPro(args.input).load(force=True).save(), number=1),
+        timeit.timeit(lambda: Project(args.input).load(force=True).save(), number=1),
     )
 
 

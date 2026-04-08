@@ -9,7 +9,7 @@ from askiff.common import (
     EmbeddedFile,
     Group,
     LibId,
-    LibTable,
+    LibraryTable,
     Position,
     Property,
     PropertyList,
@@ -295,7 +295,7 @@ class FootprintFile(Footprint, AutoSerdeFile):
     """Defines the program version used to write the file"""
 
 
-class LibTableFp(LibTable, AutoSerdeFile):
+class FootprintLibraryTable(LibraryTable, AutoSerdeFile):
     """Represents KiCad's footprint library table (fp-lib-table) file"""
 
     _askiff_key: ClassVar[str] = "fp_lib_table"
