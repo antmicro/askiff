@@ -7,6 +7,14 @@ To ensure correct serialization it is necessary to ensure type correctness when 
 The most robust way and one strongly recommended is to use type checkers (eg. mypy, ty, ...)
 Assigning incorrect type object is likely to lead to runtime exceptions or corrupted files.
 
+## Mirrors KiCad file structure
+
+Most of classes and their fields directly mirror structure/map to objects in KiCad files.
+
+`Final` typed fields or `_askiff_key` field match keyword used in KiCad files and should never be changed.
+If it seems to necessary to change them, other, related class should probably be used.
+From the point of python interface they are irrelevant.
+
 ## Enum based values
 
 KiCad files use multiple keywords and constant values to indicate object subtype or some setting value.
