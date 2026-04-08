@@ -24,7 +24,7 @@ if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment
 
 
 class BusAlias(AutoSerde):
-    """Represents a bus alias definition in a KiCad schematic file. 
+    """Represents a bus alias definition in a KiCad schematic file.
     Used to define named groups of signals that can be referenced together in schematic labels"""
 
     name: str = F(positional=True)
@@ -61,7 +61,7 @@ class LabelBase(AutoSerde):
 
 
 class LabelLocal(LabelBase):
-    """Local label object in a KiCad schematic. 
+    """Local label object in a KiCad schematic.
     Used to define local labels within schematic sheets for internal connections or annotations."""
 
     pass
@@ -193,7 +193,7 @@ class SheetPin(AutoSerde):
 
 class Sheet(AutoSerde):
     """Represents a hierarchical schematic sheet in a KiCad symbol library
-    
+
     Allows encapsulation of schematic file inside other schematic and connection between schematic blocks"""
 
     position: Position = F(name="at")
@@ -375,7 +375,7 @@ class Schematic(AutoSerdeFile):
         self, lib_sym: LibSymbol, reference: str | None = None, position: Position | None = None, unit: int = 1
     ) -> None:
         """Add a symbol instance to the schematic, optionally setting its reference, position, and unit.
-        
+
         If symbol is not in cached library symbols, it is added there too
         """
         if not next((s for s in self.lib_symbols if lib_sym.lib_id == s.lib_id), None):
