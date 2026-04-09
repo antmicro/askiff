@@ -148,6 +148,7 @@ class AskiffLibSym:
         self.path = path
         self.name = path.stem
         self.__initial_path = path
+        self.objects = []
 
     def load(self, force: bool = False) -> Self:
         """Lazy-load symbol library
