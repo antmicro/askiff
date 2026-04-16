@@ -3,8 +3,8 @@
 ## Typing oriented
 
 Library is built around python static typing system (type annotations) and dataclasses.
-To ensure correct serialization it is necessary to ensure type correctness when assigning to objects/fields defined in this library
-The most robust way and one strongly recommended is to use type checkers (eg. mypy, ty, ...)
+To ensure correct serialization it is necessary to ensure type correctness when assigning to objects/fields defined in this library.
+The most robust way and one strongly recommended is to use type checkers (e.g. mypy, ty, ...).
 Assigning incorrect type object is likely to lead to runtime exceptions or corrupted files.
 
 ## Mirrors KiCad file structure
@@ -20,7 +20,7 @@ From the point of python interface they are irrelevant.
 KiCad files use multiple keywords and constant values to indicate object subtype or some setting value.
 
 To reduce risk of spelling error and to make usage more clear, `askiff` abstracts this using 3 methods.
-It is highly recommended to use these mechanisms rather than work on raw values
+It is highly recommended to use these mechanisms rather than work on raw values.
 
 ### Enum
 
@@ -99,7 +99,7 @@ pad.type = ViaType('blind') # Risk of spelling mistake
 
 ### Subclasses with hardcoded field
 
-One of used patterns is base abstract class with common fields (eg. {py:class}`askiff.gritems.Dimension`) and child classes (eg. {py:class}`askiff.gritems.DimensionOrthogonal`).
+One of used patterns is base abstract class with common fields (e.g. {py:class}`askiff.gritems.Dimension`) and child classes (e.g. {py:class}`askiff.gritems.DimensionOrthogonal`).
 
 Base class is used in class typing but during deserialization it is automatically down casted to specific subclass, based on constant field with keyword indicating exact subtype.
 

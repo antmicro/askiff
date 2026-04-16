@@ -309,7 +309,7 @@ class DrillPostMatchingCounterbore(DrillPostMatching):
 
 
 class DrillPostMatchingCountersink(DrillPostMatching):
-    """Drill countersing post-matching settings for a footprint's pad or via"""
+    """Drill countersink post-matching settings for a footprint's pad or via"""
 
     type: Final[str] = F("countersink", positional=True, unquoted=True)  # type: ignore  # ty:ignore[override-of-final-variable]
     """Drill post-matching type, class constant"""
@@ -342,7 +342,7 @@ class Pad(AutoSerdeDownCasting):
 
     Do not instantiate directly use subclasses.
 
-    Remark: To change pad type from eg. SMD to THT, create new instance of other subclass"""
+    Remark: To change pad type from e.g. SMD to THT, create new instance of other subclass"""
 
     _AutoSerdeDownCasting__downcast_field: ClassVar[int] = 1
     __askiff_order: ClassVar[list[str]] = [

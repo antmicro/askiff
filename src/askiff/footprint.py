@@ -214,7 +214,7 @@ class Footprint(AutoSerde):
 class FpPropertyKiFpFilters(AutoSerde):
     """Represents KiCad footprint property filters for filtering footprint files based on patterns
 
-    This is inherited property from schematic for baord footprints
+    This is inherited property from schematic for board footprints
     """
 
     ki_fp_filters: Final[str] = F("ki_fp_filters", unquoted=True, positional=True)

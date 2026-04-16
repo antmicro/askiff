@@ -54,7 +54,7 @@ class _SymPropertyLibOrder(SymProperty):
     """Stub class used internally to ensure proper formatting
 
     Represents a symbol property for library order definitions in KiCad schematic files.
-    Adjusts serialization to match kicad formating in library context"""
+    Adjusts serialization to match KiCad formatting in library context"""
 
     show_name: bool | None = F(after="position").version(Version.K9.sch, flag=True)
     _do_not_autoplace = F()

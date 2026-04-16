@@ -9,7 +9,7 @@ from antmicro_sphinx_utils.defaults import myst_fence_as_directive as default_my
 # -- General configuration -----------------------------------------------------
 
 # General information about the project.
-project = "A SKiff documentation"
+project = "askiff documentation"
 basic_filename = "askiff-docs--doctype"
 authors = "Antmicro"
 copyright = f"{authors}, {datetime.now().year}"  # noqa: A001

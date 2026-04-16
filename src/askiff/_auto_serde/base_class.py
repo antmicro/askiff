@@ -39,7 +39,7 @@ class AutoSerde:
 
     Nominally fields are processed in same order as defined
 
-    Class level implementation tunning:
+    Class level implementation tuning:
     * field name prefixed `_` - indicates that matching field from parent struct shall be serialized in this place
     * `__askiff_order: ClassVar[list[str]]` - allows to force fully arbitrary field reorder
     * `_askiff_key: ClassVar[str]` - default struct `name`/keyword after serialization
@@ -55,7 +55,7 @@ class AutoSerde:
     * `SerdeOpt` keywords passed with base class (`class SomeClass(AutoSerde, flag=True)`) are applied to all fields
     * If struct requires other data from file register current object for additional pass with
         `AutoSerdeFile._post_final_deser_objects.append(self)`, and define `_post_final_deser(self, root_object)`
-        that will be called on object after whole file deser is complete and will receive full deserialzied file
+        that will be called on object after whole file deser is complete and will receive full deserialized file
 
     Handling of each field can be modified by passing F(**kwargs) as field default, see `SerdeOpt` for available options
     """
@@ -189,12 +189,12 @@ class AutoSerde:
         Args:
             sexp: pre-parsed S-Expression AST
         Returns:
-            Deserialzied structure
+            Deserialized structure
         Notes:
             * Uses `_AutoSerde__deser_field*` tables for efficient lookup how to deserialize encountered objects
             * Places unrecognized field in `__extra`/`__extra_positional` and issues warning
             * Encountered `str` objects are processed as positional or bare-flag components
-            * Tuples are processed as normal args treating first object as keyword indentifying target field
+            * Tuples are processed as normal args treating first object as keyword identifying target field
         """
         ret: Self = cls()
         deser_map = cls.__deser_field
@@ -746,8 +746,8 @@ class AutoSerde:
     def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:
         """Initialize class
 
-        * Extract (de)serialziation hints from F(), replace them with dataclass field
-        * Prepare (de)serialzation maps for all file version variants
+        * Extract (de)serialization hints from F(), replace them with dataclass field
+        * Prepare (de)serialization maps for all file version variants
         """
 
         type_hints, field_meta = preprocess_cls_fields(cls)

@@ -1,7 +1,10 @@
 import argparse
 import logging
 import timeit
+from logging import DEBUG, INFO
 from pathlib import Path
+
+from askiff.const import TRACE, TRACE_DIS
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -10,7 +13,7 @@ def config_logs(verbosity: int, time_print: bool) -> None:
     """Configure library logging with colored output and optional timing.
 
     Args:
-        verbosity: Logging level (e.g., `logging.DEBUG`, `logging.INFO`).
+        verbosity: Logging level.
         time_print: Whether to log execution times.
     """
 
@@ -43,7 +46,8 @@ def config_logs(verbosity: int, time_print: bool) -> None:
     )
 
     logging.getLogger().handlers = [handler]
-    logging.getLogger().setLevel(verbosity)
+    verbosity_map = {0: INFO, 1: DEBUG, 2: TRACE, 3: TRACE_DIS}
+    logging.getLogger().setLevel(verbosity_map[min(verbosity, 3)])
 
     time_logger = logging.getLogger("time_log")
     thandler = logging.StreamHandler()
@@ -63,7 +67,7 @@ def main() -> None:
     Reports any unknown fields that are encountered during deserialization.
     Used to verify askiff's (de)serialization accuracy and coverage."""
     parser = argparse.ArgumentParser(
-        prog="askiff-cli",
+        prog="askiff",
         description="""This is simple cli that loads and saves with no changes all files in current kicad project,
             checking field/object coverage in askiff""",
     )
@@ -77,15 +81,9 @@ def main() -> None:
     parser.add_argument(
         "-v",
         "--verbose",
-        default=10,
-        const=5,
-        type=int,
-        nargs="?",
-        help="""Controls verbosity: 
-            * 20 - info msg
-            * 10- (default) debug
-            * 5- when `-v`, print AutoSerde field serde modes map
-            * 4- print assembly""",
+        action="count",
+        default=0,
+        help="""Increase verbosity""",
     )
     parser.add_argument(
         "--time-print",

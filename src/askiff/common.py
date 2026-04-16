@@ -30,7 +30,7 @@ class Position(AutoSerde):
     """Rotation angle of the position in degrees."""
 
     def serialize(self) -> GeneralizedSexpr:
-        """Serializes the position into a generalized S-expression format"""
+        """Serializes the position into a generalized S-Expression format"""
         ang = self.angle
         extra = self._AutoSerde__extra  # type: ignore # ty:ignore[unresolved-attribute]
         if ang is None:

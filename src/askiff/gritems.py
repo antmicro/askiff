@@ -41,13 +41,13 @@ class GrItem(AutoSerde):
 
     * `isinstance(item, GrItem)` - all kind of graphics (PCB, schematic, footprint, symbol)
     * `isinstance(item, GrItemPCB)` - only Graphic items on PCB
-    * `isinstance(item, GrShapePCB)` - only Graphic primitive shapes on PCB (eg. circles, rectangles), \
+    * `isinstance(item, GrShapePCB)` - only Graphic primitive shapes on PCB (e.g. circles, rectangles), \
         inherits also from :class:`askiff.common.BaseShape`
     * `isinstance(item, GrRectPCB)` - only rectangles on PCB
 
     Naming Scheme:
 
-    * Gr **Rect** PCB -> graphic object type, eg. rectangle, circle, image, text, ...
+    * Gr **Rect** PCB -> graphic object type, e.g. rectangle, circle, image, text, ...
     * GrRect **PCB** -> target flavour (ensure that assigned flavour matches type hint in target structure)
         * `Sch` - item for usage in schematics, inherits :class:`askiff.gritems.GrItemSch`
         * `Sym` - item for usage in symbols, inherits :class:`askiff.gritems.GrItemSym`
@@ -100,7 +100,7 @@ class GrItem(AutoSerde):
     @abstractmethod
     def _askiff_key(self) -> str:
         """Key used to identify the object type in KiCad sexpr files.
-        Internal method for Askiff's serialization system; library users should not call this directly."""
+        Internal method for askiff's serialization system; library users should not call this directly."""
         # added to prevent direct creation of base classes (child classes should assign value to _askiff_key)
         pass
 
@@ -151,7 +151,7 @@ class _GrShapePCBFp(GrShape):
     """
 
     _layers: LayerSet[BaseLayer] = F()
-    """If there is solder mask opening, KiCad stores it as two layer, eg. F.Cu & F.Mask
+    """If there is solder mask opening, KiCad stores it as two layer, e.g. F.Cu & F.Mask
     `askiff` handles this during serde and exposes single layer to user via `layer` field"""
     solder_mask_margin: float | None = None
     """Solder mask margin value for the graphic shape"""

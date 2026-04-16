@@ -143,5 +143,5 @@
   (lib (name "Transistor_Power_Module")(type "KiCad")(uri "${KICAD9_FOOTPRINT_DIR}/Transistor_Power_Module.pretty")(options "")(descr "Transistor Power Modules"))
   (lib (name "Valve")(type "KiCad")(uri "${KICAD9_FOOTPRINT_DIR}/Valve.pretty")(options "")(descr "Valve"))
   (lib (name "Varistor")(type "KiCad")(uri "${KICAD9_FOOTPRINT_DIR}/Varistor.pretty")(options "")(descr "Varistor"))
-  (lib (name "askiff_test")(type "KiCad")(uri "${KIPRJMOD}/footprints")(options "")(descr "Askiff test footprints."))
+  (lib (name "askiff_test")(type "KiCad")(uri "${KIPRJMOD}/footprints")(options "")(descr "askiff test footprints."))
 )

@@ -52,14 +52,14 @@ class SerdeOpt(TypedDict, total=False):
     invert: bool
     """Whether the field's Python value is the logical inverse of its KiCad file representation."""
     nested: bool
-    """Whether data is nested within a sub-expression.
+    """Whether data is nested within a sub-Expression.
     `(field_name (inner_cls data data))` instead `(field_name data data)`"""
     unquoted: bool
     """Whether string values shall not be surrounded by double quotes during serialization."""
     true_val: str
-    """Identifier representing `True` in kicad file instead of `yes`"""
+    """Identifier representing `True` in KiCad file instead of `yes`"""
     false_val: str
-    """Identifier representing `False` in kicad file instead of `no`"""
+    """Identifier representing `False` in KiCad file instead of `no`"""
     inline: bool
     """From the point of ser/deser fields of annotated field are copy pasted in main struct"""
     inline_basetype: type

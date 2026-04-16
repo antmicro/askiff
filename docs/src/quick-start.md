@@ -45,6 +45,7 @@ Load an existing PCB, add a footprint, and save the updated PCB.
 
 ```python
 from askiff import Project
+from askiff.common import Position
 from askiff.footprint import FootprintFile
 
 # Load a KiCad project
@@ -65,23 +66,24 @@ project.save()
 
 ## Get Bounding box of all shapes on Silkscreen layers
 
-Askiff allows also to operate directly on specific KiCad file only (without Project).
+askiff allows also to operate directly on specific KiCad file only (without Project).
 
 ```python
 from askiff.board import Board
-from askiff.pcb_common import LayerSilkS
+from askiff.common_pcb import LayerSilkS
 from askiff.common import BBox
+from askiff.gritems import GrShapePCB
 
 # Load Board
-Board.from_file("path/to/pcb.kicad_pcb")
+board = Board.from_file("path/to/pcb.kicad_pcb")
 
 # Get all Silkscreen shapes
 silkscreen_items = [
     item for item in board.graphic_items
     if isinstance(item, GrShapePCB) # Filter shapes using base class for all shapes on PCB
-        # To get just eg. rectangles and circles use `isinstance(item, (GrCirclePCB, GrRectPCB))`
+        # To get just e.g. rectangles and circles use `isinstance(item, (GrCirclePCB, GrRectPCB))`
         and isinstance(item.layer, LayerSilkS) # filter layers to that inheriting from LayerSilkS (that is Layer.SILKS_F or Layer.SILKS_B)
-        # Layer type are also inheritance based, eg. parent class `LayerTech` can be used to get all technical layers such as SilkS, Fab, Mask, ..
+        # Layer type are also inheritance based, e.g. parent class `LayerTech` can be used to get all technical layers such as SilkS, Fab, Mask, ..
 ]
 
 # Get bounding box of shapes

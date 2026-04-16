@@ -114,7 +114,7 @@ class Sexpr(list[Union["GeneralizedSexpr", str]]):
         return Sexpr.from_str(path.read_text())
 
     def to_file(self, path: Path) -> None:
-        """Writes the S-expression structure to a file at the specified path,
+        """Writes the S-Expression structure to a file at the specified path,
         formatting it with appropriate column width based on the file type.
         Creates parent directories if needed."""
         column_width = PCB_COLUMN_WIDTH if "pcb" in path.suffix else SCH_COLUMN_WIDTH
@@ -134,15 +134,15 @@ GeneralizedSexpr = Sequence[Union["GeneralizedSexpr", str]]
 
 
 def to_str(sexpr: GeneralizedSexpr, indent: int = 0, column_width: int = SCH_COLUMN_WIDTH) -> str:
-    """Convert a generalized S-expression structure into a formatted string representation.
+    """Convert a generalized S-Expression structure into a formatted string representation.
 
     Args:
-        sexpr: The S-expression to convert, typically a list starting with a string identifier followed by arguments.
+        sexpr: The S-Expression to convert, typically a list starting with a string identifier followed by arguments.
         indent: The base indentation level for the output string.
         column_width: Maximum line length before wrapping, used for formatting long expressions.
 
     Returns:
-        A formatted string representation of the S-expression with proper indentation and line wrapping.
+        A formatted string representation of the S-Expression with proper indentation and line wrapping.
 
     Example:
         >>> from askiff.sexpr import to_str

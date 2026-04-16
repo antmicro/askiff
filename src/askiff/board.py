@@ -338,7 +338,7 @@ class Stackup(AutoSerde):
     """Copper finish type for the PCB surface"""
 
     dielectric_constraints: bool | None = None
-    """Whether dielectric parameters are taken into acount for constraints"""
+    """Whether dielectric parameters are taken into account for constraints"""
 
     edge_connector: StackupEdgeConn = F(StackupEdgeConn.NONE)
     """Edge connectors style"""
@@ -351,7 +351,7 @@ class Stackup(AutoSerde):
 
 
 class LayerDef(AutoSerde, positional=True):  # type: ignore
-    """Layer definition, mapping a standard Kicad layer to its function and optional user-defined name."""
+    """Layer definition, mapping a standard KiCad layer to its function and optional user-defined name."""
 
     layer: BaseLayer = F()
     """Standard KiCad layer"""
@@ -380,7 +380,7 @@ class TraceBase(AutoSerde):
     Not intended for direct instantiation, use subclasses"""
 
     __askiff_childs: ClassVar[dict[str, type]] = {}
-    """Child class type mapping for Askiff deserialization"""
+    """Child class type mapping for askiff deserialization"""
 
     locked: bool | None = None
     """Whether the trace is locked."""
@@ -542,7 +542,7 @@ class Via(TraceBase):
     """Via layers span including start and stop layers."""
     _locked = F()
     remove_unused_layers: bool | None = None
-    """Whether to add anular ring on layers that are unconnected."""
+    """Whether to add annular ring on layers that are unconnected."""
     keep_end_layers: bool | None = None
     """Whether `remove_unused_layers` affects also start/end layer of via"""
     free: bool | None = None

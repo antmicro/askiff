@@ -34,7 +34,7 @@ class BaseLayer:
 
     Typical usage: Library users should use pre-instantiated values from :class:`askiff.common_pcb.Layer`
 
-    Inheritance is used to differentiate between layer types, eg. all cooper layers are inherited from LayerCopper.
+    Inheritance is used to differentiate between layer types, e.g. all cooper layers are inherited from LayerCopper.
     During deserialization there is automatic down casting to most specific subclass
 
     Examples:
@@ -327,7 +327,7 @@ class LayerSpecial(BaseLayer):
     """Specialized layer type for marking nodes requiring special handling during serialization or processing.
     Acts as a semantic marker inheriting all functionality from BaseLayer.
 
-    Purpose of this class is mainly to handle serde of Compound layers (eg. `*.Cu` keyword)"""
+    Purpose of this class is mainly to handle serde of Compound layers (e.g. `*.Cu` keyword)"""
 
     pass
 
@@ -469,17 +469,17 @@ class Net(AutoSerde):
     """Net represents a signal net in a PCB design, identified by name"""
 
     _number: int | None = F(positional=True, skip=True).version(Version.K9.pcb, skip=False)
-    """Net identifier eg. `0`, Used to handle K9 style"""
+    """Net identifier e.g. `0`, Used to handle K9 style"""
 
     name: str = F(positional=True)
-    """Net name eg. `GND`"""
+    """Net name e.g. `GND`"""
 
 
 class _NetK9Simple(Net):
     """Used internally to ensure correct K9 serde for simple net without name string"""
 
     _number: int | None = F(positional=True, skip=True).version(Version.K9.pcb, skip=False)
-    """Net identifier eg. `0` [Deprecated in K10]"""
+    """Net identifier e.g. `0` [Deprecated in K10]"""
     name: str = F(positional=True).version(Version.K9.pcb, skip=True)  # type: ignore
     """Net name, e.g., "GND"."""
 
