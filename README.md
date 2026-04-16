@@ -43,4 +43,4 @@ See [documentation]( https://antmicro.github.io/askiff/) for further examples.
 
 ## Licensing
 
-TBD
+This project is licensed under the [Apache-2.0](LICENSE) license.
