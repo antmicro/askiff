@@ -57,7 +57,7 @@ lint:
     - uv sync
     - git submodule update --init --depth 1 test_projects/${TEST_PROJECT} || true
   script:
-    - uv run askiff -i test_projects/${TEST_PROJECT} -v 15 --time-print
+    - uv run askiff -i test_projects/${TEST_PROJECT} --time-print
     - if [[ -n $(git diff --shortstat --submodule=diff) ]]; then git diff --submodule=diff --color=always; exit 1; fi
 
 test-kicad9:
