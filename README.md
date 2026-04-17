@@ -2,19 +2,19 @@
 
 Copyright (c) 2026 [Antmicro](https://www.antmicro.com)
 
-Python library for typed parsing, creation and modification of KiCad files.
+This project contains a Python library for typed parsing, creation and modification of KiCad files
 
-askiff provides automatic serialization and deserialization (serde) functionality for KiCad project files, enabling seamless conversion between structured Python data and KiCad's native sexpr formats. It addresses the challenge of working with KiCad's complex, hierarchical file structures by offering typed, field-based (de)serialization that preserves file integrity and supports round-trip editing without unnecessary changes.
+askiff provides automatic serialization and deserialization (serdes) functionality for KiCad project files, enabling seamless conversion between structured Python data and KiCad's native sexpr formats. It addresses the challenge of working with KiCad's complex, hierarchical file structures by offering typed, field-based (de)serialization that preserves file integrity and supports round-trip editing without unnecessary changes.
 
-The library is designed to handle KiCad 8+ formats, with full support for KiCad 10. It ensures that even unsupported sections of KiCad files remain untouched during processing, maintaining zero git diff for unchanged content. This makes it ideal for automated workflows, file validation, and safe modification of KiCad projects.
+The library is designed to handle KiCad 8+ formats, with full support for KiCad 10. It ensures that even unsupported sections of KiCad files remain unmodified during processing, maintaining zero git diff for unchanged content. This makes it ideal for automated workflows, file validation, and safe modification of KiCad projects.
 
-## Feature Highlights
+## Features
 
-* Deserialize KiCad files into Python structures and back
-* Library aims to introduce zero git diff to untouched file sections
-* Even if part of KiCad file is not explicitly supported, attempts to preserve it, preventing data loss
-* Targets KiCad 10 (backward compatibility with KiCad 8+)
-* Simple python abstractions, hiding quirks of KiCad file formats
+* Deserializing KiCad files into Python structures and back
+* No git diff for unmodified file sections
+* Preventing data loss in unsupported parts of KiCad files
+* Support for KiCad 10 (backward compatibility with KiCad 8+)
+* Simple Python abstractions that make it easier to work with complex KiCad file formats
 
 ## Installation
 
@@ -24,7 +24,7 @@ pip install 'git+https://github.com/antmicro/askiff.git'
 
 ## Quick Start
 
-Typical entry point for operating on a project is `Project`, which handles file discovery, lazy loading necessary files as they are used.
+A typical entry point for operating on a project is `Project`, which handles file discovery, lazy loading necessary files as they are used.
 
 ```python
 from askiff import Project
@@ -39,7 +39,7 @@ project.sch[0].title_block.title = "Modified Title"
 project.save()
 ```
 
-See [documentation]( https://antmicro.github.io/askiff/) for further examples.
+See the project [documentation](https://antmicro.github.io/askiff/) for more examples.
 
 ## Licensing
 
