@@ -127,7 +127,7 @@ class Footprint(AutoSerde):
     tags: str | None = None
     """Defines search tags"""
 
-    properties: PropertyList[FpProperty] = F(name="property", flatten=True)
+    properties: PropertyList[FpProperty] = F(lambda: PropertyList(FpProperty), name="property", flatten=True)
     """Footprint properties like reference, value and datasheet."""
 
     solder_mask_margin: float | None = None

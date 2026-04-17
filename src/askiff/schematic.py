@@ -56,7 +56,7 @@ class LabelBase(AutoSerde):
     """Text formatting properties including font, justification, and visibility"""
     uuid: Uuid = F()
     """Unique identifier"""
-    properties: PropertyList[SymProperty] = F(name="property", flatten=True)
+    properties: PropertyList[SymProperty] = F(lambda: PropertyList(SymProperty), name="property", flatten=True)
     """Additional label properties such as net-class and intersheet-references"""
 
 
@@ -124,7 +124,7 @@ class NetclassFlag(AutoSerde):
     """Text formatting properties including font, justification, and visibility."""
     uuid: Uuid = F()
     """Unique identifier"""
-    properties: PropertyList[SymProperty] = F(name="property", flatten=True)
+    properties: PropertyList[SymProperty] = F(lambda: PropertyList(SymProperty), name="property", flatten=True)
     """Properties this flag assigns, including net-class and component class."""
 
     def component_class(self) -> str:
@@ -219,7 +219,7 @@ class Sheet(AutoSerde):
     uuid: Uuid = F()
     """Unique identifier"""
 
-    properties: PropertyList[SymProperty] = F(name="property", flatten=True)
+    properties: PropertyList[SymProperty] = F(lambda: PropertyList(SymProperty), name="property", flatten=True)
     """Schematic sheet properties including file and name references"""
 
     pins: list[SheetPin] = F(flatten=True, name="pin")

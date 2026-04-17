@@ -248,7 +248,9 @@ class SymbolDefinition(AutoSerde):
     jumper_pin_groups: list[list[str]] = F()
     """Pin numbers that shall be considered as internally connected"""
 
-    properties: PropertyList[SymProperty] = F(name="property", flatten=True, serialize=_SymPropertyLibOrder.list_ser)
+    properties: PropertyList[SymProperty] = F(
+        lambda: PropertyList(SymProperty), name="property", flatten=True, serialize=_SymPropertyLibOrder.list_ser
+    )
     """Symbol properties including reference, value, and datasheet information"""
 
     aspects: list[SymbolAspect] = F(flatten=True, name="symbol")
@@ -386,7 +388,7 @@ class SymbolSchematic(AutoSerde):
     uuid: Uuid = F()
     """Unique identifier"""
 
-    properties: PropertyList[SymProperty] = F(name="property", flatten=True)
+    properties: PropertyList[SymProperty] = F(lambda: PropertyList(SymProperty), name="property", flatten=True)
     """Schematic symbol properties including reference, value, and datasheet"""
 
     pins: list[SymbolSchematicPin] = F(flatten=True, name="pin")

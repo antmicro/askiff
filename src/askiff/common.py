@@ -283,6 +283,10 @@ TD = TypeVar("TD")
 class PropertyList(Generic[T], list[T]):
     """Stores properties as list, offering convenient by-name access"""
 
+    def __init__(self, inner_type: type[T]) -> None:
+        super().__init__()
+        self.__inner_type = inner_type
+
     @property
     def ref(self) -> T:
         """Returns 'Reference' property. Raises StopIteration if not found."""
@@ -316,6 +320,14 @@ class PropertyList(Generic[T], list[T]):
         """Returns the value of the property with the given name, or default if not found."""
         prop = next((prop for prop in self if prop.name == name), None)
         return prop.value if prop else default
+
+    def set(self, name: str, value: str, **kwargs: Any) -> None:  # noqa: ANN401
+        """Set the value of the property with the given name (create if necessary)."""
+        prop = self.get(name)
+        if prop is not None:
+            prop.value = value
+            return
+        self.append(self.__inner_type(name=name, value=value, **kwargs))
 
     def pop(self, name: str) -> T | None:  # type: ignore  # ty:ignore[invalid-method-override]
         """Removes and returns the first property with the given name, or None if not found."""
