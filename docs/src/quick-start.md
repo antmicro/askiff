@@ -6,11 +6,11 @@
 pip install 'git+https://github.com/antmicro/askiff.git'
 ```
 
-## Examples
+## Usage examples
 
-## Load project from path
+### Loading a project from path
 
-Typical entry point for operating on a project is `Project`, which handles file discovery, lazy loading necessary files as they are used.
+A typical entry point for operating on a project is `Project`, which handles file discovery, lazy loading necessary files as they are used.
 
 ```python
 from askiff import Project
@@ -25,9 +25,9 @@ project.sch[0].title_block.title = "Modified Title"
 project.save()
 ```
 
-## Create new PCB
+### Creating a new PCB
 
-It is also possible to operate directly on specific KiCad file only.
+It is also possible to operate directly on a specific KiCad file only.
 
 ```python
 from askiff.board import Board
@@ -39,7 +39,7 @@ board = Board()
 board.to_file("path/to/pcb.kicad_pcb")
 ```
 
-## Add footprint to PCB
+### Adding a footprint to a PCB
 
 Load an existing PCB, add a footprint, and save the updated PCB.
 
@@ -64,9 +64,9 @@ project.pcb[0].add_footprint(footprint, reference="R1", position=Position(15, 20
 project.save()
 ```
 
-## Get Bounding box of all shapes on Silkscreen layers
+### Getting a bounding box of all shapes on silkscreen layers
 
-askiff allows also to operate directly on specific KiCad file only (without Project).
+askiff also allows operating directly on a specific KiCad file only (without Project).
 
 ```python
 from askiff.board import Board
@@ -92,9 +92,9 @@ bbox = BBox.from_shapes(silkscreen_items)
 print(f"Bounding box: ({bbox.start.x},{bbox.start.y}) : ({bbox.end.x},{bbox.end.y})")
 ```
 
-## Simple DFN footprint generator
+### Simple DFN footprint generator
 
-Simple DFN footprint generator with configurable pins and pitch.
+A simple DFN footprint generator with configurable pins and pitches.
 
 ```python
 from askiff.common import LibId, Position, Size
