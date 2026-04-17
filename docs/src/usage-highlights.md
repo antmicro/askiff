@@ -1,25 +1,25 @@
-# Usage Highlights
+# Usage highlights
 
 ## Typing oriented
 
-Library is built around python static typing system (type annotations) and dataclasses.
-To ensure correct serialization it is necessary to ensure type correctness when assigning to objects/fields defined in this library.
+The askiff library is built around a Python static typing system (type annotations) and dataclasses.
+To ensure correct serialization, it is necessary to ensure type correctness when assigning to objects/fields defined in this library.
 The most robust way and one strongly recommended is to use type checkers (e.g. mypy, ty, ...).
-Assigning incorrect type object is likely to lead to runtime exceptions or corrupted files.
+Assigning an incorrect type object is likely to lead to runtime exceptions or corrupted files.
 
-## Mirrors KiCad file structure
+## KiCad file structure mirroring
 
-Most of classes and their fields directly mirror structure/map to objects in KiCad files.
+Most classes and their fields directly mirror the structure/map to objects in KiCad files.
 
-`Final` typed fields or `_askiff_key` field match keyword used in KiCad files and should never be changed.
-If it seems to necessary to change them, other, related class should probably be used.
-From the point of python interface they are irrelevant.
+The `final` typed fields or the `_askiff_key` field match the keyword used in KiCad files and should never be changed.
+If it is necessary to change them, other, related classes should probably be used.
+From the Python interface perspective, they are irrelevant.
 
 ## Enum based values
 
-KiCad files use multiple keywords and constant values to indicate object subtype or some setting value.
+KiCad files use multiple keywords and constant values to indicate object subtypes or some setting values.
 
-To reduce risk of spelling error and to make usage more clear, `askiff` abstracts this using 3 methods.
+To reduce the risk of spelling errors and make usage more clear, `askiff` abstracts this using 3 methods.
 It is highly recommended to use these mechanisms rather than work on raw values.
 
 ### Enum
@@ -41,7 +41,7 @@ Python style enumerations, examples:
 ```python
 from askiff.gritems import DimensionOrthogonalOrientation
 for dim in footprint.dimensions:
-  if dim.orientation == DimensionOrthogonalOrientation.HORIZONTAL: 
+  if dim.orientation == DimensionOrthogonalOrientation.HORIZONTAL:
     ...
 ```
 
@@ -53,7 +53,7 @@ for dim in footprint.dimensions:
 
 ```python
 for dim in footprint.dimensions:
-  if str(dim.orientation) == '0': 
+  if str(dim.orientation) == '0':
     # Unclear what 0 means
     # May differ in future KiCad revisions
     ...
@@ -97,11 +97,11 @@ pad.type = ViaType('blind') # Risk of spelling mistake
 
 ::::
 
-### Subclasses with hardcoded field
+### Subclasses with hardcoded fields
 
-One of used patterns is base abstract class with common fields (e.g. {py:class}`askiff.gritems.Dimension`) and child classes (e.g. {py:class}`askiff.gritems.DimensionOrthogonal`).
+One of the used patterns is a base abstract class with common fields (e.g. {py:class}`askiff.gritems.Dimension`) and child classes (e.g. {py:class}`askiff.gritems.DimensionOrthogonal`).
 
-Base class is used in class typing but during deserialization it is automatically down casted to specific subclass, based on constant field with keyword indicating exact subtype.
+Base class is used in class typing but during deserialization it is automatically down casted to a specific subclass, based on a constant field with a keyword indicating the exact subtype.
 
 This approach allows tighter typechecking and prevents setting fields that may be unsupported in this specific subclass.
 
@@ -119,7 +119,7 @@ This also works nicely with fine grained filtration of objects with multi level 
 ```python
 from askiff.gritems import DimensionOrthogonal
 for dim in footprint.dimensions:
-  if isinstance(dim, DimensionOrthogonal): 
+  if isinstance(dim, DimensionOrthogonal):
     # Type checker/LSP know which fields are available
     ...
 ```
@@ -132,7 +132,7 @@ for dim in footprint.dimensions:
 
 ```python
 for dim in footprint.dimensions:
-  if dim.type == 'orthogonal': 
+  if dim.type == 'orthogonal':
     # Spelling mistake risk
     # Type check may later complain about unresolved attributes
     ...
@@ -179,28 +179,28 @@ dim.type = 'radial'
 
 See {py:class}`askiff.common_pcb.Layer`
 
-## Highlighted Classes
+## Highlighted classes
 
-Few classes worth noticing as they extend slightly beyond simple resembling of KiCad structures, see their documentation
+Refer to the documentation for more details about the most noteworthy classes:
 
-* {py:class}`askiff.Project` - Unified entry point for project
+* {py:class}`askiff.Project` - Unified entry point for the project
 * {py:class}`askiff.common_pcb.BaseLayer` - Base class for all layers, describes how to use layer types inheritance
 * {py:class}`askiff.common_pcb.LayerSet` - Set of layers that hides few gimmicks of managing layers in PCB/footprint files
 * {py:class}`askiff.common.PropertyList` - Accessing symbol/footprint properties
 * {py:class}`askiff.gritems.GrItem` - Base class for all graphic items
 * {py:class}`askiff.gritems.GrShape` - Base class for graphic items that are simple shapes (rectangle, circle)
-* {py:class}`askiff.common.BBox` - Get bounding box/extreme points from list of shapes
+* {py:class}`askiff.common.BBox` - Get bounding box/extreme points from a list of shapes
 
 ## Symbol types disambiguation
 
 * {py:class}`askiff.symbol.SymbolAspect`
   * Represents part of {py:class}`askiff.symbol.SymbolDefinition` graphics/pins
-  * Each instance corresponds to single symbol unit, alternative style or common part between them
+  * Each instance corresponds to a single symbol unit, alternative style or common part between them
 * {py:class}`askiff.symbol.SymbolDefinition`
   * Represents symbol's description in library (graphics and pins)
-  * Also used in schematic file as kind of library cache
+  * Also used in the schematic file as kind of library cache
 * {py:class}`askiff.symbol.SymbolFile`
-  * Represents `kicad_sym` file
+  * Represents the `kicad_sym` file
   * May contain one or more {py:class}`askiff.symbol.SymbolDefinition`
 * {py:class}`askiff.symbol.SymbolSchematic`
   * Instance of symbol on schematic
@@ -210,5 +210,5 @@ Few classes worth noticing as they extend slightly beyond simple resembling of K
   * Represents `sym-lib-table`
   * Collection of library paths
 * {py:class}`askiff.pro.SymbolLibrary`
-  * Lazy loaded symbols from single library
+  * Lazy loaded symbols from a single library
   * Handles both library-per-file & library-per-directory formats via `symbols()` methods
