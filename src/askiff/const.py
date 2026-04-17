@@ -35,7 +35,7 @@ class Version:
         pcb = 20240108
         sym = sch
         fp = pcb
-        lib_table = 7
+        lib_table = 0
 
     class K9(BaseVer):
         """Version constants for KiCad 9 files"""
@@ -44,7 +44,7 @@ class Version:
         sch = 20250114
         pcb = 20241229
         fp = pcb
-        lib_table = 7
+        lib_table = 0
 
     class K10(BaseVer):
         """Version constants for KiCad 10 files"""
