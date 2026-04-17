@@ -4,7 +4,7 @@ Copyright (c) 2026 [Antmicro](https://www.antmicro.com)
 
 This project contains a Python library for typed parsing, creation and modification of KiCad files
 
-askiff provides automatic serialization and deserialization (serdes) functionality for KiCad project files, enabling seamless conversion between structured Python data and KiCad's native sexpr formats. It addresses the challenge of working with KiCad's complex, hierarchical file structures by offering typed, field-based (de)serialization that preserves file integrity and supports round-trip editing without unnecessary changes.
+askiff provides an automatic serialization and deserialization (serdes) functionality for KiCad project files, enabling seamless conversion between structured Python data and KiCad's native sexpr formats. It addresses the challenge of working with KiCad's complex, hierarchical file structures by offering typed, field-based (de)serialization that preserves file integrity and supports round-trip editing without unnecessary changes.
 
 The library is designed to handle KiCad 8+ formats, with full support for KiCad 10. It ensures that even unsupported sections of KiCad files remain unmodified during processing, maintaining zero git diff for unchanged content. This makes it ideal for automated workflows, file validation, and safe modification of KiCad projects.
 
