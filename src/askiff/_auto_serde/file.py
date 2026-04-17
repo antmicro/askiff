@@ -83,7 +83,7 @@ class AutoSerdeFile(AutoSerde):
     Objects can register themselves for additional processing after whole deserialization is completed
     Allowing field deserialization to access data from other file parts
     """
-    _fs_path: Path | None = None
+    path: Path | None = F(skip=True)
     __version_map: ClassVar[dict[str, str]] = {
         "kicad_pcb": "pcb",
         "kicad_sch": "sch",
@@ -127,7 +127,7 @@ class AutoSerdeFile(AutoSerde):
                     for obj in AutoSerdeFile._post_final_deser_objects:
                         obj._post_final_deser(ret)
 
-                ret._fs_path = path
+                ret.path = path
                 return ret
             raise Exception(
                 f"{cls.__name__}: File {path} has unsupported version (Expects: {vmin}-{vmax}, File: {ver})"
@@ -144,7 +144,7 @@ class AutoSerdeFile(AutoSerde):
             >>> board = Board.from_file(Path.cwd() / "test.kicad_pcb")  # doctest: +SKIP
             >>> board.to_file()  # doctest: +SKIP
         """
-        path = Path(path) if path else self._fs_path
+        path = Path(path) if path else self.path
         with _Timer(f"Save `{path}`"):
             ver_key = self.__version_map[self._askiff_key]
             latest_version = getattr(Version.MAX, ver_key)
@@ -155,3 +155,23 @@ class AutoSerdeFile(AutoSerde):
                 _setup_versioned_serde_environment(self.version, latest_version)
                 sexpr = Sexpr((self._askiff_key, *self.serialize()))
             Sexpr.to_file(sexpr, path)
+
+    def _to_file_relative(self, path: PathLike | None, initial_root_path: Path) -> None:
+        """Saves the file to disk
+
+        Arguments:
+            path: if provided, files are saved relative to that directory.
+                Otherwise, files are saved in their original locations.
+            initial_root_path: folder from which original file was loaded,
+                used to get relative directory, when saving to different than original path
+        """
+        path = Path(path) if path else None
+
+        if self.path is None:
+            raise Exception("Failed to save file. Missing required `fs_path`")
+
+        if path and self.path.is_relative_to(initial_root_path):
+            file = self.path.relative_to(initial_root_path)
+            self.to_file(path=path / file)
+        else:
+            self.to_file()
