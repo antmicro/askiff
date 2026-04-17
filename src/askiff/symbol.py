@@ -418,7 +418,7 @@ class SymbolFile(AutoSerdeFile):
     """Symbols stored in this file (one, when in symbol-per-file library)."""
 
 
-class SymbolLibraryTable(LibraryTable, AutoSerdeFile):
+class SymbolLibraryTable(LibraryTable):
     """Symbol library table file handler.
     Provides typed access to library definitions and their properties"""
 

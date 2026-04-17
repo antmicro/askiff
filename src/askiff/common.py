@@ -8,7 +8,7 @@ from collections.abc import Iterable, Sequence
 from math import atan2, cos, hypot, pi, radians, sin, sqrt
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, cast, overload
 
-from askiff._auto_serde import AutoSerde, AutoSerdeEnum, F
+from askiff._auto_serde import AutoSerde, AutoSerdeEnum, AutoSerdeFile, F
 from askiff._sexpr import GeneralizedSexpr, Qstr
 from askiff.const import Version
 
@@ -351,8 +351,10 @@ class LibEntry(AutoSerde):
     """Library description"""
 
 
-class LibraryTable(AutoSerde):
+class LibraryTable(AutoSerdeFile):
     """Library table, defining version and list of available libraries."""
+
+    _askiff_key: ClassVar[str] = "lib_table"
 
     version: int = Version.DEFAULT.lib_table
     """Library table file format version number."""
