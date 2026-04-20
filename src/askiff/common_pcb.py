@@ -105,6 +105,15 @@ class BaseLayer:
     def __str__(self) -> str:
         return self._value
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, BaseLayer):
+            return self._value == other._value
+
+        return False
+
+    def __hash__(self) -> int:
+        return hash(self._value)
+
     @classmethod
     def deserialize_downcast(cls, sexp: GeneralizedSexpr) -> BaseLayer:
         """Deserializes a generalized sexpr into a Layer instance, attempting a downcast to the appropriate subclass."""
