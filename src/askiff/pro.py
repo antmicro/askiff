@@ -337,14 +337,14 @@ class Project:
     """Project name - retrieved from kicad_pro file name"""
 
     # pro: dict[Path, Sexpr] # Note: kicad_pro seems to be json
-    pcb: list[_LazyFile[Board]]
+    pcb: list[Board]
     """PCB files in the KiCad project directory"""
-    sch: list[_LazyFile[Schematic]]
+    sch: list[Schematic]
     """Schematic files in the KiCad project"""
 
-    pcb_root: _LazyFile[Board] | None = None
+    pcb_root: Board | None = None
     """Main PCB file"""
-    sch_root: _LazyFile[Schematic] | None = None
+    sch_root: Schematic | None = None
     """Main Schematic file"""
 
     fp: dict[str, FootprintLibrary]
@@ -386,7 +386,7 @@ class Project:
         Recursively loads child schematics based on hierarchical sub-sheets, avoiding duplicate loads."""
         if sch.exists():
             sch_file = _LazyFile(Schematic, sch, force)
-            self.sch.append(sch_file)
+            self.sch.append(sch_file)  # type: ignore # ty:ignore[invalid-argument-type]
             for sheet in sch_file.sheets:
                 child_sch_path = sch.parent / sheet.properties.get("Sheetfile").value
                 if [True for sch in self.sch if child_sch_path == sch.path]:
@@ -420,18 +420,18 @@ class Project:
 
             pcb_root_path = self.kicad_pro_path.with_suffix(".kicad_pcb")
             if pcb_root_path.exists():
-                self.pcb_root = _LazyFile(Board, pcb_root_path, force)
-                self.pcb = [self.pcb_root]
+                self.pcb_root = _LazyFile(Board, pcb_root_path, force)  # type: ignore  # ty:ignore[invalid-assignment]
+                self.pcb = [self.pcb_root]  # type: ignore  # ty:ignore[invalid-assignment]
             else:
                 log.warning(f"Projects PCB file not found! Expected: {pcb_root_path}")
         else:
             # If there is not project file, load all sch in directory
             for path in self.path.glob("*.kicad_sch"):
-                self.sch.append(_LazyFile(Schematic, path, force))
+                self.sch.append(_LazyFile(Schematic, path, force))  # type: ignore
             self.sch_root = next(iter(self.sch), None)
 
             for path in self.path.glob("*.kicad_pcb"):
-                self.pcb.append(_LazyFile(Board, path, force))
+                self.pcb.append(_LazyFile(Board, path, force))  # type: ignore
             self.pcb_root = next(iter(self.pcb), None)
 
         fp_lib_table_path = self.path / "fp-lib-table"
