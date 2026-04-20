@@ -17,6 +17,7 @@ from .symbol import SymbolDefinition, SymbolFile, SymbolLibraryTable
 logging.addLevelName(TRACE_DIS, "TRACE_DIS")
 logging.addLevelName(TRACE, "TRACE")
 
+log = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=AutoSerdeFile)
 
@@ -406,13 +407,23 @@ class Project:
         if self.kicad_pro_path:
             self.project_name = self.kicad_pro_path.stem
 
+        self.sch_root, self.pcb_root = None, None
+        self.sch, self.pcb = [], []
+
         if self.kicad_pro_path:
             sch_root_path = self.kicad_pro_path.with_suffix(".kicad_sch")
-            self.__discover_child_sch(sch_root_path, force)
-            self.sch_root = next(iter(self.sch), None)
+            if sch_root_path.exists():
+                self.__discover_child_sch(sch_root_path, force)
+                self.sch_root = next(iter(self.sch), None)
+            else:
+                log.warning(f"Projects schematic file not found! Expected: {sch_root_path}")
 
             pcb_root_path = self.kicad_pro_path.with_suffix(".kicad_pcb")
-            self.pcb_root = _LazyFile(Board, pcb_root_path, force)
+            if pcb_root_path.exists():
+                self.pcb_root = _LazyFile(Board, pcb_root_path, force)
+                self.pcb = [self.pcb_root]
+            else:
+                log.warning(f"Projects PCB file not found! Expected: {pcb_root_path}")
         else:
             # If there is not project file, load all sch in directory
             for path in self.path.glob("*.kicad_sch"):
