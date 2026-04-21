@@ -39,8 +39,9 @@ class Coordinate(AutoSerde):
 class FpProperty(Property):
     """Stores footprint metadata such as Reference, Value, Datasheet, ..."""
 
-    locked: bool | None = F.unlocked()
-    """Whether the property is locked against edits."""
+    unlocked: bool | None = None
+    """Whether the text is allowed to have different orientation than bottom-to-top or left-to-right 
+    (negation of keep upright checkbox in KiCad)"""
 
     layer: BaseLayer = Layer.FAB_F
     """Layer the text resides on"""
