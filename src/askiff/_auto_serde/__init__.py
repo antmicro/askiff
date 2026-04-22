@@ -1,12 +1,12 @@
 from .base_class import AutoSerde
 from .file import AutoSerdeFile
 from .helpers import F, SerdeOpt, SerMode
-from .wrappers import AutoSerdeAgg, AutoSerdeDownCasting, AutoSerdeEnum
+from .wrappers import AutoSerdeDownCasting, AutoSerdeDownCastingAgg, AutoSerdeEnum
 
 __all__ = [
     "AutoSerde",
-    "AutoSerdeAgg",
     "AutoSerdeDownCasting",
+    "AutoSerdeDownCastingAgg",
     "AutoSerdeEnum",
     "AutoSerdeFile",
     "F",

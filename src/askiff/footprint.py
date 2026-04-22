@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING, Any, ClassVar, Final, cast
 
-from askiff._auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
+from askiff._auto_serde import AutoSerde, AutoSerdeEnum, AutoSerdeFile, F
 from askiff.common import (
     ComponentClass,
     EmbeddedFile,
@@ -178,7 +178,7 @@ class Footprint(AutoSerde):
     jumper_pad_groups: list[list[str]] = F()
     """Pad numbers considered internally connected"""
 
-    graphic_items: AutoSerdeAgg[GrItemFp] = F(flatten=True)
+    graphic_items: list[GrItemFp] = F(flatten=True)
     """Graphic items in the footprint such as lines, circles, and texts"""
 
     tables: list[GrTablePCB] = F(name="table", flatten=True)

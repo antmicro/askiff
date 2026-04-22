@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import copy
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
-from askiff._auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
+from askiff._auto_serde import AutoSerde, AutoSerdeEnum, AutoSerdeFile, F
 from askiff._sexpr import GeneralizedSexpr, Qstr
 from askiff.common import (
     Effects,
@@ -170,7 +170,7 @@ class SymbolAspect(AutoSerde):
     unit_name: str | None = None
     """Unit name for the symbol, if defined"""
 
-    graphic_items: AutoSerdeAgg[GrItemSym] = F(flatten=True)
+    graphic_items: list[GrItemSym] = F(flatten=True)
     """Graphic items belonging to the symbol such as lines, circles, and texts"""
 
     pins: list[Pin] = F(name="pin", flatten=True)

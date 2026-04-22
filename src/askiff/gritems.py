@@ -3,9 +3,9 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import Sequence
 from math import cos, sin
-from typing import TYPE_CHECKING, Any, ClassVar, Final, Self, Unpack, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Final, Self, cast
 
-from askiff._auto_serde import AutoSerde, AutoSerdeDownCasting, AutoSerdeEnum, AutoSerdeFile, F, SerdeOpt
+from askiff._auto_serde import AutoSerde, AutoSerdeDownCasting, AutoSerdeDownCastingAgg, AutoSerdeEnum, AutoSerdeFile, F
 from askiff._sexpr import GeneralizedSexpr
 from askiff.common import (
     BaseArc,
@@ -30,7 +30,7 @@ if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment
     F = cast(Any, F)  # type: ignore
 
 
-class GrItem(AutoSerde):
+class GrItem(AutoSerdeDownCastingAgg):
     """Base class for KiCad graphic items, providing shared serde logic for PCB and schematic graphics.
 
     Do not use directly, use specific subclasses like `GrLinePCB`, `GrCirclePCB`, etc.
@@ -59,8 +59,6 @@ class GrItem(AutoSerde):
         >>> rectangles = (g for g in footprint.graphic_items if isinstance(g, GrRectFp))  # doctest: +SKIP
     """
 
-    __askiff_childs: ClassVar[dict[str, type]]
-    """Serialization keyword to child class mapping for down casting during serialization"""
     __askiff_order: ClassVar[list[str]] = [
         "private",
         "start",
@@ -81,28 +79,6 @@ class GrItem(AutoSerde):
         "uuid",
         "data",
     ]
-
-    @classmethod
-    def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:  # type: ignore
-        """Registers child class in `__askiff_childs` of all ancestors"""
-        super().__init_subclass__(**kwargs)
-        base = (getattr(parent, f"_{parent.__name__}__askiff_childs", None) for parent in cls.__mro__[1:])
-        base_filtr = [b for b in base if b is not None]
-        if not base_filtr:
-            setattr(cls, f"_{cls.__name__}__askiff_childs", {})
-            return
-        for base_askiff_childs in base_filtr:
-            askiff_key = getattr(cls, "_askiff_key", None)
-            if askiff_key:
-                base_askiff_childs[askiff_key] = cls
-
-    @property
-    @abstractmethod
-    def _askiff_key(self) -> str:
-        """Key used to identify the object type in KiCad sexpr files.
-        Internal method for askiff's serialization system; library users should not call this directly."""
-        # added to prevent direct creation of base classes (child classes should assign value to _askiff_key)
-        pass
 
 
 class GrShape(BaseShape):

@@ -187,8 +187,6 @@ class GeneratorParams:
     """Skip serializing the field."""
     nested: bool
     """Whether the field has additional nesting in file"""
-    agg: None | Callable
-    """Aggregation function for processing field values during serialization."""
     inline_basetype: type | None
     """Base type for inline serialization"""
     alias: set[str]
@@ -277,7 +275,6 @@ class GeneratorParams:
             alias = deepcopy(alias)
         alias.add(fname)
 
-        agg = getattr(typ, f"_{typ.__name__}__askiff_aggregator", None)
         inline_basetype = fmeta.get("inline_basetype", None)
 
         vtrue, vfalse = GeneratorParams._get_vtruefalse(fmeta, invert)
@@ -298,7 +295,6 @@ class GeneratorParams:
             invert,
             skip,
             nested,
-            agg,
             inline_basetype,
             alias,
             fname,

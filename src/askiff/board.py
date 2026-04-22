@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import logging
 from copy import copy, deepcopy
-from typing import TYPE_CHECKING, Any, ClassVar, Final, Self, Unpack, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Final, Self, cast
 
 from askiff._auto_serde import (
     AutoSerde,
-    AutoSerdeAgg,
     AutoSerdeDownCasting,
+    AutoSerdeDownCastingAgg,
     AutoSerdeEnum,
     AutoSerdeFile,
     F,
-    SerdeOpt,
     SerMode,
 )
 from askiff._sexpr import GeneralizedSexpr, Qstr, Sexpr
@@ -374,13 +373,10 @@ class LayerDef(AutoSerde, positional=True):  # type: ignore
         return str(self.layer.order_id())
 
 
-class TraceBase(AutoSerde):
+class TraceBase(AutoSerdeDownCastingAgg):
     """Base class for KiCad trace objects
 
     Not intended for direct instantiation, use subclasses"""
-
-    __askiff_childs: ClassVar[dict[str, type]] = {}
-    """Child class type mapping for askiff deserialization"""
 
     locked: bool | None = None
     """Whether the trace is locked."""
@@ -393,15 +389,6 @@ class TraceBase(AutoSerde):
 
     uuid: Uuid = F()
     """Unique identifier"""
-
-    @classmethod
-    def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:  # type: ignore
-        super().__init_subclass__(**kwargs)
-        askiff_key = "_askiff_key"
-        if hasattr(cls, askiff_key):
-            TraceBase.__askiff_childs[getattr(cls, askiff_key)] = cls
-        # Note that this is not copy, it is exactly the same memory as for GrItem
-        setattr(cls, f"_{cls.__name__}__askiff_childs", TraceBase.__askiff_childs)
 
 
 class TraceCopper(TraceBase):
@@ -951,7 +938,7 @@ class Board(AutoSerdeFile):
     footprints: list[FootprintBoard] = F(flatten=True, name="footprint")
     """Footprints instances on PCB"""
 
-    graphic_items: AutoSerdeAgg[GrItemPCB] = F(flatten=True)
+    graphic_items: list[GrItemPCB] = F(flatten=True)
     """Graphic objects like lines, circles, and texts on the PCB."""
 
     tables: list[GrTablePCB] = F(name="table", flatten=True)
@@ -963,7 +950,7 @@ class Board(AutoSerdeFile):
     dimensions: list[Dimension] = F(name="dimension", flatten=True)
     """List of dimensions in the PCB."""
 
-    traces: AutoSerdeAgg[TraceBase] = F(flatten=True)
+    traces: list[TraceBase] = F(flatten=True)
     """Traces and vias on the PCB."""
 
     points: list[Point] = F(name="point", flatten=True)

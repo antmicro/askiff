@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack, cast
 
-from askiff._auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeDownCasting, AutoSerdeEnum, F, SerdeOpt
+from askiff._auto_serde import AutoSerde, AutoSerdeDownCasting, AutoSerdeDownCastingAgg, AutoSerdeEnum, F, SerdeOpt
 from askiff._sexpr import GeneralizedSexpr
 from askiff.common import BaseBezier, PinTypePCB, Position, Size, Uuid
 from askiff.common_pcb import (
@@ -133,23 +133,12 @@ class PadShapeCustomOptions(AutoSerde):
     """Anchor type for the custom pad shape."""
 
 
-class GrShapePad(AutoSerde):
+class GrShapePad(AutoSerdeDownCastingAgg):
     """Graphic shape representing a pad on a PCB, used for visual elements such as outlines or cutouts."""
 
-    __askiff_childs: ClassVar[dict[str, type]] = {}
-    """Child class type mapping for automatic deserialization"""
     __askiff_order: ClassVar[list[str]] = ["start", "mid", "center", "end", "pts", "width", "fill"]
     width: float = 0.2
     """Width of the pad outline in millimeters."""
-
-    @classmethod
-    def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:  # type: ignore
-        super().__init_subclass__(**kwargs)
-        askiff_key = "_askiff_key"
-        if hasattr(cls, askiff_key):
-            GrShapePad.__askiff_childs[getattr(cls, askiff_key)] = cls
-        # Note that this is not copy, it is exactly the same memory as for GrItem
-        setattr(cls, f"_{cls.__name__}__askiff_childs", GrShapePad.__askiff_childs)
 
 
 class GrShapePadPoly(GrShapePad, BasePoly):
@@ -191,7 +180,7 @@ class PadShapeCustom(PadShape):
 
     shape: Final[str] = F("custom", unquoted=True)  # type: ignore
     """Constant pad shape identifier"""
-    primitives: AutoSerdeAgg[GrShapePad] = F(keep_empty=True)
+    primitives: list[GrShapePad] = F(keep_empty=True)
     """Graphic primitives defining the custom pad shape"""
     options: PadShapeCustomOptions = F()
     """Options for custom pad shape clearance and anchor behavior"""

@@ -3,12 +3,11 @@ from __future__ import annotations
 import builtins
 import logging
 from abc import abstractmethod
-from collections.abc import Generator, Sequence
+from collections.abc import Sequence
 from enum import Enum
-from types import UnionType
-from typing import ClassVar, Final, Generic, Self, TypeVar, Unpack, get_args, get_origin
+from typing import ClassVar, Final, Self, Unpack
 
-from askiff._sexpr import GeneralizedSexpr, Sexpr
+from askiff._sexpr import GeneralizedSexpr
 
 from .base_class import AutoSerde
 from .helpers import F, SerdeOpt
@@ -38,53 +37,6 @@ class AutoSerdeEnum(Enum):
         obj._name_ = None
         obj._value_ = value
         return obj
-
-
-T = TypeVar("T")
-
-
-class AutoSerdeAgg(Generic[T], list[T]):
-    """Wrapper around list, used to aggregate multiple types (with different serialization identifiers) in one list.
-    Generic can be either a class with `__askiff_childs` or a Union of classes with `_askiff_key`.
-    """
-
-    @classmethod
-    def __askiff_aggregator(cls, inner: type) -> dict[str, type]:
-        """Returns a mapping of askiff keys to types for aggregation handling in AutoSerde classes.
-        Used internally to resolve polymorphic field types during serialization/deserialization.
-
-        Args:
-            inner: The type to analyze for aggregation mapping.
-
-        Returns:
-            A dictionary mapping askiff keys (str) to their corresponding types.
-
-        Raises:
-            Exception: If `inner` is a Union type without `_askiff_key` on all members,
-                or if `inner` has no `__askiff_childs` attribute.
-        """
-        inner_origin, inner_args = get_origin(inner), get_args(inner)
-        if inner_origin is UnionType:
-            ret = {}
-            for typ in inner_args:
-                askiff_key = getattr(typ, "_askiff_key", None)
-                if askiff_key is None:
-                    raise Exception(
-                        f"{cls.__name__}: Aggregated type is {inner}, but {typ.__name__} has no `_askiff_key"
-                    )
-                ret[askiff_key] = typ
-            return ret
-
-        askiff_childs = getattr(inner, f"_{inner.__name__}__askiff_childs", None)
-        if askiff_childs is None:
-            raise Exception(f"{cls.__name__}: Aggregated type is {inner}, but it has no `__askiff_childs")
-        return {k: v for (k, v) in askiff_childs.items() if issubclass(v, inner)}
-
-    def __iter__(self) -> Generator:
-        sexpr = Sexpr
-        for item in super().__iter__():
-            if not isinstance(item, sexpr):
-                yield item
 
 
 class AutoSerdeDownCasting(AutoSerde):
@@ -137,3 +89,45 @@ class AutoSerdeDownCasting(AutoSerde):
             log.debug(sexp, extra={"amodule": cls.__name__})
             return cls.deserialize(sexp)
         return cls.__askiff_childs[deserialized_type].deserialize(sexp)  # type: ignore
+
+
+class AutoSerdeDownCastingAgg(AutoSerde):
+    """Base class for types that support downcasting during deserialization,
+    allowing a single class to represent multiple related subtypes based on a starting keyword.
+    """
+
+    __askiff_childs: ClassVar[dict[str, builtins.type[Self]]]
+    """Child class type lookup for automatic downcasting during deserialization."""
+
+    @classmethod
+    def __init_subclass__(cls, **kwargs: Unpack[SerdeOpt]) -> None:  # type: ignore
+        """Registers child class in `__askiff_childs` of all ancestors"""
+        super().__init_subclass__(**kwargs)
+        base = (getattr(parent, "_AutoSerdeDownCastingAgg__askiff_childs", None) for parent in cls.__mro__[1:])
+        base_filtr = [b for b in base if b is not None]
+        cls.__askiff_childs = {}
+        for base_askiff_childs in base_filtr:
+            askiff_key = getattr(cls, "_askiff_key", None)
+            if askiff_key:
+                base_askiff_childs[askiff_key] = cls
+
+    @property
+    @abstractmethod
+    def _askiff_key(self) -> str:
+        """Key used to identify the object type in KiCad sexpr files.
+        Internal method for askiff's serialization system; library users should not call this directly."""
+        # added to prevent direct creation of base classes (child classes should assign value to _askiff_key)
+        pass
+
+    @classmethod
+    def deserialize_downcast_agg(cls, sexp: GeneralizedSexpr) -> Self:
+        """Deserializes a sexpr into an instance of the class or one of its downcast subclasses"""
+        deserialized_type = sexp[0]
+        if deserialized_type not in cls.__askiff_childs:
+            log.warning(
+                f" Downcast failed: `{deserialized_type}` does not match child types ({cls.__askiff_childs.keys()})",
+                extra={"amodule": cls.__name__},
+            )
+            log.debug(sexp, extra={"amodule": cls.__name__})
+            return cls.deserialize(sexp[1:])
+        return cls.__askiff_childs[deserialized_type].deserialize(sexp[1:])  # type: ignore

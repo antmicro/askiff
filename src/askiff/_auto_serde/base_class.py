@@ -47,9 +47,6 @@ class AutoSerde:
         in most cases default name is overridden by serialize(name=..) (typically set to field name or value from `F()`)
         except for usage inside aggregator classes or union
     * `__askiff_alias: ClassVar[set[str]]` - Additional struct `name` that may be encountered during deserialization
-    * `__askiff_aggregator(inner: type) -> dict[str, type]` - indicates that class is an aggregator
-        = either itself or inner type can be deserialized into different classes depending on first keyword in sexpr
-        should return {serialized_name: type_to_deserialize_into}
     * `_askiff_pre_ser(self) -> Self` - pre processing before serialization
     * `_askiff_post_deser(self) -> None` - post processing after deserialization
     * `SerdeOpt` keywords passed with base class (`class SomeClass(AutoSerde, flag=True)`) are applied to all fields
@@ -108,19 +105,6 @@ class AutoSerde:
                     deser_field[fparam.fname] = _mode
                 continue
 
-            if fparam.agg:
-                if fparam.flatten:
-                    for var_name, var_type in fparam.agg(inner=fparam.type_args[0]).items():
-                        if var_name in names_kicad:
-                            continue
-                        fmode = DeserMode.DESERIALIZE, var_type
-                        deser_field[var_name] = inline_wrap(field, DeserMode.LIST_FLAT, (fmode, typ))
-                else:
-                    deser_field[fparam.fname] = inline_wrap(
-                        field, DeserMode.LIST_AGG, (fparam.agg(inner=fparam.type_args[0]), typ)
-                    )
-                continue
-
             if hasattr(typ, "deserialize_downcast"):
                 fmode = DeserMode.DESERIALIZE_DOWNCAST, typ
             elif hasattr(typ, "deserialize"):
@@ -130,8 +114,21 @@ class AutoSerde:
                     fmode = DeserMode.DESERIALIZE, typ
             else:
                 org_typ = typ
+                org_typ_origin = fparam.type_origin
                 fparam.unwrap_list_type()
                 typ = fparam.typ
+
+                agg = getattr(typ, "_AutoSerdeDownCastingAgg__askiff_childs", None)
+                if agg:
+                    if fparam.flatten:
+                        for var_name, var_type in agg.items():
+                            if var_name in names_kicad:
+                                continue
+                            fmode = DeserMode.DESERIALIZE, var_type
+                            deser_field[var_name] = inline_wrap(field, DeserMode.LIST_FLAT, (fmode, typ))
+                    else:
+                        deser_field[fparam.fname] = inline_wrap(field, DeserMode.LIST_AGG, (typ, org_typ_origin))
+                    continue
 
                 if hasattr(typ, "deserialize_downcast"):
                     fmode = DeserMode.DESERIALIZE_DOWNCAST, typ
@@ -355,12 +352,11 @@ class AutoSerde:
                             raise Exception(f"Unreachable {field} {mode}")
                 case DeserMode.LIST_AGG:
                     list_obj = getattr(ret, field, None)
-                    agg_map, constructor = mode_extra
+                    agg, constructor = mode_extra
                     if list_obj is None:
                         list_obj = constructor()
-                        list_obj = []
                         setattr(ret, field, list_obj)
-                    list_obj.extend(agg_map.get(n, Sexpr).deserialize(ns) for n, *ns in nodes)  # type: ignore
+                    list_obj.extend(agg.deserialize_downcast_agg(n) for n in nodes)  # type: ignore
 
                 case DeserMode.LIST:
                     list_obj = getattr(ret, field, None)

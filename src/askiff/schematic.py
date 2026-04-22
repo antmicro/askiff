@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, ClassVar, Final, cast
 
-from askiff._auto_serde import AutoSerde, AutoSerdeAgg, AutoSerdeEnum, AutoSerdeFile, F
+from askiff._auto_serde import AutoSerde, AutoSerdeEnum, AutoSerdeFile, F
 from askiff.common import (
     BasePoly,
     Color,
@@ -331,7 +331,7 @@ class Schematic(AutoSerdeFile):
     bus_aliases: list[BusAlias] = F(flatten=True, name="bus_alias", skip=True).version(Version.K9.sch, skip=False)
     """[K10: Deprecated] Definition of members assigned to bus aliases (K10 defines this in kicad_pro)"""
 
-    graphic_items: AutoSerdeAgg[GrItemSch] = F(flatten=True)
+    graphic_items: list[GrItemSch] = F(flatten=True)
     """Graphic items present in the schematic such as lines, circles, and arcs.
     including items defining electrical connections"""
 
