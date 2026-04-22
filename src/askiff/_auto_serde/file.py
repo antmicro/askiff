@@ -83,7 +83,9 @@ class AutoSerdeFile(AutoSerde):
     Objects can register themselves for additional processing after whole deserialization is completed
     Allowing field deserialization to access data from other file parts
     """
-    path: Path | None = F(skip=True)
+    fs_path: Path | None = F(skip=True)
+    """Filesystem path from which file was loaded/will be saved to"""
+
     __version_map: ClassVar[dict[str, str]] = {
         "kicad_pcb": "pcb",
         "kicad_sch": "sch",
@@ -127,7 +129,7 @@ class AutoSerdeFile(AutoSerde):
                     for obj in AutoSerdeFile._post_final_deser_objects:
                         obj._post_final_deser(ret)
 
-                ret.path = path
+                ret.fs_path = path
                 return ret
             raise Exception(
                 f"{cls.__name__}: File {path} has unsupported version (Expects: {vmin}-{vmax}, File: {ver})"
@@ -144,7 +146,7 @@ class AutoSerdeFile(AutoSerde):
             >>> board = Board.from_file(Path.cwd() / "test.kicad_pcb")  # doctest: +SKIP
             >>> board.to_file()  # doctest: +SKIP
         """
-        path = Path(path) if path else self.path
+        path = Path(path) if path else self.fs_path
         with _Timer(f"Save `{path}`"):
             ver_key = self.__version_map[self._askiff_key]
             latest_version = getattr(Version.MAX, ver_key)
@@ -167,11 +169,11 @@ class AutoSerdeFile(AutoSerde):
         """
         path = Path(path) if path else None
 
-        if self.path is None:
+        if self.fs_path is None:
             raise Exception("Failed to save file. Missing required `fs_path`")
 
-        if path and self.path.is_relative_to(initial_root_path):
-            file = self.path.relative_to(initial_root_path)
+        if path and self.fs_path.is_relative_to(initial_root_path):
+            file = self.fs_path.relative_to(initial_root_path)
             self.to_file(path=path / file)
         else:
             self.to_file()

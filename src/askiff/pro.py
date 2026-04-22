@@ -27,21 +27,21 @@ class _LazyFile(Generic[T]):
     Defers loading until first access, supporting transparent attribute access and saving relative to a root path.
     """
 
-    path: Path
+    fs_path: Path
     """Path to the KiCad file on disk."""
     _value: Path | T
     """Path to the KiCad file OR parsed file."""
     _lock: RLock
     _inner_cls: type[T]
 
-    def __init__(self, inner_cls: type[T], path: PathLike, force_load: bool = False, value: T | None = None) -> None:
+    def __init__(self, inner_cls: type[T], fs_path: PathLike, force_load: bool = False, value: T | None = None) -> None:
         """Initializes the lazy loader. Loads the file immediately if `force_load` is True"""
-        path = Path(path)
+        fs_path = Path(fs_path)
         object.__setattr__(self, "_inner_cls", inner_cls)
-        if not path.exists() and value is None:
+        if not fs_path.exists() and value is None:
             raise FileNotFoundError(value)
-        object.__setattr__(self, "path", path)
-        object.__setattr__(self, "_value", path if value is None else value)
+        object.__setattr__(self, "fs_path", fs_path)
+        object.__setattr__(self, "_value", fs_path if value is None else value)
         object.__setattr__(self, "_lock", RLock())
         if force_load:
             self._load()
@@ -125,7 +125,7 @@ class SymbolLibrary:
         >>> lib.save()
     """
 
-    path: Path
+    fs_path: Path
     """Path to library directory or file file."""
     __initial_path: Path
     """Original file path this library was loaded from."""
@@ -134,16 +134,16 @@ class SymbolLibrary:
     name: str
     """Library name"""
 
-    def __init__(self, path: PathLike) -> None:
+    def __init__(self, fs_path: PathLike) -> None:
         """Initialize an SymbolLibrary instance.
 
         Args:
             path: Path to the library directory or library file (`kicad_sym`).
         """
-        path = Path(path)
-        self.path = path
-        self.name = path.stem
-        self.__initial_path = path
+        fs_path = Path(fs_path)
+        self.fs_path = fs_path
+        self.name = fs_path.stem
+        self.__initial_path = fs_path
         self.objects = []
 
     def load(self, force: bool = False) -> Self:
@@ -158,12 +158,12 @@ class SymbolLibrary:
         Returns:
             Self, for method chaining.
         """
-        if self.path.suffix == ".kicad_sym" and self.path.exists():
-            self.objects = [_LazyFile(SymbolFile, self.path, force)]
+        if self.fs_path.suffix == ".kicad_sym" and self.fs_path.exists():
+            self.objects = [_LazyFile(SymbolFile, self.fs_path, force)]
             return self
 
         self.objects = []
-        for path in self.path.glob("*.kicad_sym"):
+        for path in self.fs_path.glob("*.kicad_sym"):
             self.objects.append(_LazyFile(SymbolFile, path, force))
         return self
 
@@ -193,20 +193,20 @@ class SymbolLibrary:
                 return
 
         # Add footprint to library
-        if self.path.suffix == ".kicad_sym":
+        if self.fs_path.suffix == ".kicad_sym":
             # Multiple symbols per file library style
             if self.objects:
                 self.objects[0].symbols.append(value)
             else:
-                sym_file = SymbolFile(path=self.path)
+                sym_file = SymbolFile(fs_path=self.fs_path)
                 sym_file.symbols.append(value)
-                self.objects.append(_LazyFile(SymbolFile, path=self.path, value=sym_file))
+                self.objects.append(_LazyFile(SymbolFile, fs_path=self.fs_path, value=sym_file))
         else:
             # Symbol per file library style
-            path = self.path / f"{index}.kicad_sym"
-            sym_file = SymbolFile(path=path)
+            path = self.fs_path / f"{index}.kicad_sym"
+            sym_file = SymbolFile(fs_path=path)
             sym_file.symbols.append(value)
-            self.objects.append(_LazyFile(SymbolFile, path=path, value=sym_file))
+            self.objects.append(_LazyFile(SymbolFile, fs_path=path, value=sym_file))
 
 
 class FootprintLibrary:
@@ -240,7 +240,7 @@ class FootprintLibrary:
         >>> lib.save()
     """
 
-    path: Path
+    fs_path: Path
     """Path to the footprint library directory."""
     __initial_path: Path
     """Original path to the footprint library directory."""
@@ -249,16 +249,16 @@ class FootprintLibrary:
     name: str
     """Library name"""
 
-    def __init__(self, path: PathLike) -> None:
+    def __init__(self, fs_path: PathLike) -> None:
         """Initialize an FootprintLibrary instance
 
         Args:
             path: Path to library folder
         """
-        path = Path(path)
-        self.path = path
-        self.name = path.stem
-        self.__initial_path = path
+        fs_path = Path(fs_path)
+        self.fs_path = fs_path
+        self.name = fs_path.stem
+        self.__initial_path = fs_path
         self.objects = []
 
     def load(self, force: bool = False) -> Self:
@@ -273,7 +273,7 @@ class FootprintLibrary:
             Self, for method chaining.
         """
         self.objects = []
-        for path in self.path.glob("*.kicad_mod"):
+        for path in self.fs_path.glob("*.kicad_mod"):
             self.objects.append(_LazyFile(FootprintFile, path, force))
         return self
 
@@ -298,7 +298,7 @@ class FootprintLibrary:
                 return
 
         # Add footprint to library
-        self.objects.append(_LazyFile(FootprintFile, path=self.path / f"{index}.kicad_mod", value=value))
+        self.objects.append(_LazyFile(FootprintFile, fs_path=self.fs_path / f"{index}.kicad_mod", value=value))
 
 
 class Project:
@@ -324,7 +324,7 @@ class Project:
         >>> project.save()
     """
 
-    path: Path
+    fs_path: Path
     """Path to project's folder"""
 
     kicad_pro_path: Path | None
@@ -360,17 +360,17 @@ class Project:
     variables: dict[str, str]
     """KiCad variables Project is able to resolve"""
 
-    def __init__(self, path: PathLike) -> None:
+    def __init__(self, fs_path: PathLike) -> None:
         """Initialize an Project instance for managing KiCad project files in the given directory path.
         Sets up internal state including the project directory, initial path, and default project variables.
 
         Args:
-            path: Path to the KiCad project directory.
+            fs_path: Path to the KiCad project directory.
         """
-        path = Path(path)
-        self.path = path
-        self.__initial_path = path
-        self.variables = {"KIPRJMOD": str(path)}
+        fs_path = Path(fs_path)
+        self.fs_path = fs_path
+        self.__initial_path = fs_path
+        self.variables = {"KIPRJMOD": str(fs_path)}
         self.sch = []
         self.pcb = []
 
@@ -389,7 +389,7 @@ class Project:
             self.sch.append(sch_file)  # type: ignore # ty:ignore[invalid-argument-type]
             for sheet in sch_file.sheets:
                 child_sch_path = sch.parent / sheet.properties.get("Sheetfile").value
-                if [True for sch in self.sch if child_sch_path == sch.path]:
+                if [True for sch in self.sch if child_sch_path == sch.fs_path]:
                     # if file already loaded, skip it
                     continue
                 self.__discover_child_sch(child_sch_path, force)
@@ -403,7 +403,7 @@ class Project:
         Args:
             force: if `True`, immediately load lazy-loaded files
         """
-        self.kicad_pro_path = next((p for p in self.path.glob("*.kicad_pro")), None)
+        self.kicad_pro_path = next((p for p in self.fs_path.glob("*.kicad_pro")), None)
         if self.kicad_pro_path:
             self.project_name = self.kicad_pro_path.stem
 
@@ -426,15 +426,15 @@ class Project:
                 log.warning(f"Projects PCB file not found! Expected: {pcb_root_path}")
         else:
             # If there is not project file, load all sch in directory
-            for path in self.path.glob("*.kicad_sch"):
+            for path in self.fs_path.glob("*.kicad_sch"):
                 self.sch.append(_LazyFile(Schematic, path, force))  # type: ignore
             self.sch_root = next(iter(self.sch), None)
 
-            for path in self.path.glob("*.kicad_pcb"):
+            for path in self.fs_path.glob("*.kicad_pcb"):
                 self.pcb.append(_LazyFile(Board, path, force))  # type: ignore
             self.pcb_root = next(iter(self.pcb), None)
 
-        fp_lib_table_path = self.path / "fp-lib-table"
+        fp_lib_table_path = self.fs_path / "fp-lib-table"
         self.fp_lib_table = (
             FootprintLibraryTable.from_file(fp_lib_table_path)
             if fp_lib_table_path.exists()
@@ -444,7 +444,7 @@ class Project:
             lib.name: FootprintLibrary(Path(self.resolve_var(lib.uri))).load(force) for lib in self.fp_lib_table.lib
         }
 
-        sym_lib_table_path = self.path / "sym-lib-table"
+        sym_lib_table_path = self.fs_path / "sym-lib-table"
         self.sym_lib_table = (
             SymbolLibraryTable.from_file(sym_lib_table_path) if sym_lib_table_path.exists() else SymbolLibraryTable()
         )
