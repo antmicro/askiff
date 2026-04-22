@@ -364,7 +364,7 @@ class LayerDef(AutoSerde, positional=True):  # type: ignore
     def __init__(
         self, layer: BaseLayer = Layer.CU_F, function: LayerFunction | None = None, user_name: str | None = None
     ) -> None:
-        self.std_name = layer
+        self.layer = layer
         self.function = layer.validate_function(function)
         self.user_name = user_name
 
