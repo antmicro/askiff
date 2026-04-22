@@ -384,7 +384,7 @@ class TraceBase(AutoSerdeDownCastingAgg):
     solder_mask_margin: float | None = None
     """Margin for solder mask opening around the trace."""
 
-    net: Net = F(serialize=_NetK9Simple._ser, deserialize=_NetK9Simple.deserialize)
+    net: Net = F().version(Version.K9.pcb, serialize=_NetK9Simple._ser, deserialize=_NetK9Simple.deserialize)
     """Associated signal net"""
 
     uuid: Uuid = F()

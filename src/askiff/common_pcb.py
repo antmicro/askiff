@@ -487,9 +487,9 @@ class Net(AutoSerde):
 class _NetK9Simple(Net):
     """Used internally to ensure correct K9 serde for simple net without name string"""
 
-    _number: int | None = F(positional=True, skip=True).version(Version.K9.pcb, skip=False)
+    _number: int | None = F(positional=True)
     """Net identifier e.g. `0` [Deprecated in K10]"""
-    name: str = F(positional=True).version(Version.K9.pcb, skip=True)  # type: ignore
+    name: str = F(positional=True, skip=True)  # type: ignore
     """Net name, e.g., "GND"."""
 
     def _askiff_post_deser(self) -> None:
@@ -500,7 +500,7 @@ class _NetK9Simple(Net):
     def _post_final_deser(self, root_object) -> None:  # type: ignore # noqa: ANN001
         """Populates net name from board-level net map. Called just after board deserialization is complete"""
         # Note: annotation skipped to prevent circular imports
-        if self.name is not None or not hasattr(root_object, "nets"):
+        if self.name or not hasattr(root_object, "nets"):
             return
         nr = self._number
         self.name = next((net.name for net in root_object.nets or () if net._number == nr), "Unknown")
@@ -692,7 +692,7 @@ class Zone(AutoSerde):
     """A zone represents a defined area on a PCB, typically used for copper pours, keepouts, or other design rules.
     Supports configuration of net connections, layers, clearance, teardrops, and fill properties."""
 
-    net: Net | None = F(serialize=_NetK9Simple._ser, deserialize=_NetK9Simple.deserialize)
+    net: Net | None = F().version(Version.K9.pcb, serialize=_NetK9Simple._ser, deserialize=_NetK9Simple.deserialize)
     """Signal net associated with the zone."""
     net_name: str | None = None
     """[K10: Deprecated] Signal Net name associated with the zone."""

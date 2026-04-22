@@ -192,7 +192,7 @@ class GrShapePCB(_GrShapePCBFp, GrItemPCB):
 
     Not intended for direct instantiation; use specific subclasses like GrLinePCB, GrCirclePCB, etc."""
 
-    net: Net | None = F(serialize=_NetK9Simple._ser, deserialize=_NetK9Simple.deserialize)
+    net: Net | None = F().version(Version.K9.pcb, serialize=_NetK9Simple._ser, deserialize=_NetK9Simple.deserialize)
     """Net identifier for the graphic shape element."""
     locked: bool | None = None
     """Whether the graphic shape is locked against modifications."""
