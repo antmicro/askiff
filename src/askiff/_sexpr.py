@@ -68,7 +68,10 @@ class Sexpr(list[Union["GeneralizedSexpr", str]]):
 
                 # AND closing sign
                 [|]
-            )
+            ) |
+
+            # OR comment: # ...
+            \#[^\n]*
         )
     """
     """Regular expression pattern for parsing sexpr elements."""
@@ -84,6 +87,9 @@ class Sexpr(list[Union["GeneralizedSexpr", str]]):
         # re.VERBOSE - allows spaces, newlines and comments in pattern string
         for m in re.findall(Sexpr.__re_pattern, txt, re.VERBOSE):
             match m[0]:
+                case "#":
+                    # ignore comments
+                    pass
                 case "(":
                     if m[-1] == ")":
                         out.append(m[1:-1].split())
@@ -105,7 +111,7 @@ class Sexpr(list[Union["GeneralizedSexpr", str]]):
                     out.append(m)
         if stack:
             raise AssertionError("Incorrect nesting of brackets")
-        return Sexpr(out[0])
+        return Sexpr(out[0] if len(out) == 1 else out)
 
     @staticmethod
     def from_file(path: Path) -> Sexpr:
@@ -113,13 +119,22 @@ class Sexpr(list[Union["GeneralizedSexpr", str]]):
         Raises AssertionError on malformed input or mismatched brackets."""
         return Sexpr.from_str(path.read_text())
 
-    def to_file(self, path: Path) -> None:
+    def to_file(self, path: Path, flatten: bool = False, reduced_ident: bool = False) -> None:
         """Writes the S-Expression structure to a file at the specified path,
         formatting it with appropriate column width based on the file type.
         Creates parent directories if needed."""
         column_width = PCB_COLUMN_WIDTH if "pcb" in path.suffix else SCH_COLUMN_WIDTH
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(to_str(self, column_width=column_width) + "\n")
+        if reduced_ident:
+            if flatten:
+                path.write_text("\n".join(to_str_reduced_ident(node) for node in self) + "\n")
+            else:
+                path.write_text(to_str_reduced_ident(self) + "\n")
+        else:
+            if flatten:
+                path.write_text("\n".join(to_str(node, column_width=column_width) for node in self) + "\n")
+            else:
+                path.write_text(to_str(self, column_width=column_width) + "\n")
 
     def serialize(self) -> GeneralizedSexpr:
         """This is stub for usage of Sexpr as fallback for unknown nodes in AutoSerde"""
@@ -202,3 +217,28 @@ def to_str(sexpr: GeneralizedSexpr, indent: int = 0, column_width: int = SCH_COL
     if inline:
         return ret + ")"
     return ret + "\n" + indent * "\t" + ")"
+
+
+def to_str_reduced_ident(sexpr: GeneralizedSexpr, top: bool = True) -> str:
+    """Convert a generalized S-Expression structure into a formatted string representation.
+
+    Similar to :meth:`askiff._sexpr.to_str` but less eager line splitting format
+    """
+    ret = "("
+    inline = True
+    for idx, s in enumerate(sexpr):
+        if idx:
+            if idx >= 2 and top:
+                ret += "\n\t"
+            else:
+                ret += " "
+        if isinstance(s, str):
+            if isinstance(s, Qstr):
+                s = '"' + s.replace(r'"', r"\"") + '"'
+            ret += s
+        else:
+            ret += to_str_reduced_ident(s, top=False)
+            inline = False
+    if inline or not top:
+        return ret + ")"
+    return ret + "\n" + ")"

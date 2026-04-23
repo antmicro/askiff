@@ -10,6 +10,7 @@ from typing import Any, Generic, Self, TypeVar
 from ._auto_serde import AutoSerdeFile
 from .board import Board
 from .const import TRACE, TRACE_DIS
+from .dru import DesignRulesFile
 from .footprint import FootprintFile, FootprintLibraryTable
 from .schematic import Schematic
 from .symbol import SymbolDefinition, SymbolFile, SymbolLibraryTable
@@ -341,11 +342,15 @@ class Project:
     """PCB files in the KiCad project directory"""
     sch: list[Schematic]
     """Schematic files in the KiCad project"""
+    dru: list[DesignRulesFile]
+    """Design Rules files in the KiCad project"""
 
     pcb_root: Board | None = None
     """Main PCB file"""
     sch_root: Schematic | None = None
     """Main Schematic file"""
+    dru_root: DesignRulesFile | None = None
+    """Main Design Rules file"""
 
     fp: dict[str, FootprintLibrary]
     """Lazy loaded footprint libraries"""
@@ -394,6 +399,14 @@ class Project:
                     continue
                 self.__discover_child_sch(child_sch_path, force)
 
+    __T = TypeVar("__T", bound=AutoSerdeFile)
+
+    def __load_all_files_of_type(self, typ: type[__T], store: list[__T], force: bool) -> __T | None:
+        """Load all files of specific type from projects directory"""
+        for path in self.fs_path.glob("*" + typ.fs_ext):
+            store.append(_LazyFile(typ, path, force))  # type: ignore  # ty:ignore[invalid-argument-type]
+        return next(iter(store), None)
+
     def load(self, force: bool = False) -> Self:
         """Discover project relevant files in `Project.path` directory.
 
@@ -407,8 +420,8 @@ class Project:
         if self.kicad_pro_path:
             self.project_name = self.kicad_pro_path.stem
 
-        self.sch_root, self.pcb_root = None, None
-        self.sch, self.pcb = [], []
+        self.sch_root, self.pcb_root, self.dru_root = None, None, None
+        self.sch, self.pcb, self.dru = [], [], []
 
         if self.kicad_pro_path:
             sch_root_path = self.kicad_pro_path.with_suffix(".kicad_sch")
@@ -424,15 +437,16 @@ class Project:
                 self.pcb = [self.pcb_root]  # type: ignore  # ty:ignore[invalid-assignment]
             else:
                 log.warning(f"Projects PCB file not found! Expected: {pcb_root_path}")
-        else:
-            # If there is not project file, load all sch in directory
-            for path in self.fs_path.glob("*.kicad_sch"):
-                self.sch.append(_LazyFile(Schematic, path, force))  # type: ignore
-            self.sch_root = next(iter(self.sch), None)
 
-            for path in self.fs_path.glob("*.kicad_pcb"):
-                self.pcb.append(_LazyFile(Board, path, force))  # type: ignore
-            self.pcb_root = next(iter(self.pcb), None)
+            dru_root_path = self.kicad_pro_path.with_suffix(".kicad_dru")
+            if dru_root_path.exists():
+                self.dru_root = _LazyFile(DesignRulesFile, dru_root_path, force)  # type: ignore  # ty:ignore[invalid-assignment]
+                self.dru = [self.dru_root]  # type: ignore  # ty:ignore[invalid-assignment]
+        else:
+            # If there is not project file, load all kicad files in directory
+            self.sch_root = self.__load_all_files_of_type(Schematic, self.sch, force)
+            self.pcb_root = self.__load_all_files_of_type(Board, self.pcb, force)
+            self.dru_root = self.__load_all_files_of_type(DesignRulesFile, self.dru, force)
 
         fp_lib_table_path = self.fs_path / "fp-lib-table"
         self.fp_lib_table = (
@@ -468,6 +482,9 @@ class Project:
         for sch in self.sch:
             sch._to_file_relative(path, self.__initial_path)
 
+        for dru in self.dru:
+            dru._to_file_relative(path, self.__initial_path)
+
         for fp_lib in self.fp.values():
             if path and fp_lib._FootprintLibrary__initial_path.is_relative_to(self.__initial_path):  # type: ignore # ty:ignore[unresolved-attribute]
                 file = fp_lib._FootprintLibrary__initial_path.relative_to(self.__initial_path)  # type: ignore  # ty:ignore[unresolved-attribute]
@@ -480,4 +497,3 @@ class Project:
                 sch_lib.save(path / file)
             else:
                 sch_lib.save()
-        pass

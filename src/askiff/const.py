@@ -26,6 +26,7 @@ class Version:
         pcb: int
         sym: int
         fp: int
+        dru: int
         lib_table: int
 
     class K8(BaseVer):
@@ -35,6 +36,7 @@ class Version:
         pcb = 20240108
         sym = sch
         fp = pcb
+        dru = 1
         lib_table = 0
 
     class K9(BaseVer):
@@ -44,6 +46,7 @@ class Version:
         sch = 20250114
         pcb = 20241229
         fp = pcb
+        dru = 1
         lib_table = 0
 
     class K10(BaseVer):
@@ -53,6 +56,7 @@ class Version:
         sch = 20260306
         pcb = 20260206
         fp = pcb
+        dru = 1
         lib_table = 7
 
     MIN = K8

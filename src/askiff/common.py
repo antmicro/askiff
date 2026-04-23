@@ -360,6 +360,9 @@ class LibraryTable(AutoSerdeFile):
 
     _askiff_key: ClassVar[str] = "lib_table"
 
+    _askiff_sexpr_format: ClassVar[dict[str, bool]] = {"flatten":True, "reduced_ident":True}
+    """File type specific S-Expression formatting"""
+
     fs_ext: Final[str] = F("", skip=True)  # type: ignore # ty:ignore[override-of-final-variable]
     """File name extension"""
 

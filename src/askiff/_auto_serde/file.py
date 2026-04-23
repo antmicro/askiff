@@ -97,8 +97,12 @@ class AutoSerdeFile(AutoSerde):
         "footprint": "fp",
         "sym_lib_table": "lib_table",
         "fp_lib_table": "lib_table",
+        ".kicad_dru": "dru",
     }
     """Map between file identifier (first token in file) and corresponding field in :class:`askiff.const.Version`"""
+
+    _askiff_sexpr_format: ClassVar[dict[str, bool]] = {}
+    """File type specific S-Expression formatting"""
 
     @classmethod
     def from_file(cls, path: PathLike) -> Self:
@@ -116,9 +120,9 @@ class AutoSerdeFile(AutoSerde):
         with _Timer(f"Load `{path}`"):
             sexp = Sexpr.from_file(path)
             askiff_key = cls._askiff_key
-            if askiff_key != sexp[0]:
+            if askiff_key and askiff_key != sexp[0]:
                 raise Exception(f"{cls.__name__}: File {path} is not valid ")
-            ver_key = cls.__version_map[askiff_key]
+            ver_key = cls.__version_map[askiff_key or path.suffix]
             raw_ver = [
                 int(x[1]) for x in sexp[:5] if isinstance(x, list) and x[0] == "version" and isinstance(x[1], str)
             ]
@@ -135,6 +139,7 @@ class AutoSerdeFile(AutoSerde):
 
                 ret.fs_path = path
                 return ret
+            print(sexp)
             raise Exception(
                 f"{cls.__name__}: File {path} has unsupported version (Expects: {vmin}-{vmax}, File: {ver})"
             )
@@ -151,16 +156,16 @@ class AutoSerdeFile(AutoSerde):
             >>> board.to_file()  # doctest: +SKIP
         """
         path = Path(path) if path else self.fs_path
+        if path is None:
+            raise Exception(f"Saving {type(self).__name__} to file requires specifying file system path!")
         with _Timer(f"Save `{path}`"):
-            ver_key = self.__version_map[self._askiff_key]
+            ver_key = self.__version_map[self._askiff_key or path.suffix]
             latest_version = getattr(Version.MAX, ver_key)
-            if path is None:
-                raise Exception(f"Saving {type(self).__name__} to file requires specifying file system path!")
             with _file_serde_lock:
                 # serialization is CPU bound, so threading is unlikely to bring benefit anyway
                 _setup_versioned_serde_environment(self.version, latest_version)
-                sexpr = Sexpr((self._askiff_key, *self.serialize()))
-            Sexpr.to_file(sexpr, path)
+                sexpr = Sexpr((self._askiff_key, *self.serialize())) if self._askiff_key else Sexpr(self.serialize())
+            Sexpr.to_file(sexpr, path, **self._askiff_sexpr_format)
 
     def _to_file_relative(self, path: PathLike | None, initial_root_path: Path) -> None:
         """Saves the file to disk
