@@ -7,6 +7,7 @@ from os import PathLike
 from pathlib import Path
 from typing import (
     ClassVar,
+    Final,
     Self,
 )
 
@@ -85,6 +86,9 @@ class AutoSerdeFile(AutoSerde):
     """
     fs_path: Path | None = F(skip=True)
     """Filesystem path from which file was loaded/will be saved to"""
+
+    fs_ext: Final[str] = F(skip=True)
+    """File name extension"""
 
     __version_map: ClassVar[dict[str, str]] = {
         "kicad_pcb": "pcb",

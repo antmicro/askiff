@@ -307,6 +307,9 @@ class Schematic(AutoSerdeFile):
 
     _askiff_key: Final[str] = "kicad_sch"  # type: ignore
 
+    fs_ext: Final[str] = F(".kicad_sch", skip=True)  # type: ignore # ty:ignore[override-of-final-variable]
+    """File name extension"""
+
     version: int = Version.DEFAULT.sch
     """Schematic file format version number."""
 

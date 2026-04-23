@@ -912,6 +912,9 @@ class Board(AutoSerdeFile):
 
     _askiff_key: ClassVar[str] = "kicad_pcb"
 
+    fs_ext: Final[str] = F(".kicad_pcb", skip=True)  # type: ignore # ty:ignore[override-of-final-variable]
+    """File name extension"""
+
     version: int = Version.DEFAULT.pcb
     """Defines the file format version"""
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from copy import copy
-from typing import TYPE_CHECKING, Any, ClassVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Final, cast
 
 from askiff._auto_serde import AutoSerde, AutoSerdeEnum, AutoSerdeFile, F
 from askiff._sexpr import GeneralizedSexpr, Qstr
@@ -404,6 +404,9 @@ class SymbolFile(AutoSerdeFile):
     """A file containing KiCad symbol library data, used for storing one or more component symbol definitions."""
 
     _askiff_key: ClassVar[str] = "kicad_symbol_lib"
+
+    fs_ext: Final[str] = F(".kicad_sym", skip=True)  # type: ignore # ty:ignore[override-of-final-variable]
+    """File name extension"""
 
     version: int = F(Version.DEFAULT.sym, after="lib_id")
     """Symbol file format version number."""
