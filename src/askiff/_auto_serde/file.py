@@ -118,7 +118,7 @@ class AutoSerdeFile(AutoSerde):
         Handles version-specific deserialization logic and performs post-deserialization setup."""
         path = Path(path)
         with _Timer(f"Load `{path}`"):
-            sexp = Sexpr.from_file(path)
+            sexp = Sexpr.from_file(path, **cls._askiff_sexpr_format)
             askiff_key = cls._askiff_key
             if askiff_key and askiff_key != sexp[0]:
                 raise Exception(f"{cls.__name__}: File {path} is not valid ")

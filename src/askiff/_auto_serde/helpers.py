@@ -8,6 +8,8 @@ from enum import Enum, auto
 from types import NoneType, UnionType
 from typing import Any, Final, Literal, TypedDict, TypeVar, Union, Unpack, get_args, get_origin, get_type_hints
 
+from askiff._sexpr import Sexpr
+
 log = logging.getLogger()
 
 
@@ -223,7 +225,7 @@ class GeneratorParams:
                 self.typ = get_args(self.typ)[0]
 
         self.list_of_lists = False
-        if GeneratorParams.is_type_list(self.typ):
+        if GeneratorParams.is_type_list(self.typ) and self.typ != Sexpr:
             # case of nested list
             self.typ = get_args(self.typ)[0]
             self.list_of_lists = True

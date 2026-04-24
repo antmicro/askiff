@@ -285,6 +285,7 @@ class FootprintFile(Footprint, AutoSerdeFile):
         >>> footprint = FootprintFile()
         >>> board.add_footprint(footprint, reference="R1", position=Position(15, 20))
     """
+
     fs_ext: Final[str] = F(".kicad_mod", skip=True)  # type: ignore # ty:ignore[override-of-final-variable]
     """File name extension"""
 
