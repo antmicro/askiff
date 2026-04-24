@@ -349,6 +349,10 @@ class LibEntry(AutoSerde):
     """Library options string"""
     description: str = F(name="descr")
     """Library description"""
+    disabled: bool = F(flag=True)
+    """Corresponds to `Enable`/`Active` checkbox in KiCad GUI"""
+    hidden: bool = F(flag=True)
+    """Corresponds to `Visible`/`Show` checkbox in KiCad GUI"""
 
 
 class LibraryTable(AutoSerdeFile):
