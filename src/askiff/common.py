@@ -524,7 +524,7 @@ class PinType(Qstr, AutoSerdeEnum):
     OUTPUT = "output"
     BIDIRECTIONAL = "bidirectional"
     OPEN_COLLECTOR = "open_collector"
-    OPEN_EMITTER = "open_emmiter"
+    OPEN_EMITTER = "open_emitter"
     FREE = "free"
     UNSPECIFIED = "unspecified"
     NO_CONNECT = "no_connect"
