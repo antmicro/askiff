@@ -471,8 +471,12 @@ class ComponentClass(AutoSerde):
 class PaperSize(Qstr, AutoSerdeEnum):
     """Represents available paper sizes."""
 
+    A0 = "A0"
+    A1 = "A1"
+    A2 = "A2"
     A3 = "A3"
     A4 = "A4"
+    A5 = "A5"
 
 
 class Paper(AutoSerde, positional=True):  # type:ignore
