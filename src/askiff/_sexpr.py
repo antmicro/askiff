@@ -81,14 +81,14 @@ class Sexpr(list[Union["GeneralizedSexpr", str]]):
         """Parse a KiCad sexpr string into a Sexpr object.
         Handles nested lists, quoted strings, identifiers/numerics (unquoted strings).
         Raises AssertionError on malformed input or mismatched brackets."""
-        stack = []
+        stack: list[Sexpr] = []
         out = Sexpr()
         # Iter over all regex pattern matches
         # re.VERBOSE - allows spaces, newlines and comments in pattern string
         for m in re.findall(Sexpr.__re_pattern, txt, re.VERBOSE):
             match m[0]:
                 case "#":
-                    if keep_comments:
+                    if keep_comments and stack:
                         out.append(m)
                 case "(":
                     if m[-1] == ")":
