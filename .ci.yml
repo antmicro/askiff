@@ -57,12 +57,12 @@ lint:
     - uv sync
     - git submodule update --init --depth 1 test_projects/${TEST_PROJECT} || true
   script:
-    - uv run askiff -i test_projects/${TEST_PROJECT} --time-print
-    - if [[ -n $(git diff --shortstat) ]]; then git diff --color=always; exit 1; fi
+    - cd test_projects/${TEST_PROJECT}
+    - uv run askiff --time-print
     - |
-      # Diff submodules, skipping DRU check, as it is not strictly formatted by KiCad
-      if [[ -n $(git submodule foreach --quiet "git diff -- . ':(exclude)*.kicad_dru' --shortstat") ]];
-        then git submodule foreach "git diff -- . ':(exclude)*.kicad_dru'  --color=always";
+      # Check diff, skipping DRU file, as it is not strictly formatted by KiCad
+      if [[ -n $(git diff -- . ':(exclude)*.kicad_dru' --shortstat) ]]; then
+        git diff -- . ':(exclude)*.kicad_dru'  --color=always;
         exit 1;
       fi
 
