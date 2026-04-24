@@ -1,24 +1,35 @@
 (version 1)
-#--------------------- HDMI/DP ----------------------
 (rule "(hdmi_inner"
 	(layer inner)
 	(condition "(A.NetClass == '100Ohm-diff_HDMI')")
 	(constraint track_width (opt 0.125mm))
-	(constraint diff_pair_gap  (opt 0.225mm))
+	(constraint diff_pair_gap (opt 0.225mm))
 )
 (rule "(hdmi_outer"
 	(layer outer)
 	(condition "(A.NetClass == '100Ohm-diff_HDMI')")
 	(constraint track_width (opt 0.125mm))
-	(constraint diff_pair_gap  (opt 0.125mm))
+	(constraint diff_pair_gap (opt 0.125mm))
 )
-
 (rule "(hdmi_clearance"
 	(condition "A.NetClass == '100Ohm-diff_HDMI' && !AB.isCoupledDiffPair() && A.Type == 'Track' && B.Type == 'Track'")
 	(constraint clearance (min 0.2mm))
 )
-#---------------------------------------------
 (rule "clearance1"
-	(constraint clearance (min 0.125mm))
 	(condition "A.NetName == 'GND' && !(A.Type == 'Zone' && B.Type == 'Zone')")
+	(constraint clearance (min 0.125mm))
+)
+(rule "Custom rule 1"
+	# aaaaa
+	(constraint clearance (min 0.2mm))
+)
+(rule "Courtyard_clearance_1"
+	# aaa
+	(layer "F.CrtYd")
+	(condition "A.intersectsArea('auto-placement-area-/multi-channel-test/')")
+	(constraint courtyard_clearance (min 0.1mm))
+)
+(rule "Absolute_length_1"
+	(layer "In3.Cu")
+	(constraint length (min 0.9mm) (opt 1mm) (max 1.1mm))
 )
