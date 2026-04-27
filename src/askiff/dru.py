@@ -25,7 +25,18 @@ class Rule(AutoSerde):
 
 
 class DesignRulesFile(AutoSerdeFile):
-    """Represents a KiCad Custom design rules file (.kicad_dru)"""
+    """Represents a KiCad Custom design rules file (.kicad_dru)
+
+    .. warning:: Serialization accuracy
+
+        Due to nature of `*.kicad_dru` (that is no enforced formatting on KiCad side),
+        current implementation of :class:`askiff.dru.DesignRulesFile` may introduce following non-semantic changes:
+
+        * Removal of top level comments (not enclosed in `()`)
+        * Enforced single leading space in comments
+        * Changed formatting of S-expressions (ie. different splitting between lines)
+
+    """
 
     _askiff_key: Final[str] = ""  # type: ignore
 

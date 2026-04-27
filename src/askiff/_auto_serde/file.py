@@ -139,7 +139,7 @@ class AutoSerdeFile(AutoSerde):
 
                 ret.fs_path = path
                 return ret
-            print(sexp)
+
             raise Exception(
                 f"{cls.__name__}: File {path} has unsupported version (Expects: {vmin}-{vmax}, File: {ver})"
             )
