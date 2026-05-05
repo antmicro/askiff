@@ -73,6 +73,7 @@ class GrItem(AutoSerdeDownCastingAgg):
         "stroke",
         "locked",
         "fill",
+        "layer",
         "_layers",
         "solder_mask_margin",
         "net",
