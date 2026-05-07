@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack, cast
 
 from askiff._auto_serde import AutoSerde, AutoSerdeDownCasting, AutoSerdeDownCastingAgg, AutoSerdeEnum, F, SerdeOpt
 from askiff._sexpr import GeneralizedSexpr
-from askiff.common import BaseBezier, PinTypePCB, Position, Size, Uuid
+from askiff.common import BaseBezier, BaseRect, PinTypePCB, Position, Size, Uuid
 from askiff.common_pcb import (
     BaseLayer,
     BasePoly,
@@ -153,6 +153,14 @@ class GrShapePadCurve(GrShapePad, BaseBezier):
     """Bezier primitive for defining pad custom shapes."""
 
     _askiff_key: ClassVar[str] = "gr_curve"
+
+
+class GrShapePadRect(GrShapePad, BaseRect):
+    """Rect primitive for defining pad custom shapes."""
+
+    _askiff_key: ClassVar[str] = "gr_rect"
+    fill: bool = False
+    """Whether the rect pad is filled with solid color."""
 
 
 class GrShapePadCircle(GrShapePad, BaseCircle):
