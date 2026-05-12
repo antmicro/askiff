@@ -110,7 +110,10 @@ class F(Any):
     @staticmethod
     def unlocked(default: Any = AUTO_DEFAULT, **kwargs: Unpack[SerdeOpt]) -> F:  # noqa: ANN401
         """Preset to handle `unlocked` flag as `locked` field"""
-        return F(name="unlocked", invert=True, **kwargs)  # type:ignore
+        ret = F(**kwargs)
+        ret.options["name"] = "unlocked"
+        ret.options["invert"] = True
+        return ret
 
     def version(self, up_to_version: int, **kwargs: Unpack[SerdeOpt]) -> F:
         """Configures serde options for a specific version or lower."""

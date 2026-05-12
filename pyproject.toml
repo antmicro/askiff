@@ -27,7 +27,7 @@ dependencies = []
 askiff = "askiff._cli:main"
 
 [project.optional-dependencies]
-dev = ["mypy==1.19.1", "ruff==0.15.4", "ty==0.0.23"]
+dev = ["mypy==2.1.0", "ruff==0.15.12", "ty==0.0.35"]
 docs = [
     "sphinx==8.2.3",
     "antmicro-sphinx-utils @ https://github.com/antmicro/antmicro-sphinx-utils/archive/main.zip",
