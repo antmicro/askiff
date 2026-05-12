@@ -118,16 +118,26 @@ class AutoSerde:
                 fparam.unwrap_list_type()
                 typ = fparam.typ
 
-                agg = getattr(typ, "_AutoSerdeDownCastingAgg__askiff_childs", None)
-                if agg:
+                if fparam.agg:
                     if fparam.flatten:
-                        for var_name, var_type in agg.items():
+                        for var_name, var_type in fparam.agg.items():
                             if var_name in names_kicad:
                                 continue
                             fmode = DeserMode.DESERIALIZE, var_type
                             deser_field[var_name] = inline_wrap(field, DeserMode.LIST_FLAT, (fmode, typ))
                     else:
-                        deser_field[fparam.fname] = inline_wrap(field, DeserMode.LIST_AGG, (typ, org_typ_origin))
+
+                        def deser_dc(sexp: GeneralizedSexpr, agg: dict = fparam.agg):  # type: ignore  # noqa: ANN202
+                            deser_type = sexp[0]
+                            if deser_type not in agg:
+                                log.warning(
+                                    f" Downcast failed: `{deser_type}` does not match child types ({agg.keys()})"
+                                )
+                                log.debug(sexp)
+                                return sexp
+                            return agg[deser_type].deserialize(sexp[1:])  # type: ignore
+
+                        deser_field[fparam.fname] = inline_wrap(field, DeserMode.LIST_AGG, (deser_dc, org_typ_origin))
                     continue
 
                 if hasattr(typ, "deserialize_downcast"):
@@ -352,11 +362,11 @@ class AutoSerde:
                             raise Exception(f"Unreachable {field} {mode}")
                 case DeserMode.LIST_AGG:
                     list_obj = getattr(ret, field, None)
-                    agg, constructor = mode_extra
+                    agg_deser, constructor = mode_extra
                     if list_obj is None:
                         list_obj = constructor()
                         setattr(ret, field, list_obj)
-                    list_obj.extend(agg.deserialize_downcast_agg(n) for n in nodes)  # type: ignore
+                    list_obj.extend(agg_deser(n) for n in nodes)  # type: ignore
 
                 case DeserMode.LIST:
                     list_obj = getattr(ret, field, None)

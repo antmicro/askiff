@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final, Generic, TypeVar, cast
 
 from askiff._auto_serde import AutoSerde, AutoSerdeEnum, AutoSerdeFile, F
 from askiff._sexpr import GeneralizedSexpr, Qstr
-from askiff.common import BasePoly, Position, Uuid
+from askiff.common import BaseArc, BasePoly, Position, Uuid
 from askiff.const import KICAD_MAX_LAYER_CU, KICAD_MAX_LAYER_USER, Version
 
 if TYPE_CHECKING:  # workaround around ty not allowing Any subclasses assignment to final classes
@@ -688,6 +688,14 @@ class ZonePadConnection(AutoSerde):
     """Clearance value for zone pad connections."""
 
 
+class ArcPoly(AutoSerde):
+    """ArcPoly represents a polygonal shape defined by a sequence of points or arcs"""
+
+    _askiff_key: ClassVar[str] = "polygon"
+    pts: list[Position | BaseArc] = F()
+    """Points/arcs defining the polygon shape"""
+
+
 class Zone(AutoSerde):
     """A zone represents a defined area on a PCB, typically used for copper pours, keepouts, or other design rules.
     Supports configuration of net connections, layers, clearance, teardrops, and fill properties."""
@@ -723,7 +731,7 @@ class Zone(AutoSerde):
     """Whether zone placement is enabled and its placement details."""
     fill: ZoneFill | None = None
     """Whether the zone has a fill configuration applied."""
-    polygons: list[BasePoly] = F(name="polygon", flatten=True)
+    polygons: list[ArcPoly] = F(name="polygon", flatten=True)
     """Polygon shapes defining the zone area"""
     filled_polygons: list[SimplePolyFilled] = F(name="filled_polygon", flatten=True)
     """Polygon shapes defining the zone fill"""

@@ -202,6 +202,8 @@ class GeneratorParams:
     """Values from S-Expr recognized as `True`"""
     vfalse: Sequence[str]
     """Values from S-Expr recognized as `False`"""
+    agg: dict[str, type] | None
+    """Map how to deserialize filed based on first keyword"""
 
     @staticmethod
     def is_type_list(typ: type) -> bool:
@@ -284,6 +286,14 @@ class GeneratorParams:
 
         vtrue, vfalse = GeneratorParams._get_vtruefalse(fmeta, invert)
 
+        agg = None
+        if is_list and not hasattr(typ, "deserialize"):
+            _typ = get_args(typ)[0]
+            agg = getattr(_typ, "_AutoSerdeDownCastingAgg__askiff_childs", None)
+            if not agg:
+                if get_origin(_typ) is UnionType and not _is_optional(_typ):
+                    agg = {t._askiff_key: t for t in get_args(_typ)}
+
         return GeneratorParams(
             typ,
             type_origin,
@@ -305,6 +315,7 @@ class GeneratorParams:
             fname,
             vtrue,
             vfalse,
+            agg,
         )
 
 
