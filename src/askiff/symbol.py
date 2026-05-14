@@ -353,6 +353,9 @@ class SymbolSchematic(AutoSerde):
 
     _askiff_key: ClassVar[str] = "symbol"
 
+    lib_name: str | None = None
+    """Defines link to local symbol definition (used when symbol was modified in schematic)"""
+
     lib_id: LibId = F()
     """Defines symbol name and library link
     

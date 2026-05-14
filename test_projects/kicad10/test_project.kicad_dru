@@ -21,7 +21,7 @@
 )
 (rule "Custom rule 1"
 	# aaaaa
-	(constraint clearance (min 0.2mm))
+	(constraint clearance (min 0.12mm))
 )
 (rule "Courtyard_clearance_1"
 	# aaa

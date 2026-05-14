@@ -50,7 +50,23 @@
         "silk_text_thickness": 0.1,
         "silk_text_upright": false,
         "zones": {
-          "min_clearance": 0.0
+          "border_display_style": 2,
+          "border_hatch_pitch": 0.5,
+          "corner_radius": 0.0,
+          "corner_smoothing": 0,
+          "fill_mode": 0,
+          "hatch_gap": 1.5,
+          "hatch_orientation": 0.0,
+          "hatch_smoothing_level": 0,
+          "hatch_smoothing_value": 0.1,
+          "hatch_thickness": 1.0,
+          "min_clearance": 0.0,
+          "min_island_area": 10.0,
+          "min_thickness": 0.25,
+          "pad_connection": 1,
+          "remove_islands": 0,
+          "thermal_relief_gap": 0.5,
+          "thermal_relief_spoke_width": 0.5
         }
       },
       "diff_pair_dimensions": [
@@ -62,27 +78,15 @@
       ],
       "drc_exclusions": [
         [
-          "clearance|147780000|119730000|2dbeff91-a118-41b2-8801-600c57b2667b|c897a6f8-65cd-4529-a3f2-2f7667d5d5c9",
-          ""
+          "clearance|130015000|156002500|37361d12-48fe-413f-8e01-ba9b6ddca05d|74fd6e27-293b-41cd-b021-6f7fe390bc5a",
+          "test exclusion with comment"
         ],
         [
-          "courtyards_overlap|148345000|119445000|4b5dfe94-15ec-42c2-9c43-6768f1c2904c|fd7f98fc-6ffc-4c6e-9d92-362864687d88",
-          "Components are mutually exclusive"
+          "courtyards_overlap|147920000|119445000|4b5dfe94-15ec-42c2-9c43-6768f1c2904c|fd7f98fc-6ffc-4c6e-9d92-362864687d88",
+          "only one Resistor at time will be soldered"
         ],
         [
-          "lib_footprint_mismatch|147440000|119900000|4b5dfe94-15ec-42c2-9c43-6768f1c2904c|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "lib_footprint_mismatch|148400000|119900000|fd7f98fc-6ffc-4c6e-9d92-362864687d88|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "lib_footprint_mismatch|154600000|120800000|51baed4d-55a9-4d44-8cd1-519bd076953c|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "lib_footprint_mismatch|167417500|120690000|54cd8008-5529-4a99-a0c9-aa386044c0b9|00000000-0000-0000-0000-000000000000",
+          "lib_footprint_mismatch|133600000|158600000|009cd854-a1e2-477d-a45e-d16faea5d961|00000000-0000-0000-0000-000000000000",
           ""
         ],
         [
@@ -155,6 +159,7 @@
         "too_many_vias": "error",
         "track_angle": "error",
         "track_dangling": "warning",
+        "track_not_centered_on_via": "ignore",
         "track_on_post_machined_layer": "error",
         "track_segment_length": "error",
         "track_width": "error",
