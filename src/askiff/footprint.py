@@ -99,7 +99,7 @@ class Model3D(AutoSerde):
     """Opacity level of the model, from 0.0 (transparent) to 1.0 (opaque)."""
     offset: Coordinate = F(nested=True)
     """3D offset coordinates (x, y, z)."""
-    scale: Coordinate = F(nested=True)
+    scale: Coordinate = F(lambda: Coordinate(1, 1, 1), nested=True)
     """3D scale factor (x, y, z)."""
     rotate: Coordinate = F(nested=True)
     """3D rotation angle (x, y, z) in degrees."""
