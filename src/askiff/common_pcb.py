@@ -519,6 +519,7 @@ class SimplePolyFilled(BasePoly):
     _askiff_key: ClassVar[str] = "filled_polygon"
     layer: LayerCopper = F(Layer.CU_F, after="__begin__")
     """Copper layer where the polygon is placed"""
+    island: bool = F(flag=True)
 
 
 class ZoneOutlineHatchStyle(str, AutoSerdeEnum):
