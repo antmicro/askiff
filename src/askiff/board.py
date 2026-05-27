@@ -14,8 +14,9 @@ from askiff._auto_serde import (
     SerMode,
 )
 from askiff._sexpr import GeneralizedSexpr, Qstr, Sexpr
-from askiff.common import BaseArc, BaseLine, BasePoly, EmbeddedFile, Group, Paper, Position, TitleBlock, Uuid
+from askiff.common import BaseArc, BaseLine, EmbeddedFile, Group, Paper, Position, TitleBlock, Uuid
 from askiff.common_pcb import (
+    ArcPoly,
     BaseLayer,
     Layer,
     LayerCopper,
@@ -603,10 +604,10 @@ class GeneratedTuningPattern(Generated, Group):
 
     _locked = F()
 
-    base_line: BasePoly | None = None
+    base_line: ArcPoly | None = None
     """Base polygon representing the original trace shape before tuning modifications."""
 
-    base_line_coupled: BasePoly | None = None
+    base_line_coupled: ArcPoly | None = None
     """Base polygon representing the original coupled trace shape before tuning adjustments."""
 
     corner_radius_percent: int = 0
