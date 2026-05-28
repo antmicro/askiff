@@ -327,6 +327,7 @@ class PropertyList(Generic[T], list[T]):
         if prop is not None:
             prop.value = value
             return
+        kwargs.setdefault("position", Position(angle=0.0))
         self.append(self.__inner_type(name=name, value=value, **kwargs))
 
     def pop(self, name: str) -> T | None:  # type: ignore  # ty:ignore[invalid-method-override]
