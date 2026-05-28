@@ -640,6 +640,8 @@ class BaseBezier(BaseShape):
                 t = -c / b
                 return {t}
             delta = b * b - 4 * a * c
+            if delta < 0:
+                return set()  # No solution
             delta_sqrt = sqrt(delta)
             t1 = (-b + delta_sqrt) / (2 * a)
             t2 = (-b - delta_sqrt) / (2 * a)
