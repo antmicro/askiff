@@ -12,6 +12,7 @@ from .board import Board
 from .const import TRACE, TRACE_DIS
 from .dru import DesignRulesFile
 from .footprint import FootprintFile, FootprintLibraryTable
+from .kicad_pro import KicadProFile
 from .schematic import Schematic
 from .symbol import SymbolDefinition, SymbolFile, SymbolLibraryTable
 
@@ -328,16 +329,10 @@ class Project:
     fs_path: Path
     """Path to project's folder"""
 
-    kicad_pro_path: Path | None
-    """Path to `.kicad_pro` file"""
-
     __initial_path: Path
     """Path from which the project was loaded"""
 
-    project_name: str | None = None
-    """Project name - retrieved from kicad_pro file name"""
-
-    # pro: dict[Path, Sexpr] # Note: kicad_pro seems to be json
+    pro: KicadProFile | None
     pcb: list[Board]
     """PCB files in the KiCad project directory"""
     sch: list[Schematic]
@@ -374,10 +369,40 @@ class Project:
         """
         fs_path = Path(fs_path)
         self.fs_path = fs_path
+
+        if fs_path.is_dir():
+            self.__discover_kicad_pro()
+        else:
+            self.pro = KicadProFile(fs_path)
+
         self.__initial_path = fs_path
         self.variables = {"KIPRJMOD": str(fs_path)}
         self.sch = []
         self.pcb = []
+
+    def __discover_kicad_pro(self) -> None:
+        kicad_pro_paths = list(self.fs_path.glob("*.kicad_pro"))
+        self.pro = KicadProFile(kicad_pro_paths[0]) if len(kicad_pro_paths) == 1 else None
+
+    @property
+    def kicad_pro_path(self) -> Path | None:
+        return self.pro.fs_path if self.pro else None
+
+    @kicad_pro_path.setter
+    def kicad_pro_path(self, value: Path | None) -> None:
+        if value:
+            self.pro = KicadProFile(value)
+        else:
+            self.pro = None
+
+    @property
+    def project_name(self) -> str | None:
+        return self.pro.project_name if self.pro else None
+
+    @project_name.setter
+    def project_name(self, value: str | None) -> None:
+        if value and self.pro:
+            self.pro.project_name = value
 
     def resolve_var(self, string: str) -> str:
         """Resolves variables in a string by replacing placeholders of the form `${var}`
@@ -416,9 +441,7 @@ class Project:
         Args:
             force: if `True`, immediately load lazy-loaded files
         """
-        self.kicad_pro_path = next((p for p in self.fs_path.glob("*.kicad_pro")), None)
-        if self.kicad_pro_path:
-            self.project_name = self.kicad_pro_path.stem
+        self.__discover_kicad_pro()
 
         self.sch_root, self.pcb_root, self.dru_root = None, None, None
         self.sch, self.pcb, self.dru = [], [], []
