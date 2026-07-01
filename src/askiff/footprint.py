@@ -224,6 +224,16 @@ class FpPropertyKiFpFilters(AutoSerde):
     """Pattern string used for filtering footprint files."""
 
 
+class SymbolUnitPins(AutoSerde):
+    """Describes pin mapping to symbol units, used for gate swap feature"""
+
+    _askiff_key: ClassVar[str] = "unit"
+    name: str = "A"
+    """Symbol unit name"""
+    pins: list[str] = F(keep_empty=True)
+    """Pins numbers instantiated in this symbol unit"""
+
+
 class FootprintBoard(Footprint):
     """FootprintBoard represents a KiCad footprint as it appears in a board file,
     extending the base Footprint class with board-specific attributes such as placement, locking, and schematic link"""
@@ -262,6 +272,9 @@ class FootprintBoard(Footprint):
 
     sheetfile: str | None = None
     """Indicates in which schematic file was linked symbol added"""
+
+    units: list[SymbolUnitPins] = F().version(Version.K9.pcb, skip=True)
+    """Describes pin mapping to symbol units, used for gate swap feature"""
 
     def _askiff_post_deser(self) -> None:
         """Post-deserialization handler for FootprintBoard.
