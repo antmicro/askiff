@@ -5,8 +5,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, Union
 
-SCH_COLUMN_WIDTH = 71
-PCB_COLUMN_WIDTH = 72
+COLUMN_WIDTH = 71
 MAX_PTS_LINE_LENGTH = 98
 
 
@@ -123,13 +122,12 @@ class Sexpr(list[Union["GeneralizedSexpr", str]]):
         """Writes the S-Expression structure to a file at the specified path,
         formatting it with appropriate column width based on the file type.
         Creates parent directories if needed."""
-        column_width = PCB_COLUMN_WIDTH if "pcb" in path.suffix else SCH_COLUMN_WIDTH
         path.parent.mkdir(parents=True, exist_ok=True)
         sexpr_format = to_str_reduced_ident if reduced_ident else to_str
         if flatten:
-            formatted = "\n".join(sexpr_format(node, column_width=column_width) for node in self)
+            formatted = "\n".join(sexpr_format(node) for node in self)
         else:
-            formatted = sexpr_format(self, column_width=column_width)
+            formatted = sexpr_format(self)
 
         path.write_text(formatted + "\n")
 
@@ -145,13 +143,12 @@ class Sexpr(list[Union["GeneralizedSexpr", str]]):
 GeneralizedSexpr = Sequence[Union["GeneralizedSexpr", str]]
 
 
-def to_str(sexpr: GeneralizedSexpr, indent: int = 0, column_width: int = SCH_COLUMN_WIDTH) -> str:
+def to_str(sexpr: GeneralizedSexpr, indent: int = 0) -> str:
     """Convert a generalized S-Expression structure into a formatted string representation.
 
     Args:
         sexpr: The S-Expression to convert, typically a list starting with a string identifier followed by arguments.
         indent: The base indentation level for the output string.
-        column_width: Maximum line length before wrapping, used for formatting long expressions.
 
     Returns:
         A formatted string representation of the S-Expression with proper indentation and line wrapping.
@@ -167,11 +164,9 @@ def to_str(sexpr: GeneralizedSexpr, indent: int = 0, column_width: int = SCH_COL
     """
     se0, *se1 = sexpr  # unload for perf
 
-    inline = True
     indent_loc = indent + 1
     if se0 == "pts":
         ret = indent * "\t" + "(pts"
-        inline = False
         max_len = MAX_PTS_LINE_LENGTH - indent_loc
         available_len = -1
         for s in se1:
@@ -185,7 +180,7 @@ def to_str(sexpr: GeneralizedSexpr, indent: int = 0, column_width: int = SCH_COL
                     ret += "\n" + indent_loc * "\t" + xy_txt
                     available_len = max_len - xy_len
             else:
-                ret += "\n" + to_str(s, indent_loc, column_width)
+                ret += "\n" + to_str(s, indent_loc)
                 available_len = max_len
         return ret + "\n" + indent * "\t" + ")"
 
@@ -195,8 +190,9 @@ def to_str(sexpr: GeneralizedSexpr, indent: int = 0, column_width: int = SCH_COL
     # there is one case in kicad files (jumper_pad_groups) where first item is quoted
     ser_first = ('"' + se0.replace(r'"', r"\"") + '"') if isinstance(se0, Qstr) else se0
     ret = indent * "\t" + "(" + ser_first
-    max_len = column_width - indent_loc
-    available_len = max_len - 1 - len(ser_first)
+    max_len = COLUMN_WIDTH - indent_loc
+    available_len = max_len - len(ser_first)  # KiCad does not count starting `(`
+    inline = True
     for s in se1:
         if isinstance(s, str):
             if isinstance(s, Qstr):
@@ -209,7 +205,7 @@ def to_str(sexpr: GeneralizedSexpr, indent: int = 0, column_width: int = SCH_COL
                 available_len = max_len - len(s)
                 inline = False
         else:
-            ret += "\n" + to_str(s, indent_loc, column_width)
+            ret += "\n" + to_str(s, indent_loc)
             inline = False
     if inline:
         return ret + ")"
