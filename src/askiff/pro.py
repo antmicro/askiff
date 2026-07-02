@@ -432,6 +432,41 @@ class Project:
             store.append(_LazyFile(typ, path, force))  # type: ignore  # ty:ignore[invalid-argument-type]
         return next(iter(store), None)
 
+    def new(self, project_name: str, *, strict: bool = True, force: bool = False) -> Self:
+        """Create a new KiCad project in `Project.fs_path` directory.
+
+        Args:
+            project_name: the project's name
+            strict: if `True`, raise exceptions if project already exists
+            force: if `True`, immediately load lazy-loaded library files
+        """
+        if strict and self.fs_path.exists():
+            if not self.fs_path.is_dir():
+                raise ValueError("Project directory is not a directory!")
+
+            if next(self.fs_path.iterdir(), False):
+                raise ValueError("Project directory is not empty!")
+
+        self.pro = KicadProFile(self.fs_path / f"{project_name}.kicad_pro")
+
+        sch_root_path = self.pro.fs_path.with_suffix(".kicad_sch")
+        sch = Schematic(fs_path=sch_root_path)
+        sch.to_file()
+        self.sch_root = _LazyFile(Schematic, sch_root_path, force_load=True, value=sch)  # type: ignore  # ty:ignore[invalid-assignment]
+        self.sch = [self.sch_root]  # type: ignore  # ty:ignore[invalid-assignment]
+
+        pcb_root_path = self.pro.fs_path.with_suffix(".kicad_pcb")
+        pcb = Board(fs_path=pcb_root_path)
+        pcb.to_file()
+        self.pcb_root = _LazyFile(Board, sch_root_path, force_load=True, value=pcb)  # type: ignore  # ty:ignore[invalid-assignment]
+        self.pcb = [self.pcb_root]  # type: ignore  # ty:ignore[invalid-assignment]
+
+        self.dru_root = None
+        self.dru = []
+
+        self.__load_libs(force)
+        return self
+
     def load(self, force: bool = False) -> Self:
         """Discover project relevant files in `Project.path` directory.
 
@@ -471,6 +506,9 @@ class Project:
             self.pcb_root = self.__load_all_files_of_type(Board, self.pcb, force)
             self.dru_root = self.__load_all_files_of_type(DesignRulesFile, self.dru, force)
 
+        return self.__load_libs(force)
+
+    def __load_libs(self, force: bool) -> Self:
         fp_lib_table_path = self.fs_path / "fp-lib-table"
         self.fp_lib_table = (
             FootprintLibraryTable.from_file(fp_lib_table_path)
