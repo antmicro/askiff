@@ -537,6 +537,10 @@ class Project:
                 Otherwise, files are saved in their original locations."""
         path = Path(path) if path else None
 
+        if self.pro:
+            pro_save_path = path / f"{self.project_name}.kicad_pro" if path else self.kicad_pro_path
+            self.pro.save(pro_save_path)
+
         for pcb in self.pcb:
             pcb._to_file_relative(path, self.__initial_path)
 
