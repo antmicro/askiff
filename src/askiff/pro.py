@@ -12,7 +12,7 @@ from .board import Board
 from .const import TRACE, TRACE_DIS
 from .dru import DesignRulesFile
 from .footprint import FootprintFile, FootprintLibraryTable
-from .kicad_pro import KicadProFile
+from .kicad_pro_file import KicadProFile
 from .schematic import Schematic
 from .symbol import SymbolDefinition, SymbolFile, SymbolLibraryTable
 
@@ -333,6 +333,7 @@ class Project:
     """Path from which the project was loaded"""
 
     pro: KicadProFile | None
+    """kicad_pro file  data"""
     pcb: list[Board]
     """PCB files in the KiCad project directory"""
     sch: list[Schematic]
@@ -447,7 +448,8 @@ class Project:
             if next(self.fs_path.iterdir(), False):
                 raise ValueError("Project directory is not empty!")
 
-        self.pro = KicadProFile(self.fs_path / f"{project_name}.kicad_pro")
+        self.pro = KicadProFile(self.fs_path / f"{project_name}.kicad_pro", kicad_pro_json={})
+        self.pro.save()
 
         sch_root_path = self.pro.fs_path.with_suffix(".kicad_sch")
         sch = Schematic(fs_path=sch_root_path)

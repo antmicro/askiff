@@ -54,23 +54,6 @@ class KicadProFile:
         return self._kicad_pro_json
 
     @classmethod
-    def new(cls, fs_path: Path, *, force: bool = False, strict: bool = True) -> KicadProFile:
-        """Create a new .kicad_pro file
-
-        Args:
-            fs_path: the path of the .kicad_pro file
-            force: if `True`, immediately load lazy-loaded files
-            strict: if `True`, raise exception if file already exists
-
-        Returns:
-            KicadProFile
-        """
-        if strict and fs_path.exists():
-            raise FileNotFoundError("Project file already exists!")
-
-        return KicadProFile(fs_path, force=force)
-
-    @classmethod
     def load(cls, fs_path: Path, *, force: bool = False, strict: bool = True) -> KicadProFile:
         """Load a .kicad_pro file
 
