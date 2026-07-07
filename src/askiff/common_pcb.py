@@ -410,6 +410,9 @@ class Layer:
     MASK_ALL: Final[LayerSpecial] = LayerSpecial("*.Mask", 1, __PrivateGuard())
     """All mask layers combination. Prefer using :attr:`LayerMask.all`"""
 
+    PASTE_ALL: Final[LayerSpecial] = LayerSpecial("*.Paste", 1, __PrivateGuard())
+    """All paste layers combination. Prefer using :attr:`LayerPaste.all`"""
+
     @staticmethod
     def CU_IN(number: int) -> LayerCopperInner:  # noqa: N802
         """Factory method to create inner copper layers.
