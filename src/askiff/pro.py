@@ -564,6 +564,16 @@ class ProjectLibrary:
     sym_lib_table: SymbolLibraryTable
     """Symbol library table file contents"""
 
+    global_fp: dict[str, FootprintLibrary]
+    """Lazy loaded global footprint libraries"""
+    global_fp_lib_table: FootprintLibraryTable
+    """Global footprint library table file contents"""
+
+    global_sym: dict[str, SymbolLibrary]
+    """Lazy loaded global symbol libraries"""
+    global_sym_lib_table: SymbolLibraryTable
+    """Global symbol library table file contents"""
+
     def __init__(
         self,
         project: Project,
@@ -575,6 +585,8 @@ class ProjectLibrary:
 
         self.fp = {}
         self.sym = {}
+        self.global_fp = {}
+        self.global_sym = {}
 
         if fp_lib_table:
             self.fp_lib_table = fp_lib_table
@@ -601,6 +613,28 @@ class ProjectLibrary:
         self.sym = {
             lib.name: SymbolLibrary(Path(self.project.resolve_var(lib.uri))).load(force)
             for lib in self.sym_lib_table.lib
+        }
+
+        global_fp_lib_table_path = KICAD_CONFIG_PATH / "fp-lib-table"
+        self.global_fp_lib_table = (
+            FootprintLibraryTable.from_file(global_fp_lib_table_path)
+            if global_fp_lib_table_path.exists()
+            else FootprintLibraryTable()
+        )
+        self.global_fp = {
+            lib.name: FootprintLibrary(Path(self.project.resolve_var(lib.uri))).load(force)
+            for lib in self.global_fp_lib_table.lib
+        }
+
+        global_sym_lib_table_path = KICAD_CONFIG_PATH / "sym-lib-table"
+        self.global_sym_lib_table = (
+            SymbolLibraryTable.from_file(global_sym_lib_table_path)
+            if global_sym_lib_table_path.exists()
+            else SymbolLibraryTable()
+        )
+        self.global_sym = {
+            lib.name: SymbolLibrary(Path(self.project.resolve_var(lib.uri))).load(force)
+            for lib in self.global_sym_lib_table.lib
         }
 
         return self
