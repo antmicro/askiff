@@ -349,7 +349,7 @@ class Project:
     dru_root: DesignRulesFile | None = None
     """Main Design Rules file"""
 
-    project_library: ProjectLibrary
+    lib: ProjectLibrary
 
     variables: dict[str, str]
     """KiCad variables Project is able to resolve"""
@@ -370,7 +370,7 @@ class Project:
             self.pro = KicadProFile(fs_path)
 
         self.__initial_path = fs_path
-        self.project_library = ProjectLibrary(self)
+        self.lib = ProjectLibrary(self)
         self.variables = {"KIPRJMOD": str(fs_path)}
         self.sch = []
         self.pcb = []
@@ -401,19 +401,19 @@ class Project:
 
     @property
     def fp(self) -> dict[str, FootprintLibrary]:
-        return self.project_library.fp
+        return self.lib.fp
 
     @property
     def fp_lib_table(self) -> FootprintLibraryTable | None:
-        return self.project_library.fp_lib_table or None
+        return self.lib.fp_lib_table or None
 
     @property
     def sym(self) -> dict[str, SymbolLibrary]:
-        return self.project_library.sym
+        return self.lib.sym
 
     @property
     def sym_lib_table(self) -> SymbolLibraryTable | None:
-        return self.project_library.sym_lib_table or None
+        return self.lib.sym_lib_table or None
 
     def resolve_var(self, string: str) -> str:
         """Resolves variables in a string by replacing placeholders of the form `${var}`
@@ -476,7 +476,7 @@ class Project:
         self.dru_root = None
         self.dru = []
 
-        self.project_library.load(force=force)
+        self.lib.load(force=force)
         return self
 
     def load(self, force: bool = False) -> Self:
@@ -518,7 +518,7 @@ class Project:
             self.pcb_root = self.__load_all_files_of_type(Board, self.pcb, force)
             self.dru_root = self.__load_all_files_of_type(DesignRulesFile, self.dru, force)
 
-        self.project_library.load(force=force)
+        self.lib.load(force=force)
         return self
 
     def __load_env_variables(self) -> None:
@@ -548,7 +548,7 @@ class Project:
         for dru in self.dru:
             dru._to_file_relative(path, self.__initial_path)
 
-        self.project_library.save()
+        self.lib.save()
 
 
 class ProjectLibrary:
