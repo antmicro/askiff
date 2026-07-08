@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from xdg_base_dirs import xdg_config_home
+
 TRACE_DIS = 4
 """Log level for very verbose debugging, printing a.o. disassembly of some functions"""
 
@@ -8,6 +10,8 @@ TRACE = 5
 
 KICAD_MAX_LAYER_CU = 32
 KICAD_MAX_LAYER_USER = 45
+
+KICAD_CONFIG_PATH = xdg_config_home() / "kicad" / "10.0"
 
 
 class Version:

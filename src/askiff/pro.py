@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Generator
 from os import PathLike
@@ -9,7 +10,7 @@ from typing import Any, Generic, Self, TypeVar
 
 from ._auto_serde import AutoSerdeFile
 from .board import Board
-from .const import TRACE, TRACE_DIS
+from .const import KICAD_CONFIG_PATH, TRACE, TRACE_DIS
 from .dru import DesignRulesFile
 from .footprint import FootprintFile, FootprintLibraryTable
 from .kicad_pro_file import KicadProFile
@@ -519,6 +520,12 @@ class Project:
 
         self.project_library.load(force=force)
         return self
+
+    def __load_env_variables(self) -> None:
+        with open(KICAD_CONFIG_PATH / "kicad_common.json") as f:
+            kicad_common_json = json.loads(f.read())
+
+        self.variables.update(kicad_common_json["environment"]["vars"])
 
     def save(self, path: PathLike | None = None) -> None:
         """Saves all loaded KiCad files managed by this instance to disk.
