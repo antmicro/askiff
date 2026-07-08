@@ -348,15 +348,7 @@ class Project:
     dru_root: DesignRulesFile | None = None
     """Main Design Rules file"""
 
-    fp: dict[str, FootprintLibrary]
-    """Lazy loaded footprint libraries"""
-    fp_lib_table: FootprintLibraryTable
-    """Footprint library table file contents"""
-
-    sym: dict[str, SymbolLibrary]
-    """Lazy loaded symbol libraries"""
-    sym_lib_table: SymbolLibraryTable
-    """Symbol library table file contents"""
+    project_library: ProjectLibrary
 
     variables: dict[str, str]
     """KiCad variables Project is able to resolve"""
@@ -377,6 +369,7 @@ class Project:
             self.pro = KicadProFile(fs_path)
 
         self.__initial_path = fs_path
+        self.project_library = ProjectLibrary(self)
         self.variables = {"KIPRJMOD": str(fs_path)}
         self.sch = []
         self.pcb = []
@@ -404,6 +397,22 @@ class Project:
     def project_name(self, value: str | None) -> None:
         if value and self.pro:
             self.pro.project_name = value
+
+    @property
+    def fp(self) -> dict[str, FootprintLibrary]:
+        return self.project_library.fp
+
+    @property
+    def fp_lib_table(self) -> FootprintLibraryTable | None:
+        return self.project_library.fp_lib_table or None
+
+    @property
+    def sym(self) -> dict[str, SymbolLibrary]:
+        return self.project_library.sym
+
+    @property
+    def sym_lib_table(self) -> SymbolLibraryTable | None:
+        return self.project_library.sym_lib_table or None
 
     def resolve_var(self, string: str) -> str:
         """Resolves variables in a string by replacing placeholders of the form `${var}`
@@ -466,7 +475,7 @@ class Project:
         self.dru_root = None
         self.dru = []
 
-        self.__load_libs(force)
+        self.project_library.load(force=force)
         return self
 
     def load(self, force: bool = False) -> Self:
@@ -508,27 +517,7 @@ class Project:
             self.pcb_root = self.__load_all_files_of_type(Board, self.pcb, force)
             self.dru_root = self.__load_all_files_of_type(DesignRulesFile, self.dru, force)
 
-        return self.__load_libs(force)
-
-    def __load_libs(self, force: bool) -> Self:
-        fp_lib_table_path = self.fs_path / "fp-lib-table"
-        self.fp_lib_table = (
-            FootprintLibraryTable.from_file(fp_lib_table_path)
-            if fp_lib_table_path.exists()
-            else FootprintLibraryTable()
-        )
-        self.fp = {
-            lib.name: FootprintLibrary(Path(self.resolve_var(lib.uri))).load(force) for lib in self.fp_lib_table.lib
-        }
-
-        sym_lib_table_path = self.fs_path / "sym-lib-table"
-        self.sym_lib_table = (
-            SymbolLibraryTable.from_file(sym_lib_table_path) if sym_lib_table_path.exists() else SymbolLibraryTable()
-        )
-        self.sym = {
-            lib.name: SymbolLibrary(Path(self.resolve_var(lib.uri))).load(force) for lib in self.sym_lib_table.lib
-        }
-
+        self.project_library.load(force=force)
         return self
 
     def save(self, path: PathLike | None = None) -> None:
@@ -552,6 +541,64 @@ class Project:
         for dru in self.dru:
             dru._to_file_relative(path, self.__initial_path)
 
+        self.project_library.save()
+
+
+class ProjectLibrary:
+    project: Project
+
+    fp: dict[str, FootprintLibrary]
+    """Lazy loaded footprint libraries"""
+    fp_lib_table: FootprintLibraryTable
+    """Footprint library table file contents"""
+
+    sym: dict[str, SymbolLibrary]
+    """Lazy loaded symbol libraries"""
+    sym_lib_table: SymbolLibraryTable
+    """Symbol library table file contents"""
+
+    def __init__(
+        self,
+        project: Project,
+        *,
+        fp_lib_table: FootprintLibraryTable | None = None,
+        sym_lib_table: SymbolLibraryTable | None = None,
+    ) -> None:
+        self.project = project
+
+        self.fp = {}
+        self.sym = {}
+
+        if fp_lib_table:
+            self.fp_lib_table = fp_lib_table
+
+        if sym_lib_table:
+            self.sym_lib_table = sym_lib_table
+
+    def load(self, *, force: bool) -> Self:
+        fp_lib_table_path = self.project.fs_path / "fp-lib-table"
+        self.fp_lib_table = (
+            FootprintLibraryTable.from_file(fp_lib_table_path)
+            if fp_lib_table_path.exists()
+            else FootprintLibraryTable()
+        )
+        self.fp = {
+            lib.name: FootprintLibrary(Path(self.project.resolve_var(lib.uri))).load(force)
+            for lib in self.fp_lib_table.lib
+        }
+
+        sym_lib_table_path = self.project.fs_path / "sym-lib-table"
+        self.sym_lib_table = (
+            SymbolLibraryTable.from_file(sym_lib_table_path) if sym_lib_table_path.exists() else SymbolLibraryTable()
+        )
+        self.sym = {
+            lib.name: SymbolLibrary(Path(self.project.resolve_var(lib.uri))).load(force)
+            for lib in self.sym_lib_table.lib
+        }
+
+        return self
+
+    def save(self, path: PathLike | None = None) -> None:
         for fp_lib in self.fp.values():
             if path and fp_lib._FootprintLibrary__initial_path.is_relative_to(self.__initial_path):  # type: ignore # ty:ignore[unresolved-attribute]
                 file = fp_lib._FootprintLibrary__initial_path.relative_to(self.__initial_path)  # type: ignore  # ty:ignore[unresolved-attribute]
