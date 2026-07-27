@@ -458,10 +458,10 @@ class Group(AutoSerde):
 
     name: str = F(positional=True)
     """Group name identifier"""
-    locked: bool | None = None
-    """Whether the group is locked."""
     uuid: Uuid = F()
     """Unique identifier for the group object."""
+    locked: bool | None = None
+    """Whether the group is locked."""
     members: list[Uuid] = F()
     """Items contained in the group"""
 

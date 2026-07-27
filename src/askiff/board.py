@@ -954,11 +954,11 @@ class Board(AutoSerdeFile):
     dimensions: list[Dimension] = F(name="dimension", flatten=True)
     """List of dimensions in the PCB."""
 
-    traces: list[TraceBase] = F(flatten=True)
-    """Traces and vias on the PCB."""
-
     points: list[Point] = F(name="point", flatten=True)
     """List of points (these are empty/non-physical reference points) in the PCB"""
+
+    traces: list[TraceBase] = F(flatten=True)
+    """Traces and vias on the PCB."""
 
     zones: list[Zone] = F(flatten=True, name="zone")
     """List of zones in the PCB."""

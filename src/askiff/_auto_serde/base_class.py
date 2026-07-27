@@ -534,7 +534,11 @@ class AutoSerde:
                     case SerMode.INT:
                         append(str(field_val))
                     case SerMode.FLOAT:
-                        append(f"{field_val:.{mode_extra}f}".rstrip("0").rstrip("."))
+                        append(
+                            f"{field_val:g}"
+                            if -1e-5 < field_val < 1e-5
+                            else f"{field_val:.{mode_extra}f}".rstrip("0").rstrip(".")
+                        )
                     case SerMode.FLOAT_NO_TRIM:
                         append(f"{field_val:.{mode_extra}f}")
                     case SerMode.STR:
@@ -562,7 +566,10 @@ class AutoSerde:
                             case SerMode.INT:
                                 extend(str(f) for f in field_val)
                             case SerMode.FLOAT:
-                                extend(f"{f:.{imode_extra}f}".rstrip("0").rstrip(".") for f in field_val)
+                                extend(
+                                    f"{f:g}" if -1e-4 < f < 1e-4 else f"{f:.{imode_extra}f}".rstrip("0").rstrip(".")
+                                    for f in field_val
+                                )
                             case SerMode.FLOAT_NO_TRIM:
                                 extend(f"{f:.{imode_extra}f}" for f in field_val)
                             case SerMode.STR:
@@ -633,7 +640,15 @@ class AutoSerde:
                     case SerMode.INT:
                         append((fname, str(field_val)))
                     case SerMode.FLOAT:
-                        append((fname, f"{field_val:.{mode_extra}f}".rstrip("0").rstrip(".")))  # mode_extra=precision
+                        # mode_extra=precision
+                        append(
+                            (
+                                fname,
+                                f"{field_val:g}"
+                                if -1e-5 < field_val < 1e-5
+                                else f"{field_val:.{mode_extra}f}".rstrip("0").rstrip("."),
+                            )
+                        )
                     case SerMode.FLOAT_NO_TRIM:
                         append((fname, f"{field_val:.{mode_extra}f}"))  # mode_extra=precision
                     case SerMode.STR:
@@ -672,7 +687,17 @@ class AutoSerde:
                             case SerMode.INT:
                                 append((fname, *(str(f) for f in field_val)))
                             case SerMode.FLOAT:  # mode_extra=precision
-                                append((fname, *(f"{f:.{imode_extra}f}".rstrip("0").rstrip(".") for f in field_val)))
+                                append(
+                                    (
+                                        fname,
+                                        *(
+                                            f"{f:g}"
+                                            if -1e-4 < f < 1e-4
+                                            else f"{f:.{imode_extra}f}".rstrip("0").rstrip(".")
+                                            for f in field_val
+                                        ),
+                                    )
+                                )
                             case SerMode.FLOAT_NO_TRIM:  # mode_extra=precision
                                 append((fname, *(f"{f:.{imode_extra}f}" for f in field_val)))
                             case SerMode.STR:
@@ -721,7 +746,15 @@ class AutoSerde:
                             case SerMode.INT:
                                 extend((fname, str(f)) for f in field_val)
                             case SerMode.FLOAT:  # mode_extra=precision
-                                extend((fname, f"{f:.{imode_extra}f}".rstrip("0").rstrip(".")) for f in field_val)
+                                extend(
+                                    (
+                                        fname,
+                                        f"{f:g}"
+                                        if -1e-4 < f < 1e-4
+                                        else f"{f:.{imode_extra}f}".rstrip("0").rstrip("."),
+                                    )
+                                    for f in field_val
+                                )
                             case SerMode.FLOAT_NO_TRIM:  # mode_extra=precision
                                 extend((fname, f"{f:.{imode_extra}f}") for f in field_val)
                             case SerMode.STR:
