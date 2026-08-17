@@ -26,12 +26,12 @@ class Version:
         - sym/sch: https://gitlab.com/kicad/code/kicad/-/blob/10.0/eeschema/sch_file_versions.h#L138
         """
 
-        sch: int
-        pcb: int
-        sym: int
-        fp: int
-        dru: int
-        lib_table: int
+        sch: ClassVar[int]
+        pcb: ClassVar[int]
+        sym: ClassVar[int]
+        fp: ClassVar[int]
+        dru: ClassVar[int]
+        lib_table: ClassVar[int]
 
     class K8(BaseVer):
         """Version constants for KiCad 8 files"""
