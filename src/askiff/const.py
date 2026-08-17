@@ -1,4 +1,7 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
+from typing import ClassVar
 
 from xdg_base_dirs import xdg_config_home
 
@@ -10,8 +13,6 @@ TRACE = 5
 
 KICAD_MAX_LAYER_CU = 32
 KICAD_MAX_LAYER_USER = 45
-
-KICAD_CONFIG_PATH = xdg_config_home() / "kicad" / "10.0"
 
 
 class Version:
@@ -26,6 +27,7 @@ class Version:
         - sym/sch: https://gitlab.com/kicad/code/kicad/-/blob/10.0/eeschema/sch_file_versions.h#L138
         """
 
+        name: ClassVar[str]
         sch: ClassVar[int]
         pcb: ClassVar[int]
         sym: ClassVar[int]
@@ -33,9 +35,14 @@ class Version:
         dru: ClassVar[int]
         lib_table: ClassVar[int]
 
+        @classmethod
+        def kicad_config_path(cls) -> Path:
+            return xdg_config_home() / "kicad" / cls.name
+
     class K8(BaseVer):
         """Version constants for KiCad 8 files"""
 
+        name = "8.0"
         sch = 20231120
         pcb = 20240108
         sym = sch
@@ -46,6 +53,7 @@ class Version:
     class K9(BaseVer):
         """Version constants for KiCad 9 files"""
 
+        name = "9.0"
         sym = 20241209
         sch = 20250114
         pcb = 20241229
@@ -56,6 +64,7 @@ class Version:
     class K10(BaseVer):
         """Version constants for KiCad 10 files"""
 
+        name = "10.0"
         sym = 20251024
         sch = 20260306
         pcb = 20260206
@@ -74,3 +83,15 @@ class Version:
 
     generator = "askiff"
     generator_ver = "9.0"
+
+    versions: Sequence[type[BaseVer]] = [K8, K9, K10]
+
+    @classmethod
+    def from_sch_version(cls, sch_version: int) -> type[BaseVer] | None:
+        """Get the KiCad version based on the .kicad_sch file version"""
+        return next((version for version in cls.versions if version.sch == sch_version), None)
+
+    @classmethod
+    def from_pcb_version(cls, pcb_version: int) -> type[BaseVer] | None:
+        """Get the KiCad version based on the .kicad_pcb file version"""
+        return next((version for version in cls.versions if version.pcb == pcb_version), None)

@@ -10,7 +10,7 @@ from typing import Any, Generic, Self, TypeVar
 
 from ._auto_serde import AutoSerdeFile
 from .board import Board
-from .const import KICAD_CONFIG_PATH, TRACE, TRACE_DIS
+from .const import TRACE, TRACE_DIS, Version
 from .dru import DesignRulesFile
 from .footprint import FootprintFile, FootprintLibraryTable
 from .kicad_pro_file import KicadProFile
@@ -333,6 +333,8 @@ class Project:
     __initial_path: Path
     """Path from which the project was loaded"""
 
+    _version: type[Version.BaseVer] | None
+
     pro: KicadProFile | None
     """kicad_pro file  data"""
     pcb: list[Board]
@@ -374,6 +376,7 @@ class Project:
         self.variables = {"KIPRJMOD": str(fs_path)}
         self.sch = []
         self.pcb = []
+        self._version = None
 
     def __discover_kicad_pro(self) -> None:
         kicad_pro_paths = list(self.fs_path.glob("*.kicad_pro"))
@@ -415,6 +418,19 @@ class Project:
     def sym_lib_table(self) -> SymbolLibraryTable | None:
         return self.lib.sym_lib_table or None
 
+    @property
+    def version(self) -> type[Version.BaseVer] | None:
+        """The KiCad project's version based on the root schematic/PCB file"""
+        if self._version:
+            return self._version
+
+        if self.sch_root and isinstance(self.sch_root, _LazyFile):
+            self._version = Version.from_sch_version(self.sch_root._load().version)  # ty:ignore[unresolved-attribute]
+        elif self.pcb_root and isinstance(self.pcb_root, _LazyFile):
+            self._version = Version.from_pcb_version(self.pcb_root._load().version)  # ty:ignore[unresolved-attribute]
+
+        return self._version
+
     def resolve_var(self, string: str) -> str:
         """Resolves variables in a string by replacing placeholders of the form `${var}`
         with their corresponding values from the project's variables dictionary."""
@@ -443,11 +459,19 @@ class Project:
             store.append(_LazyFile(typ, path, force))  # type: ignore  # ty:ignore[invalid-argument-type]
         return next(iter(store), None)
 
-    def new(self, project_name: str, *, strict: bool = True, force: bool = False) -> Self:
+    def new(
+        self,
+        project_name: str,
+        version: type[Version.BaseVer] | None = None,
+        *,
+        strict: bool = True,
+        force: bool = False,
+    ) -> Self:
         """Create a new KiCad project in `Project.fs_path` directory.
 
         Args:
             project_name: the project's name
+            version: the version to be used in the project
             strict: if `True`, raise exceptions if project already exists
             force: if `True`, immediately load lazy-loaded library files
         """
@@ -458,17 +482,20 @@ class Project:
             if next(self.fs_path.iterdir(), False):
                 raise ValueError("Project directory is not empty!")
 
+        if not version:
+            version = Version.DEFAULT
+
         self.pro = KicadProFile(self.fs_path / f"{project_name}.kicad_pro", kicad_pro_json={})
         self.pro.save()
 
         sch_root_path = self.pro.fs_path.with_suffix(".kicad_sch")
-        sch = Schematic(fs_path=sch_root_path)
+        sch = Schematic(fs_path=sch_root_path, version=version.sch)
         sch.to_file()
         self.sch_root = _LazyFile(Schematic, sch_root_path, force_load=True, value=sch)  # type: ignore  # ty:ignore[invalid-assignment]
         self.sch = [self.sch_root]  # type: ignore  # ty:ignore[invalid-assignment]
 
         pcb_root_path = self.pro.fs_path.with_suffix(".kicad_pcb")
-        pcb = Board(fs_path=pcb_root_path)
+        pcb = Board(fs_path=pcb_root_path, version=version.pcb)
         pcb.to_file()
         self.pcb_root = _LazyFile(Board, sch_root_path, force_load=True, value=pcb)  # type: ignore  # ty:ignore[invalid-assignment]
         self.pcb = [self.pcb_root]  # type: ignore  # ty:ignore[invalid-assignment]
@@ -522,7 +549,10 @@ class Project:
         return self
 
     def __load_env_variables(self) -> None:
-        with open(KICAD_CONFIG_PATH / "kicad_common.json") as f:
+        if not self.version:
+            return
+
+        with open(self.version.kicad_config_path() / "kicad_common.json") as f:
             kicad_common_json = json.loads(f.read())
 
         self.variables.update(kicad_common_json["environment"]["vars"])
@@ -615,27 +645,28 @@ class ProjectLibrary:
             for lib in self.sym_lib_table.lib
         }
 
-        global_fp_lib_table_path = KICAD_CONFIG_PATH / "fp-lib-table"
-        self.global_fp_lib_table = (
-            FootprintLibraryTable.from_file(global_fp_lib_table_path)
-            if global_fp_lib_table_path.exists()
-            else FootprintLibraryTable()
-        )
-        self.global_fp = {
-            lib.name: FootprintLibrary(Path(self.project.resolve_var(lib.uri))).load(force)
-            for lib in self.global_fp_lib_table.lib
-        }
+        if self.project.version:
+            global_fp_lib_table_path = self.project.version.kicad_config_path() / "fp-lib-table"
+            self.global_fp_lib_table = (
+                FootprintLibraryTable.from_file(global_fp_lib_table_path)
+                if global_fp_lib_table_path.exists()
+                else FootprintLibraryTable()
+            )
+            self.global_fp = {
+                lib.name: FootprintLibrary(Path(self.project.resolve_var(lib.uri))).load(force)
+                for lib in self.global_fp_lib_table.lib
+            }
 
-        global_sym_lib_table_path = KICAD_CONFIG_PATH / "sym-lib-table"
-        self.global_sym_lib_table = (
-            SymbolLibraryTable.from_file(global_sym_lib_table_path)
-            if global_sym_lib_table_path.exists()
-            else SymbolLibraryTable()
-        )
-        self.global_sym = {
-            lib.name: SymbolLibrary(Path(self.project.resolve_var(lib.uri))).load(force)
-            for lib in self.global_sym_lib_table.lib
-        }
+            global_sym_lib_table_path = self.project.version.kicad_config_path() / "sym-lib-table"
+            self.global_sym_lib_table = (
+                SymbolLibraryTable.from_file(global_sym_lib_table_path)
+                if global_sym_lib_table_path.exists()
+                else SymbolLibraryTable()
+            )
+            self.global_sym = {
+                lib.name: SymbolLibrary(Path(self.project.resolve_var(lib.uri))).load(force)
+                for lib in self.global_sym_lib_table.lib
+            }
 
         return self
 
