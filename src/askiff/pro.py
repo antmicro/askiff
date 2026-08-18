@@ -471,7 +471,7 @@ class Project:
 
         Args:
             project_name: the project's name
-            version: the version to be used in the project
+            version: the version of KiCad file format to be used in the project
             strict: if `True`, raise exceptions if project already exists
             force: if `True`, immediately load lazy-loaded library files
         """
