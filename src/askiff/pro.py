@@ -405,19 +405,19 @@ class Project:
 
     @property
     def fp(self) -> dict[str, FootprintLibrary]:
-        return self.lib.fp
+        return self.lib.local_fp
 
     @property
     def fp_lib_table(self) -> FootprintLibraryTable | None:
-        return self.lib.fp_lib_table or None
+        return self.lib.local_fp_lib_table or None
 
     @property
     def sym(self) -> dict[str, SymbolLibrary]:
-        return self.lib.sym
+        return self.lib.local_sym
 
     @property
     def sym_lib_table(self) -> SymbolLibraryTable | None:
-        return self.lib.sym_lib_table or None
+        return self.lib.local_sym_lib_table or None
 
     @property
     def version(self) -> type[Version.BaseVer] | None:
@@ -605,14 +605,14 @@ TLibrary = TypeVar("TLibrary", FootprintLibrary, SymbolLibrary)
 class ProjectLibrary:
     project: Project
 
-    fp: dict[str, FootprintLibrary]
+    local_fp: dict[str, FootprintLibrary]
     """Lazy loaded footprint libraries"""
-    fp_lib_table: FootprintLibraryTable
+    local_fp_lib_table: FootprintLibraryTable
     """Footprint library table file contents"""
 
-    sym: dict[str, SymbolLibrary]
+    local_sym: dict[str, SymbolLibrary]
     """Lazy loaded symbol libraries"""
-    sym_lib_table: SymbolLibraryTable
+    local_sym_lib_table: SymbolLibraryTable
     """Symbol library table file contents"""
 
     global_fp: dict[str, FootprintLibrary]
@@ -634,23 +634,23 @@ class ProjectLibrary:
     ) -> None:
         self.project = project
 
-        self.fp = {}
-        self.sym = {}
+        self.local_fp = {}
+        self.local_sym = {}
         self.global_fp = {}
         self.global_sym = {}
 
         if fp_lib_table:
-            self.fp_lib_table = fp_lib_table
+            self.local_fp_lib_table = fp_lib_table
 
         if sym_lib_table:
-            self.sym_lib_table = sym_lib_table
+            self.local_sym_lib_table = sym_lib_table
 
     def load(self, *, force: bool) -> Self:
-        self.fp_lib_table = self._load_lib_table(self.project.fs_path, FootprintLibraryTable)
-        self.fp = self._load_library(self.fp_lib_table, FootprintLibrary, force=force)
+        self.local_fp_lib_table = self._load_lib_table(self.project.fs_path, FootprintLibraryTable)
+        self.local_fp = self._load_library(self.local_fp_lib_table, FootprintLibrary, force=force)
 
-        self.sym_lib_table = self._load_lib_table(self.project.fs_path, SymbolLibraryTable)
-        self.sym = self._load_library(self.sym_lib_table, SymbolLibrary, force=force)
+        self.local_sym_lib_table = self._load_lib_table(self.project.fs_path, SymbolLibraryTable)
+        self.local_sym = self._load_library(self.local_sym_lib_table, SymbolLibrary, force=force)
 
         if self.project.version:
             self.global_fp_lib_table = self._load_lib_table(
@@ -676,13 +676,13 @@ class ProjectLibrary:
         }
 
     def save(self, path: PathLike | None = None) -> None:
-        for fp_lib in self.fp.values():
+        for fp_lib in self.local_fp.values():
             if path and fp_lib._FootprintLibrary__initial_path.is_relative_to(self.__initial_path):  # type: ignore # ty:ignore[unresolved-attribute]
                 file = fp_lib._FootprintLibrary__initial_path.relative_to(self.__initial_path)  # type: ignore  # ty:ignore[unresolved-attribute]
                 fp_lib.save(path / file)
             else:
                 fp_lib.save()
-        for sch_lib in self.sym.values():
+        for sch_lib in self.local_sym.values():
             if path and sch_lib._SymbolLibrary__initial_path.is_relative_to(self.__initial_path):  # type: ignore # ty:ignore[unresolved-attribute]
                 file = sch_lib._SymbolLibrary__initial_path.relative_to(self.__initial_path)  # type: ignore  # ty:ignore[unresolved-attribute]
                 sch_lib.save(path / file)
