@@ -645,6 +645,16 @@ class ProjectLibrary:
         if sym_lib_table:
             self.local_sym_lib_table = sym_lib_table
 
+    @property
+    def fp(self) -> Generator[tuple[str, FootprintLibrary]]:
+        yield from self.local_fp.items()
+        yield from self.global_fp.items()
+
+    @property
+    def sym(self) -> Generator[tuple[str, SymbolLibrary]]:
+        yield from self.local_sym.items()
+        yield from self.global_sym.items()
+
     def load(self, *, force: bool) -> Self:
         self.local_fp_lib_table = self._load_lib_table(self.project.fs_path, FootprintLibraryTable)
         self.local_fp = self._load_library(self.local_fp_lib_table, FootprintLibrary, force=force)
