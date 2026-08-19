@@ -351,10 +351,10 @@ class Project:
     dru_root: DesignRulesFile | None = None
     """Main Design Rules file"""
 
-    lib: ProjectLibrary
+    _variables: dict[str, str]
+    _env_variables_loaded: bool
 
-    variables: dict[str, str]
-    """KiCad variables Project is able to resolve"""
+    lib: ProjectLibrary
 
     def __init__(self, fs_path: PathLike) -> None:
         """Initialize an Project instance for managing KiCad project files in the given directory path.
@@ -373,7 +373,8 @@ class Project:
 
         self.__initial_path = fs_path
         self.lib = ProjectLibrary(self)
-        self.variables = {"KIPRJMOD": str(fs_path)}
+        self._variables = {"KIPRJMOD": str(fs_path)}
+        self._env_variables_loaded = False
         self.sch = []
         self.pcb = []
         self._version = None
@@ -431,6 +432,29 @@ class Project:
 
         return self._version
 
+    @property
+    def variables(self) -> dict[str, str]:
+        """The KiCad project's variables, including global environment variables"""
+        if not self._env_variables_loaded and self.version:
+            self._variables = self.version.env_variables() | self._variables
+            self._env_variables_loaded = True
+
+        return self._variables
+
+    def _get_env_variables(self) -> dict[str, str] | None:
+        if not self.version:
+            return None
+
+        kicad_common_path = self.version.kicad_config_path() / "kicad_common.json"
+
+        if not kicad_common_path.is_file():
+            return None
+
+        with open(kicad_common_path) as f:
+            kicad_common_json = json.loads(f.read())
+
+        return kicad_common_json["environment"]["vars"]
+
     def resolve_var(self, string: str) -> str:
         """Resolves variables in a string by replacing placeholders of the form `${var}`
         with their corresponding values from the project's variables dictionary."""
@@ -484,6 +508,8 @@ class Project:
 
         if not version:
             version = Version.DEFAULT
+
+        self._version = version
 
         self.pro = KicadProFile(self.fs_path / f"{project_name}.kicad_pro", kicad_pro_json={})
         self.pro.save()
@@ -547,15 +573,6 @@ class Project:
 
         self.lib.load(force=force)
         return self
-
-    def __load_env_variables(self) -> None:
-        if not self.version:
-            return
-
-        with open(self.version.kicad_config_path() / "kicad_common.json") as f:
-            kicad_common_json = json.loads(f.read())
-
-        self.variables.update(kicad_common_json["environment"]["vars"])
 
     def save(self, path: PathLike | None = None) -> None:
         """Saves all loaded KiCad files managed by this instance to disk.

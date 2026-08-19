@@ -1,3 +1,4 @@
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,10 +35,30 @@ class Version:
         fp: ClassVar[int]
         dru: ClassVar[int]
         lib_table: ClassVar[int]
+        _env_variables: ClassVar[dict[str, str] | None] = None
 
         @classmethod
         def kicad_config_path(cls) -> Path:
             return xdg_config_home() / "kicad" / cls.name
+
+        @classmethod
+        def env_variables(cls) -> dict[str, str]:
+            if not cls._env_variables:
+                cls._env_variables = cls._get_env_variables()
+
+            return cls._env_variables
+
+        @classmethod
+        def _get_env_variables(cls) -> dict[str, str]:
+            kicad_common_path = cls.kicad_config_path() / "kicad_common.json"
+
+            if not kicad_common_path.is_file():
+                return {}
+
+            with open(kicad_common_path) as f:
+                kicad_common_json = json.loads(f.read())
+
+            return kicad_common_json["environment"]["vars"]
 
     class K8(BaseVer):
         """Version constants for KiCad 8 files"""
