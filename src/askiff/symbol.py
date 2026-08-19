@@ -429,3 +429,5 @@ class SymbolLibraryTable(LibraryTable):
     Provides typed access to library definitions and their properties"""
 
     _askiff_key: ClassVar[str] = "sym_lib_table"
+
+    FILENAME = "sym-lib-table"

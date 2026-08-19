@@ -598,6 +598,10 @@ class Project:
         self.lib.save()
 
 
+TLibTable = TypeVar("TLibTable", FootprintLibraryTable, SymbolLibraryTable)
+TLibrary = TypeVar("TLibrary", FootprintLibrary, SymbolLibrary)
+
+
 class ProjectLibrary:
     project: Project
 
@@ -642,50 +646,34 @@ class ProjectLibrary:
             self.sym_lib_table = sym_lib_table
 
     def load(self, *, force: bool) -> Self:
-        fp_lib_table_path = self.project.fs_path / "fp-lib-table"
-        self.fp_lib_table = (
-            FootprintLibraryTable.from_file(fp_lib_table_path)
-            if fp_lib_table_path.exists()
-            else FootprintLibraryTable()
-        )
-        self.fp = {
-            lib.name: FootprintLibrary(Path(self.project.resolve_var(lib.uri))).load(force)
-            for lib in self.fp_lib_table.lib
-        }
+        self.fp_lib_table = self._load_lib_table(self.project.fs_path, FootprintLibraryTable)
+        self.fp = self._load_library(self.fp_lib_table, FootprintLibrary, force=force)
 
-        sym_lib_table_path = self.project.fs_path / "sym-lib-table"
-        self.sym_lib_table = (
-            SymbolLibraryTable.from_file(sym_lib_table_path) if sym_lib_table_path.exists() else SymbolLibraryTable()
-        )
-        self.sym = {
-            lib.name: SymbolLibrary(Path(self.project.resolve_var(lib.uri))).load(force)
-            for lib in self.sym_lib_table.lib
-        }
+        self.sym_lib_table = self._load_lib_table(self.project.fs_path, SymbolLibraryTable)
+        self.sym = self._load_library(self.sym_lib_table, SymbolLibrary, force=force)
 
         if self.project.version:
-            global_fp_lib_table_path = self.project.version.kicad_config_path() / "fp-lib-table"
-            self.global_fp_lib_table = (
-                FootprintLibraryTable.from_file(global_fp_lib_table_path)
-                if global_fp_lib_table_path.exists()
-                else FootprintLibraryTable()
+            self.global_fp_lib_table = self._load_lib_table(
+                self.project.version.kicad_config_path(), FootprintLibraryTable
             )
-            self.global_fp = {
-                lib.name: FootprintLibrary(Path(self.project.resolve_var(lib.uri))).load(force)
-                for lib in self.global_fp_lib_table.lib
-            }
+            self.global_fp = self._load_library(self.global_fp_lib_table, FootprintLibrary, force=force)
 
-            global_sym_lib_table_path = self.project.version.kicad_config_path() / "sym-lib-table"
-            self.global_sym_lib_table = (
-                SymbolLibraryTable.from_file(global_sym_lib_table_path)
-                if global_sym_lib_table_path.exists()
-                else SymbolLibraryTable()
+            self.global_sym_lib_table = self._load_lib_table(
+                self.project.version.kicad_config_path(), SymbolLibraryTable
             )
-            self.global_sym = {
-                lib.name: SymbolLibrary(Path(self.project.resolve_var(lib.uri))).load(force)
-                for lib in self.global_sym_lib_table.lib
-            }
+            self.global_sym = self._load_library(self.global_sym_lib_table, SymbolLibrary, force=force)
 
         return self
+
+    def _load_lib_table(self, table_dir: Path, table_cls: type[TLibTable]) -> TLibTable:
+        table_path = table_dir / table_cls.FILENAME
+        return table_cls.from_file(table_path) if table_path.exists() else table_cls()
+
+    def _load_library(self, lib_table: TLibTable, lib_cls: type[TLibrary], *, force: bool) -> dict[str, TLibrary]:
+        return {
+            lib.name: lib_cls(Path(self.project.resolve_var(lib.uri))).load(force)  # ty:ignore[invalid-argument-type]
+            for lib in lib_table.lib
+        }
 
     def save(self, path: PathLike | None = None) -> None:
         for fp_lib in self.fp.values():

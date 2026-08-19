@@ -316,3 +316,5 @@ class FootprintLibraryTable(LibraryTable):
     """Represents KiCad's footprint library table (fp-lib-table) file"""
 
     _askiff_key: ClassVar[str] = "fp_lib_table"
+
+    FILENAME = "fp-lib-table"
