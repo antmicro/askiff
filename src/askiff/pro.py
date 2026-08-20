@@ -421,15 +421,22 @@ class Project:
 
     @property
     def version(self) -> type[Version.BaseVer] | None:
-        """The KiCad project's version based on the root schematic/PCB file"""
+        """
+        The KiCad project's version.
+        On first access, loads the root schematic and PCB file and chooses the newer version.
+        """
         if self._version:
             return self._version
 
-        if self.sch_root and isinstance(self.sch_root, _LazyFile):
-            self._version = Version.from_sch_version(self.sch_root._load().version)  # ty:ignore[unresolved-attribute]
-        elif self.pcb_root and isinstance(self.pcb_root, _LazyFile):
-            self._version = Version.from_pcb_version(self.pcb_root._load().version)  # ty:ignore[unresolved-attribute]
+        versions: list[type[Version.BaseVer] | None] = []
 
+        if self.sch_root:
+            versions.append(Version.from_sch_version(self.sch_root.version))
+
+        if self.pcb_root:
+            versions.append(Version.from_pcb_version(self.pcb_root.version))
+
+        self._version = max((v for v in versions if v is not None), key=lambda v: v.cmp_key(), default=None)
         return self._version
 
     @property

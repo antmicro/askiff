@@ -29,6 +29,8 @@ class Version:
         """
 
         name: ClassVar[str]
+        major: ClassVar[int]
+
         sch: ClassVar[int]
         pcb: ClassVar[int]
         sym: ClassVar[int]
@@ -60,10 +62,16 @@ class Version:
 
             return kicad_common_json["environment"]["vars"]
 
+        @classmethod
+        def cmp_key(cls) -> tuple[int]:
+            return (cls.major,)
+
     class K8(BaseVer):
         """Version constants for KiCad 8 files"""
 
         name = "8.0"
+        major = 8
+
         sch = 20231120
         pcb = 20240108
         sym = sch
@@ -75,6 +83,8 @@ class Version:
         """Version constants for KiCad 9 files"""
 
         name = "9.0"
+        major = 9
+
         sym = 20241209
         sch = 20250114
         pcb = 20241229
@@ -86,6 +96,8 @@ class Version:
         """Version constants for KiCad 10 files"""
 
         name = "10.0"
+        major = 10
+
         sym = 20251024
         sch = 20260306
         pcb = 20260206
