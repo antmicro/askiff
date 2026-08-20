@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,6 +15,8 @@ TRACE = 5
 
 KICAD_MAX_LAYER_CU = 32
 KICAD_MAX_LAYER_USER = 45
+
+log = logging.getLogger()
 
 
 class Version:
@@ -122,9 +125,25 @@ class Version:
     @classmethod
     def from_sch_version(cls, sch_version: int) -> type[BaseVer] | None:
         """Get the KiCad version based on the .kicad_sch file version"""
-        return next((version for version in cls.versions if version.sch == sch_version), None)
+        version = next((version for version in cls.versions if version.sch == sch_version), None)
+
+        if version is None:
+            log.warning(
+                f"Couldn't match .kicad_sch file version.\n"
+                f"\nExpected one of {[v.sch for v in cls.versions]}, got {sch_version}."
+            )
+
+        return version
 
     @classmethod
     def from_pcb_version(cls, pcb_version: int) -> type[BaseVer] | None:
         """Get the KiCad version based on the .kicad_pcb file version"""
-        return next((version for version in cls.versions if version.pcb == pcb_version), None)
+        version = next((version for version in cls.versions if version.pcb == pcb_version), None)
+
+        if version is None:
+            log.warning(
+                f"Couldn't match .kicad_pcb file version.\n"
+                f"\nExpected one of {[v.pcb for v in cls.versions]}, got {pcb_version}."
+            )
+
+        return version
