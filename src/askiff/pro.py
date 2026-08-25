@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from os import PathLike
 from pathlib import Path
 from threading import RLock
-from typing import Any, Generic, Self, TypeVar
+from typing import Any, Generic, Self, TypeVar, overload
 
 from ._auto_serde import AutoSerdeFile
 from .board import Board
@@ -22,22 +22,71 @@ logging.addLevelName(TRACE, "TRACE")
 
 log = logging.getLogger(__name__)
 
-T = TypeVar("T", bound=AutoSerdeFile)
+T = TypeVar("T")
+
+TInstance = TypeVar("TInstance")
+"""Should be set to the class it's used in when defining the attribute"""
 
 
-class _LazyFile(Generic[T]):
+class Lazy(Generic[T, TInstance]):
+    """
+    A descriptor used for generic lazy loading.
+    https://docs.python.org/3/reference/datamodel.html#descriptors
+    """
+
+    name: str
+    f: Callable[[TInstance], T]
+    instance_values: dict[TInstance, T]
+
+    def __init__(self, f: Callable[[TInstance], T]) -> None:
+        self.f = f
+        self.instance_values = {}
+
+    def __set_name__(self, _owner: type[TInstance], name: str) -> None:
+        self.name = name
+
+    @overload
+    def __get__(self, instance: None, _owner: type[TInstance]) -> Lazy:
+        """Called when the class attribute is accessed"""
+
+    @overload
+    def __get__(self, instance: TInstance, _owner: type[TInstance]) -> T:
+        """Called when the instance attribute is accessed"""
+
+    def __get__(self, instance: TInstance | None, _owner: type[TInstance]) -> Lazy | T:
+        if instance is None:
+            raise Exception("Can't access class attribute")
+
+        try:
+            value = self.instance_values.pop(instance)
+        except KeyError:
+            value = self.f(instance)
+
+        setattr(instance, self.name, value)
+        return value
+
+    def __set__(self, instance: TInstance, value: T) -> None:
+        self.instance_values[instance] = value
+
+
+TFile = TypeVar("TFile", bound=AutoSerdeFile)
+
+
+class _LazyFile(Generic[TFile]):
     """Thread-safe lazy loader for KiCad files.
     Defers loading until first access, supporting transparent attribute access and saving relative to a root path.
     """
 
     fs_path: Path
     """Path to the KiCad file on disk."""
-    _value: Path | T
+    _value: Path | TFile
     """Path to the KiCad file OR parsed file."""
     _lock: RLock
-    _inner_cls: type[T]
+    _inner_cls: type[TFile]
 
-    def __init__(self, inner_cls: type[T], fs_path: PathLike, force_load: bool = False, value: T | None = None) -> None:
+    def __init__(
+        self, inner_cls: type[TFile], fs_path: PathLike, force_load: bool = False, value: TFile | None = None
+    ) -> None:
         """Initializes the lazy loader. Loads the file immediately if `force_load` is True"""
         fs_path = Path(fs_path)
         object.__setattr__(self, "_inner_cls", inner_cls)
@@ -49,7 +98,7 @@ class _LazyFile(Generic[T]):
         if force_load:
             self._load()
 
-    def _load(self) -> T:
+    def _load(self) -> TFile:
         # Fast path (already loaded)
         """Loads and returns the underlying file object, caching the result after the first access.
         Uses thread-safe loading with a lock to prevent concurrent access during loading."""
