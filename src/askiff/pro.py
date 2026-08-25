@@ -585,7 +585,6 @@ class Project:
         self.dru_root = None
         self.dru = []
 
-        self.lib.load(force=force)
         return self
 
     def load(self, force: bool = False) -> Self:
@@ -627,7 +626,6 @@ class Project:
             self.pcb_root = self.__load_all_files_of_type(Board, self.pcb, force)
             self.dru_root = self.__load_all_files_of_type(DesignRulesFile, self.dru, force)
 
-        self.lib.load(force=force)
         return self
 
     def save(self, path: PathLike | None = None) -> None:
@@ -661,24 +659,56 @@ TLibrary = TypeVar("TLibrary", FootprintLibrary, SymbolLibrary)
 class ProjectLibrary:
     project: Project
 
-    local_fp: dict[str, FootprintLibrary]
+    local_fp = Lazy[dict[str, FootprintLibrary], "ProjectLibrary"](
+        lambda self: self._load_library(self.local_fp_lib_table, FootprintLibrary, force=False)  # type: ignore[has-type]
+    )
     """Lazy loaded footprint libraries"""
-    local_fp_lib_table: FootprintLibraryTable
+    local_fp_lib_table = Lazy[FootprintLibraryTable, "ProjectLibrary"](
+        lambda self: self._load_lib_table(self.project.fs_path, FootprintLibraryTable)
+    )
     """Footprint library table file contents"""
 
-    local_sym: dict[str, SymbolLibrary]
+    local_sym = Lazy[dict[str, SymbolLibrary], "ProjectLibrary"](
+        lambda self: self._load_library(self.local_sym_lib_table, SymbolLibrary, force=False)  # type: ignore[has-type]
+    )
     """Lazy loaded symbol libraries"""
-    local_sym_lib_table: SymbolLibraryTable
+    local_sym_lib_table = Lazy[SymbolLibraryTable, "ProjectLibrary"](
+        lambda self: self._load_lib_table(self.project.fs_path, SymbolLibraryTable)
+    )
     """Symbol library table file contents"""
 
-    global_fp: dict[str, FootprintLibrary]
+    global_fp = Lazy[dict[str, FootprintLibrary], "ProjectLibrary"](
+        lambda self: (
+            self._load_library(self.global_fp_lib_table, FootprintLibrary, force=False)  # type: ignore[has-type]
+            if self.global_fp_lib_table  # type: ignore[has-type]
+            else {}
+        )
+    )
     """Lazy loaded global footprint libraries"""
-    global_fp_lib_table: FootprintLibraryTable
+    global_fp_lib_table = Lazy[FootprintLibraryTable | None, "ProjectLibrary"](
+        lambda self: (
+            self._load_lib_table(self.project.version.kicad_config_path(), FootprintLibraryTable)
+            if self.project.version
+            else None
+        )
+    )
     """Global footprint library table file contents"""
 
-    global_sym: dict[str, SymbolLibrary]
+    global_sym = Lazy[dict[str, SymbolLibrary], "ProjectLibrary"](
+        lambda self: (
+            self._load_library(self.global_sym_lib_table, SymbolLibrary, force=False)  # type: ignore[has-type]
+            if self.global_sym_lib_table  # type: ignore[has-type]
+            else {}
+        )
+    )
     """Lazy loaded global symbol libraries"""
-    global_sym_lib_table: SymbolLibraryTable
+    global_sym_lib_table = Lazy[SymbolLibraryTable | None, "ProjectLibrary"](
+        lambda self: (
+            self._load_lib_table(self.project.version.kicad_config_path(), SymbolLibraryTable)
+            if self.project.version
+            else None
+        )
+    )
     """Global symbol library table file contents"""
 
     def __init__(
@@ -689,11 +719,6 @@ class ProjectLibrary:
         sym_lib_table: SymbolLibraryTable | None = None,
     ) -> None:
         self.project = project
-
-        self.local_fp = {}
-        self.local_sym = {}
-        self.global_fp = {}
-        self.global_sym = {}
 
         if fp_lib_table:
             self.local_fp_lib_table = fp_lib_table
@@ -710,26 +735,6 @@ class ProjectLibrary:
     def sym(self) -> Generator[tuple[str, SymbolLibrary]]:
         yield from self.local_sym.items()
         yield from self.global_sym.items()
-
-    def load(self, *, force: bool) -> Self:
-        self.local_fp_lib_table = self._load_lib_table(self.project.fs_path, FootprintLibraryTable)
-        self.local_fp = self._load_library(self.local_fp_lib_table, FootprintLibrary, force=force)
-
-        self.local_sym_lib_table = self._load_lib_table(self.project.fs_path, SymbolLibraryTable)
-        self.local_sym = self._load_library(self.local_sym_lib_table, SymbolLibrary, force=force)
-
-        if self.project.version:
-            self.global_fp_lib_table = self._load_lib_table(
-                self.project.version.kicad_config_path(), FootprintLibraryTable
-            )
-            self.global_fp = self._load_library(self.global_fp_lib_table, FootprintLibrary, force=force)
-
-            self.global_sym_lib_table = self._load_lib_table(
-                self.project.version.kicad_config_path(), SymbolLibraryTable
-            )
-            self.global_sym = self._load_library(self.global_sym_lib_table, SymbolLibrary, force=force)
-
-        return self
 
     def _load_lib_table(self, table_dir: Path, table_cls: type[TLibTable]) -> TLibTable:
         table_path = table_dir / table_cls.FILENAME
