@@ -63,7 +63,10 @@ class Version:
             with open(kicad_common_path) as f:
                 kicad_common_json = json.loads(f.read())
 
-            return kicad_common_json["environment"]["vars"]
+            try:
+                return kicad_common_json["environment"]["vars"] or {}
+            except KeyError:
+                return {}
 
         @classmethod
         def cmp_key(cls) -> tuple[int]:
