@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 from collections.abc import Callable, Generator
 from os import PathLike
@@ -496,20 +495,6 @@ class Project:
             self._env_variables_loaded = True
 
         return self._variables
-
-    def _get_env_variables(self) -> dict[str, str] | None:
-        if not self.version:
-            return None
-
-        kicad_common_path = self.version.kicad_config_path() / "kicad_common.json"
-
-        if not kicad_common_path.is_file():
-            return None
-
-        with open(kicad_common_path) as f:
-            kicad_common_json = json.loads(f.read())
-
-        return kicad_common_json["environment"]["vars"]
 
     def resolve_var(self, string: str) -> str:
         """Resolves variables in a string by replacing placeholders of the form `${var}`
