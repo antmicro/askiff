@@ -656,59 +656,47 @@ TLibTable = TypeVar("TLibTable", FootprintLibraryTable, SymbolLibraryTable)
 TLibrary = TypeVar("TLibrary", FootprintLibrary, SymbolLibrary)
 
 
+class LazyLibrary(Lazy[dict[str, TLibrary], "ProjectLibrary"]):
+    def __init__(self, lib_type: type[TLibrary], lib_table: str) -> None:
+        super().__init__(
+            lambda self: (
+                self._load_library(getattr(self, lib_table), lib_type, force=False)  # type:ignore[arg-type]
+                if getattr(self, lib_table)
+                else {}
+            )
+        )
+
+
+class LazyLibraryTable(Lazy[TLibTable, "ProjectLibrary"]):
+    def __init__(self, lib_table_type: type[TLibTable]) -> None:
+        super().__init__(
+            lambda self: (  # type: ignore[arg-type]
+                self._load_lib_table(self.project.fs_path, lib_table_type)  # type: ignore[return-value]
+            )
+        )
+
+
 class ProjectLibrary:
     project: Project
 
-    local_fp = Lazy[dict[str, FootprintLibrary], "ProjectLibrary"](
-        lambda self: self._load_library(self.local_fp_lib_table, FootprintLibrary, force=False)  # type: ignore[has-type]
-    )
+    local_fp = LazyLibrary(FootprintLibrary, "local_fp_lib_table")
     """Lazy loaded footprint libraries"""
-    local_fp_lib_table = Lazy[FootprintLibraryTable, "ProjectLibrary"](
-        lambda self: self._load_lib_table(self.project.fs_path, FootprintLibraryTable)
-    )
+    local_fp_lib_table = LazyLibraryTable(FootprintLibraryTable)
     """Footprint library table file contents"""
 
-    local_sym = Lazy[dict[str, SymbolLibrary], "ProjectLibrary"](
-        lambda self: self._load_library(self.local_sym_lib_table, SymbolLibrary, force=False)  # type: ignore[has-type]
-    )
+    local_sym = LazyLibrary(SymbolLibrary, "local_sym_lib_table")
     """Lazy loaded symbol libraries"""
-    local_sym_lib_table = Lazy[SymbolLibraryTable, "ProjectLibrary"](
-        lambda self: self._load_lib_table(self.project.fs_path, SymbolLibraryTable)
-    )
+    local_sym_lib_table = LazyLibraryTable(SymbolLibraryTable)
     """Symbol library table file contents"""
 
-    global_fp = Lazy[dict[str, FootprintLibrary], "ProjectLibrary"](
-        lambda self: (
-            self._load_library(self.global_fp_lib_table, FootprintLibrary, force=False)  # type: ignore[has-type]
-            if self.global_fp_lib_table  # type: ignore[has-type]
-            else {}
-        )
-    )
+    global_fp = LazyLibrary(FootprintLibrary, "global_fp_lib_table")
     """Lazy loaded global footprint libraries"""
-    global_fp_lib_table = Lazy[FootprintLibraryTable | None, "ProjectLibrary"](
-        lambda self: (
-            self._load_lib_table(self.project.version.kicad_config_path(), FootprintLibraryTable)
-            if self.project.version
-            else None
-        )
-    )
+    global_fp_lib_table = LazyLibraryTable(FootprintLibraryTable)
     """Global footprint library table file contents"""
 
-    global_sym = Lazy[dict[str, SymbolLibrary], "ProjectLibrary"](
-        lambda self: (
-            self._load_library(self.global_sym_lib_table, SymbolLibrary, force=False)  # type: ignore[has-type]
-            if self.global_sym_lib_table  # type: ignore[has-type]
-            else {}
-        )
-    )
+    global_sym = LazyLibrary(SymbolLibrary, "global_sym_lib_table")
     """Lazy loaded global symbol libraries"""
-    global_sym_lib_table = Lazy[SymbolLibraryTable | None, "ProjectLibrary"](
-        lambda self: (
-            self._load_lib_table(self.project.version.kicad_config_path(), SymbolLibraryTable)
-            if self.project.version
-            else None
-        )
-    )
+    global_sym_lib_table = LazyLibraryTable(SymbolLibraryTable)
     """Global symbol library table file contents"""
 
     def __init__(
