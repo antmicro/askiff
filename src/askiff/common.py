@@ -6,7 +6,8 @@ import uuid
 from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from math import atan2, cos, hypot, pi, radians, sin, sqrt
-from typing import TYPE_CHECKING, Any, ClassVar, Final, Generic, TypeVar, cast, overload
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, ClassVar, Final, Generic, Self, TypeVar, cast, overload
 
 from askiff._auto_serde import AutoSerde, AutoSerdeEnum, AutoSerdeFile, F
 from askiff._sexpr import GeneralizedSexpr, Qstr
@@ -436,6 +437,7 @@ class EmbeddedFileType(str, AutoSerdeEnum):
 
     FONT = "font"
     MODEL = "model"
+    WORKSHEET = "worksheet"
     OTHER = "other"
 
 
@@ -447,10 +449,196 @@ class EmbeddedFile(AutoSerde):
     """File name of the embedded object"""
     type: EmbeddedFileType = F(EmbeddedFileType.OTHER)
     """Type of embedded file."""
-    data: DataBlock | None = None
+    _data: DataBlock | None = F(name="data")
     """Embedded file contents as bytes."""
-    checksum: str = F()
+    _checksum: str = F(name="checksum")
     """Checksum of the embedded file contents."""
+
+    __decompressed: bytearray | None = None
+    __MODULE_IMPORT_ERR_MSG = (
+        "Module import failed, ensure that `askiff` has been installed with `embedded_files` dependency set"
+    )
+
+    @property
+    def data(self) -> bytearray:
+        """Get mutable access to raw file data (decoded and decompressed) of this embedded file"""
+        if not self.__decompressed:
+            if not self._data:
+                self.__decompressed = bytearray()
+            else:
+                try:
+                    import zstandard as zstd
+                except ImportError as e:
+                    raise ImportError(self.__MODULE_IMPORT_ERR_MSG) from e
+                compressed = zstd.ZstdDecompressor().decompress(self._data)
+                self.__decompressed = bytearray(compressed)
+        return self.__decompressed
+
+    @data.setter
+    def data(self, data: bytes | bytearray) -> None:
+        self.__decompressed = bytearray(data)
+
+    def _calc_checksum(self, legacy_pad: bool) -> str:
+        """Calculate MMH3 hash, implementation transcribed from KiCad source code,
+        as KiCad 8-10 impl has different behavior regarding padding than mmh3 python library
+        (this func with `legacy_pad==true` matches KiCad 9-10 hashes,
+        with `legacy_pad==false` matches fixed KiCad 11+ implementation)"""
+        MASK64 = 0xFFFFFFFFFFFFFFFF  # noqa: N806
+
+        C1 = 0x87C37B91114253D5  # noqa: N806
+        C2 = 0x4CF5AD432745937F  # noqa: N806
+
+        SEED = 0xABBA2345  # noqa: N806
+
+        def rotl64(x: int, r: int) -> int:
+            return ((x << r) | (x >> (64 - r))) & MASK64
+
+        def fmix64(k: int) -> int:
+            k ^= k >> 33
+            k = (k * 0xFF51AFD7ED558CCD) & MASK64
+            k ^= k >> 33
+            k = (k * 0xC4CEB9FE1A85EC53) & MASK64
+            k ^= k >> 33
+            return k & MASK64
+
+        h1 = SEED
+        h2 = SEED
+        length = 0
+
+        offset = 0
+        remaining = len(self.data)
+
+        # Full 16-byte blocks
+        while remaining >= 16:
+            block = self.data[offset : offset + 16]
+
+            k1 = int.from_bytes(block[0:8], "little")
+            k2 = int.from_bytes(block[8:16], "little")
+
+            k1 = (k1 * C1) & MASK64
+            k1 = rotl64(k1, 31)
+            k1 = (k1 * C2) & MASK64
+            h1 ^= k1
+
+            h1 = rotl64(h1, 27)
+            h1 = (h1 + h2) & MASK64
+            h1 = (h1 * 5 + 0x52DCE729) & MASK64
+
+            k2 = (k2 * C2) & MASK64
+            k2 = rotl64(k2, 33)
+            k2 = (k2 * C1) & MASK64
+            h2 ^= k2
+
+            h2 = rotl64(h2, 31)
+            h2 = (h2 + h1) & MASK64
+            h2 = (h2 * 5 + 0x38495AB5) & MASK64
+
+            offset += 16
+            remaining -= 16
+            length += 16
+
+        if remaining:
+            # KiCad's actual blocks buffer is 16 bytes and is zero-filled.
+            block = bytearray(16)
+            block[:remaining] = self.data[offset : offset + remaining]
+
+            if legacy_pad:
+                # KiCad 10 behavior:
+                # round tail length up to a multiple of 4.
+                padding = 4 - (remaining + 4) % 4
+                length += remaining + padding
+            else:
+                # Fixed KiCad 11 behavior:
+                # only real bytes contribute to length.
+                length += remaining
+
+            # hashTail() uses length & 15, not the original remaining.
+            tail_len = length & 15
+
+            k1 = 0
+            k2 = 0
+
+            # Build k2 from bytes 8..15.
+            if tail_len >= 9:
+                k2 ^= block[8]
+            if tail_len >= 10:
+                k2 ^= block[9] << 8
+            if tail_len >= 11:
+                k2 ^= block[10] << 16
+            if tail_len >= 12:
+                k2 ^= block[11] << 24
+            if tail_len >= 13:
+                k2 ^= block[12] << 32
+            if tail_len >= 14:
+                k2 ^= block[13] << 40
+            if tail_len >= 15:
+                k2 ^= block[14] << 48
+            if tail_len >= 16:
+                k2 ^= block[15] << 56
+
+            if tail_len >= 9:
+                k2 = (k2 * C2) & MASK64
+                k2 = rotl64(k2, 33)
+                k2 = (k2 * C1) & MASK64
+                h2 ^= k2
+
+            # Build k1 from bytes 0..7.
+            if tail_len >= 1:
+                k1 ^= block[0]
+            if tail_len >= 2:
+                k1 ^= block[1] << 8
+            if tail_len >= 3:
+                k1 ^= block[2] << 16
+            if tail_len >= 4:
+                k1 ^= block[3] << 24
+            if tail_len >= 5:
+                k1 ^= block[4] << 32
+            if tail_len >= 6:
+                k1 ^= block[5] << 40
+            if tail_len >= 7:
+                k1 ^= block[6] << 48
+            if tail_len >= 8:
+                k1 ^= block[7] << 56
+
+            if tail_len >= 1:
+                k1 = (k1 * C1) & MASK64
+                k1 = rotl64(k1, 31)
+                k1 = (k1 * C2) & MASK64
+                h1 ^= k1
+
+        # hashFinal()
+        h1 ^= length
+        h2 ^= length
+
+        h1 = (h1 + h2) & MASK64
+        h2 = (h2 + h1) & MASK64
+
+        h1 = fmix64(h1)
+        h2 = fmix64(h2)
+
+        h1 = (h1 + h2) & MASK64
+        h2 = (h2 + h1) & MASK64
+
+        return f"{h1:016X}{h2:016X}"
+
+    def _askiff_pre_ser(self) -> Self:
+        if self.__decompressed:
+            try:
+                import zstandard as zstd
+            except ImportError as e:
+                raise ImportError(self.__MODULE_IMPORT_ERR_MSG) from e
+            compressed = zstd.ZstdCompressor(level=15).compress(self.__decompressed)
+            self._data = DataBlock(compressed)
+            self._checksum = self._calc_checksum(legacy_pad=True)
+        return self
+
+    @classmethod
+    def from_file(cls, path: Path, **kwargs) -> Self:  # type: ignore # noqa: ANN003
+        """Create new object from data loaded from `path`
+        by converting it to KiCad embeddable format & calculating checksum"""
+        ret = cls(name=path.name, **kwargs)
+        ret.data = path.read_bytes()
+        return ret
 
 
 class Group(AutoSerde):

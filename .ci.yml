@@ -19,7 +19,7 @@ stages:
       - merge_requests
   before_script:
     - uv venv
-    - uv sync --extra dev
+    - uv sync --extra dev --extra embedded_files
 
 mypy:
   extends: .code-check-base

@@ -34,6 +34,7 @@ docs = [
     "sphinx-autoapi",
     "sphinx-design"
 ]
+embedded_files = ["zstandard==0.25.0"]
 
 [tool.ruff.lint]
 select = ["E", "F", "N", "B", "A", "RET", "UP", "I", "RUF", "ANN"]
