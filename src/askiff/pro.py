@@ -479,10 +479,10 @@ class Project:
         versions: list[type[Version.BaseVer] | None] = []
 
         if self.sch_root:
-            versions.append(Version.from_sch_version(self.sch_root.version))
+            versions.append(Version.from_file_version(self.sch_root.version, "sch"))
 
         if self.pcb_root:
-            versions.append(Version.from_pcb_version(self.pcb_root.version))
+            versions.append(Version.from_file_version(self.pcb_root.version, "pcb"))
 
         self._version = max((v for v in versions if v is not None), key=lambda v: v.cmp_key(), default=None)
         return self._version
