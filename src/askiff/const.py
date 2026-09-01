@@ -1,11 +1,10 @@
 import json
 import logging
+import os
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar, Literal
-
-from xdg_base_dirs import xdg_config_home
 
 TRACE_DIS = 4
 """Log level for very verbose debugging, printing a.o. disassembly of some functions"""
@@ -17,6 +16,8 @@ KICAD_MAX_LAYER_CU = 32
 KICAD_MAX_LAYER_USER = 45
 
 log = logging.getLogger()
+
+XDG_CONFIG_HOME = Path(os.getenv("XDG_CONFIG_HOME", Path.home() / ".local/share/"))
 
 
 class Version:
@@ -44,7 +45,7 @@ class Version:
 
         @classmethod
         def kicad_config_path(cls) -> Path:
-            return xdg_config_home() / "kicad" / cls.name
+            return XDG_CONFIG_HOME / "kicad" / cls.name
 
         @classmethod
         def env_variables(cls) -> dict[str, str]:

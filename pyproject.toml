@@ -21,9 +21,7 @@ description = "Structured Python access to KiCad files."
 dynamic = ["version"]
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
-dependencies = [
-    "xdg-base-dirs~=6.0"
-]
+dependencies = []
 
 [project.scripts]
 askiff = "askiff._cli:main"
