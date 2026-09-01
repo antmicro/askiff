@@ -484,7 +484,7 @@ class Project:
         if self.pcb_root:
             versions.append(Version.from_file_version(self.pcb_root.version, "pcb"))
 
-        self._version = max((v for v in versions if v is not None), key=lambda v: v.cmp_key(), default=None)
+        self._version = max((v for v in versions if v is not None), key=lambda v: v.major, default=None)
         return self._version
 
     @property

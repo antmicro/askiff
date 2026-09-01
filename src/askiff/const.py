@@ -68,10 +68,6 @@ class Version:
             except KeyError:
                 return {}
 
-        @classmethod
-        def cmp_key(cls) -> tuple[int]:
-            return (cls.major,)
-
     class K8(BaseVer):
         """Version constants for KiCad 8 files"""
 
