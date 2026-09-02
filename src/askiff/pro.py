@@ -652,13 +652,13 @@ class LazyLibrary(Lazy[dict[str, TLibrary], "ProjectLibrary"]):
         )
 
 
-class LazyLibraryTable(Lazy[TLibTable, "ProjectLibrary"]):
-    def __init__(self, lib_table_type: type[TLibTable]) -> None:
-        super().__init__(
-            lambda self: (  # type: ignore[arg-type]
-                self._load_lib_table(self.project.fs_path, lib_table_type)  # type: ignore[return-value]
-            )
-        )
+class LazyLibraryTable(Lazy[TLibTable | None, "ProjectLibrary"]):
+    def __init__(self, lib_table_type: type[TLibTable], lib_table: Callable[[ProjectLibrary], Path | None]) -> None:
+        def load(lib: ProjectLibrary) -> TLibTable | None:
+            lib_table_path = lib_table(lib)
+            return lib._load_lib_table(lib_table_path, lib_table_type) if lib_table_path else None
+
+        super().__init__(load)  # type: ignore[arg-type]
 
 
 class ProjectLibrary:
@@ -666,22 +666,26 @@ class ProjectLibrary:
 
     local_fp = LazyLibrary(FootprintLibrary, "local_fp_lib_table")
     """Lazy loaded footprint libraries"""
-    local_fp_lib_table = LazyLibraryTable(FootprintLibraryTable)
+    local_fp_lib_table = LazyLibraryTable(FootprintLibraryTable, lambda self: self.project.fs_path)
     """Footprint library table file contents"""
 
     local_sym = LazyLibrary(SymbolLibrary, "local_sym_lib_table")
     """Lazy loaded symbol libraries"""
-    local_sym_lib_table = LazyLibraryTable(SymbolLibraryTable)
+    local_sym_lib_table = LazyLibraryTable(SymbolLibraryTable, lambda self: self.project.fs_path)
     """Symbol library table file contents"""
 
     global_fp = LazyLibrary(FootprintLibrary, "global_fp_lib_table")
     """Lazy loaded global footprint libraries"""
-    global_fp_lib_table = LazyLibraryTable(FootprintLibraryTable)
+    global_fp_lib_table = LazyLibraryTable(
+        FootprintLibraryTable, lambda self: self.project.version.kicad_config_path() if self.project.version else None
+    )
     """Global footprint library table file contents"""
 
     global_sym = LazyLibrary(SymbolLibrary, "global_sym_lib_table")
     """Lazy loaded global symbol libraries"""
-    global_sym_lib_table = LazyLibraryTable(SymbolLibraryTable)
+    global_sym_lib_table = LazyLibraryTable(
+        SymbolLibraryTable, lambda self: self.project.version.kicad_config_path() if self.project.version else None
+    )
     """Global symbol library table file contents"""
 
     def __init__(
