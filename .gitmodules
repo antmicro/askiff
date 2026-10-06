@@ -1,3 +1,40 @@
 [submodule "test_projects/jetson-agx-thor-baseboard"]
 	path = test_projects/jetson-agx-thor-baseboard
 	url = https://github.com/antmicro/jetson-agx-thor-baseboard
+	update = none
+[submodule "test_projects/stm32h7-renode-reference-platform"]
+	path = test_projects/stm32h7-renode-reference-platform
+	url = https://github.com/antmicro/stm32h7-renode-reference-platform.git
+	update = none
+[submodule "test_projects/stm32h7-hdmi-board"]
+	path = test_projects/stm32h7-hdmi-board
+	url = https://github.com/antmicro/stm32h7-hdmi-board.git
+	update = none
+[submodule "test_projects/sdi-fiber-adapter"]
+	path = test_projects/sdi-fiber-adapter
+	url = https://github.com/antmicro/sdi-fiber-adapter.git
+	update = none
+[submodule "test_projects/thunderbolt-10gbe-adapter"]
+	path = test_projects/thunderbolt-10gbe-adapter
+	url = https://github.com/antmicro/thunderbolt-10gbe-adapter.git
+	update = none
+[submodule "test_projects/gmsl-deserializer"]
+	path = test_projects/gmsl-deserializer
+	url = https://github.com/antmicro/gmsl-deserializer.git
+	update = none
+[submodule "test_projects/com-express-7-baseboard"]
+	path = test_projects/com-express-7-baseboard
+	url = https://github.com/antmicro/com-express-7-baseboard.git
+	update = none
+[submodule "test_projects/rdimm-ddr5-tester"]
+	path = test_projects/rdimm-ddr5-tester
+	url = https://github.com/antmicro/rdimm-ddr5-tester.git
+	update = none
+[submodule "test_projects/polarfire-som"]
+	path = test_projects/polarfire-som
+	url = https://github.com/antmicro/polarfire-som.git
+	update = none
+[submodule "test_projects/dc-scm-breakout-board"]
+	path = test_projects/dc-scm-breakout-board
+	url = https://github.com/antmicro/dc-scm-breakout-board.git
+	update = none

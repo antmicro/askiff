@@ -328,7 +328,7 @@ class Schematic(AutoSerdeFile):
     title_block: TitleBlock = F()
     """Title block metadata for the schematic."""
 
-    lib_symbols: list[SymbolDefinition] = F()
+    lib_symbols: list[SymbolDefinition] = F(keep_empty=True)
     """Definition of symbols used in sch (this is kind of cache of library symbols)"""
 
     bus_aliases: list[BusAlias] = F(flatten=True, name="bus_alias", skip=True).version(Version.K9.sch, skip=False)

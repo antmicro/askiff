@@ -374,9 +374,9 @@ class Pad(AutoSerdeDownCasting):
         "thermal_bridge_width",
         "thermal_bridge_angle",
         "thermal_gap",
-        "teardrops",
         "shape.options",
         "shape.primitives",
+        "teardrops",
         "uuid",
         "padstack",
     ]
@@ -396,7 +396,7 @@ class Pad(AutoSerdeDownCasting):
     """Drill configuration for the pad, including type, dimensions and offset."""
     remove_unused_layers: bool | None = None
     """Whether to keep annular ring on unconnected layers"""
-    layers: LayerSet[BaseLayer] = F(name="layers")
+    layers: LayerSet[BaseLayer] = F(name="layers", keep_empty=True)
     """Layers assigned to the pad"""
     die_length: float | None = None
     """Trace length inside IC"""

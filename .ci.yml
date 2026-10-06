@@ -42,6 +42,29 @@ lint:
     - uv run ruff check ./src
 
 ################ Tests ################
+.kicad_project_upgrade: &kicad_project_upgrade |-
+  if [[ ${KICAD_PROJECT_UPGRADE} == "kicad10-migration" ]]; then 
+      kicad.AppImage kicad-cli pcb upgrade *.kicad_pcb
+      head *.kicad_pcb
+      for sch in *.kicad_sch; do
+          kicad.AppImage kicad-cli sch upgrade $sch
+      done
+      git config --global user.name "bot"
+      git config --global user.email "bot@antmicro.com"
+      git add .
+      git commit -m "Upgrade KiCad project version"
+  fi
+
+.kicad_install: &kicad_install |-
+  KICAD_APPIMAGE_NAME="kicad-10.0.6-x86_64-lite.AppImage"
+  curl -fsSL "https://kicad-downloads.s3.cern.ch/appimage/stable/${KICAD_APPIMAGE_NAME}.tar" | tar -xO "$KICAD_APPIMAGE_NAME" > /usr/bin/kicad.AppImage
+  chmod +x /usr/bin/kicad.AppImage
+
+.unpack_parallel_var: &unpack_parallel_var |-
+  if [[ -n ${CI_PARALLEL_NAME} ]]; then 
+    IFS=',' read -r TEST_PROJECT KICAD_PROJECT_UPGRADE <<< "$CI_PARALLEL_NAME"
+    export TEST_PROJECT KICAD_PROJECT_UPGRADE
+  fi
 
 .test-base:
   stage: test
@@ -51,13 +74,17 @@ lint:
       - merge_requests
   before_get_sources:
     - apt -qqy update > /dev/null
-    - apt -qqy --no-install-recommends install git make > /dev/null
+    - apt -qqy --no-install-recommends install git make curl > /dev/null
+    - *kicad_install
   before_script:
+    - *unpack_parallel_var
     - uv venv
     - uv sync
-    - git submodule update --init --depth 1 test_projects/${TEST_PROJECT} || true
+    - git submodule update --init --checkout --depth 1 -- test_projects/${TEST_PROJECT} || true
   script:
+    - *unpack_parallel_var
     - cd test_projects/${TEST_PROJECT}
+    - *kicad_project_upgrade
     - uv run askiff --time-print
     - |
       # Check diff, skipping DRU file, as it is not strictly formatted by KiCad
@@ -76,10 +103,24 @@ test-kicad10:
   variables:
     TEST_PROJECT: "kicad10"
 
-test-thor:
+test-ohp-designs:
   extends: .test-base
-  variables:
-    TEST_PROJECT: "jetson-agx-thor-baseboard"
+  parallel:
+    matrix:
+      - TEST_PROJECT:
+          - com-express-7-baseboard
+          - jetson-agx-thor-baseboard
+          - rdimm-ddr5-tester
+          - stm32h7-hdmi-board
+          - thunderbolt-10gbe-adapter
+          - gmsl-deserializer
+          - polarfire-som
+          - sdi-fiber-adapter
+          - stm32h7-renode-reference-platform
+          - dc-scm-breakout-board
+        KICAD_PROJECT_UPGRADE:
+          - kicad10-migration
+          - no-migration
 
 doc-test:
   stage: test
@@ -105,13 +146,12 @@ doc-test:
 build-docs:
   extends: doc-test
   stage: docs
-  tags: ['docs']
+  tags: ["docs"]
   script:
     - make -f Docs.Makefile html > docs.log
-    - tar cf $CI_DOCS_ARCHIVE -C .build/html/ .  
+    - tar cf $CI_DOCS_ARCHIVE -C .build/html/ .
   artifacts:
     when: always
     paths:
       - docs.log
       - $CI_DOCS_ARCHIVE
-

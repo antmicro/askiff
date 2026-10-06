@@ -25,6 +25,8 @@ class SerdeOpt(TypedDict, total=False):
     """Maximum number of digits after decimal point for float serialization."""
     keep_trailing: bool
     """Whether trailing zeros are preserved in float serialization."""
+    no_scientific_notation: bool
+    """Whether to forbid scientific notation in float serialization."""
     flatten: bool
     """Whether list items are flattened onto the current level during serialization.
 
@@ -332,6 +334,7 @@ class SerMode(int, Enum):
     INT = auto()
     FLOAT = auto()
     FLOAT_NO_TRIM = auto()
+    FLOAT_NO_SCIENTIFIC_NOTATION = auto()
     STR = auto()
     QSTR = auto()
     ENUM = auto()

@@ -28,11 +28,11 @@ class Coordinate(AutoSerde):
     """Represents a 3D point in space with X, Y, and Z components"""
 
     _askiff_key: ClassVar[str] = "xyz"
-    x: float = F(positional=True)
+    x: float = F(positional=True, no_scientific_notation=True)
     """X coordinate value in millimeters."""
-    y: float = F(positional=True)
+    y: float = F(positional=True, no_scientific_notation=True)
     """Y coordinate value in millimeters."""
-    z: float = F(positional=True)
+    z: float = F(positional=True, no_scientific_notation=True)
     """Z-axis coordinate value"""
 
 

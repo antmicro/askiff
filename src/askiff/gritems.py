@@ -646,8 +646,8 @@ class RenderCache(AutoSerde):
 
     text: str = F(positional=True)
     """Text content"""
-    mode: int = F(positional=True)
-    """Render mode"""
+    angle: float = F(positional=True)
+    """Angle the text was rendered at"""
     poly: list[BasePoly] = F(name="polygon", flatten=True)
     """Polygons of rendered entry."""
 
@@ -664,6 +664,8 @@ class GrText(AutoSerde):
 
     text: str = F(positional=True)
     """Text content."""
+    locked: bool | None = F()
+    """Whether the text item is locked against modifications."""
     effects: Effects = F()
     """Text element formatting properties including font, justification, and visibility."""
     position: Position = F(name="at")
@@ -736,8 +738,6 @@ class GrTextPCB(GrTextPCBBase, GrItemPCB):
     _askiff_key: ClassVar[str] = "gr_text"
     render_cache: RenderCache | None = None
     """Cached rendering data for the text item"""
-    locked: bool | None = F()
-    """Whether the text item is locked against modifications."""
 
 
 class GrTextSch(GrText, GrItemSch):
@@ -921,7 +921,7 @@ class GrTextBoxSch(GrTextBox, GrItemSch):
     """Rectangle defining text box boundaries and optional margins."""
     fill: FillStyleSch | None = F(after="border_stroke")
     """Fill style configuration"""
-    uuid: Uuid = F(after="locked").version(Version.K9.sch, after="effects")
+    uuid: Uuid = F(after="effects")
     """Unique identifier"""
 
 

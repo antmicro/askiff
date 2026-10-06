@@ -3,6 +3,14 @@
 ## Installation
 
 1. Clone repository
+
+```sh
+git clone https://github.com/antmicro/askiff.git askiff
+cd askiff
+# test design submodules have `update=none`, use `--checkout` to override that setting
+git submodule update --init --recursive --checkout
+```
+
 2. Install dependencies & package
 
 ```sh

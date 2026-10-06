@@ -469,6 +469,9 @@ class AutoSerde:
                 elif typ is float and fparam.fmeta.get("keep_trailing", False):
                     fmode = SerMode.FLOAT_NO_TRIM, fparam.fmeta.get("precision", 6)
                     keep_empty = True
+                elif typ is float and fparam.fmeta.get("no_scientific_notation", False):
+                    fmode = SerMode.FLOAT_NO_SCIENTIFIC_NOTATION, None
+                    keep_empty = True
                 elif typ is float:
                     fmode = SerMode.FLOAT, fparam.fmeta.get("precision", 6)
                     keep_empty = True
@@ -499,12 +502,21 @@ class AutoSerde:
                 print()
         return {"_AutoSerde__ser_field": ser_field, "_AutoSerde__ser_field_positional": ser_field_positional}
 
+    @staticmethod
+    def __format_float_no_scientific(val: float) -> str:
+        return (f"{val:.16f}" if -1e-5 < val < 1e-5 else f"{val:f}").rstrip("0").rstrip(".")
+
+    @staticmethod
+    def __format_float(val: float, precision: int) -> str:
+        return f"{val:g}" if -1e-5 < val < 1e-5 else f"{val:.{precision}f}".rstrip("0").rstrip(".")
+
     def serialize(self) -> GeneralizedSexpr:
         """Serializes the object into a S-Expression AST
 
         Fields are processed in order: `__ser_field_positional`, `__extra_positional`, `__ser_field` & `__extra`"""
         # asserts in this function are just to keep mypy happy, __init_serializer ensures correct types
         ret: GeneralizedSexpr = []
+
         askiff_pre_ser = getattr(self, "_askiff_pre_ser", None)
         _self = askiff_pre_ser() if askiff_pre_ser else self
         append = ret.append  # type: ignore
@@ -534,13 +546,11 @@ class AutoSerde:
                     case SerMode.INT:
                         append(str(field_val))
                     case SerMode.FLOAT:
-                        append(
-                            f"{field_val:g}"
-                            if -1e-5 < field_val < 1e-5
-                            else f"{field_val:.{mode_extra}f}".rstrip("0").rstrip(".")
-                        )
+                        append(AutoSerde.__format_float(field_val, mode_extra))
                     case SerMode.FLOAT_NO_TRIM:
                         append(f"{field_val:.{mode_extra}f}")
+                    case SerMode.FLOAT_NO_SCIENTIFIC_NOTATION:
+                        append(AutoSerde.__format_float_no_scientific(field_val))
                     case SerMode.STR:
                         append(field_val)
                     case SerMode.QSTR:
@@ -566,12 +576,11 @@ class AutoSerde:
                             case SerMode.INT:
                                 extend(str(f) for f in field_val)
                             case SerMode.FLOAT:
-                                extend(
-                                    f"{f:g}" if -1e-4 < f < 1e-4 else f"{f:.{imode_extra}f}".rstrip("0").rstrip(".")
-                                    for f in field_val
-                                )
+                                extend(AutoSerde.__format_float(f, imode_extra) for f in field_val)
                             case SerMode.FLOAT_NO_TRIM:
                                 extend(f"{f:.{imode_extra}f}" for f in field_val)
+                            case SerMode.FLOAT_NO_SCIENTIFIC_NOTATION:
+                                extend(AutoSerde.__format_float_no_scientific(f) for f in field_val)
                             case SerMode.STR:
                                 extend(f for f in field_val)
                             case SerMode.QSTR:
@@ -641,14 +650,7 @@ class AutoSerde:
                         append((fname, str(field_val)))
                     case SerMode.FLOAT:
                         # mode_extra=precision
-                        append(
-                            (
-                                fname,
-                                f"{field_val:g}"
-                                if -1e-5 < field_val < 1e-5
-                                else f"{field_val:.{mode_extra}f}".rstrip("0").rstrip("."),
-                            )
-                        )
+                        append((fname, AutoSerde.__format_float(field_val, mode_extra)))
                     case SerMode.FLOAT_NO_TRIM:
                         append((fname, f"{field_val:.{mode_extra}f}"))  # mode_extra=precision
                     case SerMode.STR:
@@ -687,17 +689,7 @@ class AutoSerde:
                             case SerMode.INT:
                                 append((fname, *(str(f) for f in field_val)))
                             case SerMode.FLOAT:  # mode_extra=precision
-                                append(
-                                    (
-                                        fname,
-                                        *(
-                                            f"{f:g}"
-                                            if -1e-4 < f < 1e-4
-                                            else f"{f:.{imode_extra}f}".rstrip("0").rstrip(".")
-                                            for f in field_val
-                                        ),
-                                    )
-                                )
+                                append((fname, *(AutoSerde.__format_float(f, imode_extra) for f in field_val)))
                             case SerMode.FLOAT_NO_TRIM:  # mode_extra=precision
                                 append((fname, *(f"{f:.{imode_extra}f}" for f in field_val)))
                             case SerMode.STR:
@@ -746,15 +738,7 @@ class AutoSerde:
                             case SerMode.INT:
                                 extend((fname, str(f)) for f in field_val)
                             case SerMode.FLOAT:  # mode_extra=precision
-                                extend(
-                                    (
-                                        fname,
-                                        f"{f:g}"
-                                        if -1e-4 < f < 1e-4
-                                        else f"{f:.{imode_extra}f}".rstrip("0").rstrip("."),
-                                    )
-                                    for f in field_val
-                                )
+                                extend((fname, AutoSerde.__format_float(f, imode_extra)) for f in field_val)
                             case SerMode.FLOAT_NO_TRIM:  # mode_extra=precision
                                 extend((fname, f"{f:.{imode_extra}f}") for f in field_val)
                             case SerMode.STR:
