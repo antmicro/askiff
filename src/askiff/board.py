@@ -436,6 +436,7 @@ class ViaType(str, AutoSerdeEnum):
 
     THRU = ""
     BLIND = "blind"
+    BURIED = "buried"
     MICRO = "micro"
 
 
